@@ -288,6 +288,7 @@ class Analyzer {
     }
 
     this.checkTraits(prog);
+    this.checkQualified(prog);
 
     this.ctx.boxNames = boxNamesOf(prog.body);
     this.analyzeBlockBody(prog.body);
@@ -1477,6 +1478,20 @@ class Analyzer {
         this.analyzeFn(d);
         this.scope = saved;
       }
+    }
+  }
+
+  // `geometry.dist(...)`: the parser drops the qualifier, here we make sure the item really lives in that file
+  checkQualified(prog: Program) {
+    for (const q of prog.qualified) {
+      const decl = this.fns.get(q.name)?.decl ?? this.generics.get(q.name) ?? this.structs.get(q.name) ?? this.structTemplates.get(q.name)
+        ?? this.enums.get(q.name) ?? this.enumTemplates.get(q.name);
+      if (!decl) {
+        this.err('E028', `module '${q.module}' has no item '${q.name}'`, q.span);
+        continue;
+      }
+      const home = this.fileOf(decl.nameSpan);
+      if (home && home !== `${q.module}.lum`) this.err('E028', `'${q.name}' is declared in ${home}, not in module '${q.module}'`, q.span);
     }
   }
 

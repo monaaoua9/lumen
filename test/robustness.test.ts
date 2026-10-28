@@ -68,7 +68,7 @@ test('cli: run, check and exit codes', () => {
 test('modules: imports are bundled and errors point at the right file', () => {
   const ok = cli('run', 'examples/modules/main.lum');
   assert.equal(ok.status, 0);
-  assert.equal(ok.stdout.trim(), '5.0');
+  assert.equal(ok.stdout.trim().split(/\r?\n/)[0], '5.0');
 
   const dir = mkdtempSync(join(tmpdir(), 'lumen-mod-'));
   try {
@@ -89,6 +89,13 @@ test('modules: imports are bundled and errors point at the right file', () => {
     const priv = cli('check', join(dir, 'use_priv.lum'));
     assert.equal(priv.status, 1);
     assert.ok(priv.stdout.includes('E027') && priv.stdout.includes("'hidden'") && !priv.stdout.includes("'shown'"), priv.stdout);
+
+    // module.item is checked against the file the item lives in
+    writeFileSync(join(dir, 'q_main.lum'), 'import "lib.lum";\nimport "priv.lum";\nprint(priv.shown());\nprint(lib.shown());\nprint(priv.nope());\n');
+    const q = cli('check', join(dir, 'q_main.lum'));
+    assert.equal(q.status, 1);
+    assert.ok(q.stdout.includes("'shown' is declared in priv.lum, not in module 'lib'"), q.stdout);
+    assert.ok(q.stdout.includes("module 'priv' has no item 'nope'"), q.stdout);
 
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');

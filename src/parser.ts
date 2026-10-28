@@ -1,5 +1,5 @@
 import type { Diagnostic, Span } from './diagnostics.ts';
-import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
+import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
 import { arrayOf, enumType, fnType, structType, typeFromName } from './types.ts';
@@ -42,6 +42,8 @@ class Parser {
   lambdas = 0;
   structs: StructDecl[] = [];
   traits: TraitDecl[] = [];
+  qualified: Qualified[] = [];
+  modules = new Set<string>(); // names usable as `module.item`, from the import lines
   impls: ImplFor[] = [];
   enums: EnumDecl[] = [];
   enumNames = new Set<string>();
@@ -55,6 +57,9 @@ class Parser {
     // enums may be used before they are declared, so find their names up front
     for (let i = 0; i < toks.length - 1; i++) {
       if (toks[i].kind === 'enum' && toks[i + 1].kind === 'ident') this.enumNames.add(toks[i + 1].text);
+      if (toks[i].kind === 'ident' && toks[i].text === 'import' && toks[i + 1].kind === 'string') {
+        this.modules.add(String(toks[i + 1].value).replace(/^.*[\\/]/, '').replace(/\.lum$/, ''));
+      }
     }
   }
 
@@ -94,7 +99,7 @@ class Parser {
       if (s) body.push(s);
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
-    return { body, fns: this.fns, structs: this.structs, enums: this.enums, traits: this.traits, impls: this.impls, nlocals: 0, nglobals: 0 };
+    return { qualified: this.qualified, body, fns: this.fns, structs: this.structs, enums: this.enums, traits: this.traits, impls: this.impls, nlocals: 0, nglobals: 0 };
   }
 
   statementRecovering(): Stmt | null {
@@ -149,7 +154,13 @@ class Parser {
       this.expect(')');
       out = fnType(ps, this.eat(':') ? this.type() : 'void');
     } else {
-      const t = this.expect('ident', 'a type name');
+      let t = this.expect('ident', 'a type name');
+      if (this.modules.has(t.text) && this.at('.')) {
+        this.next();
+        const item = this.expect('ident', 'a type name');
+        this.qualified.push({ module: t.text, name: item.text, span: this.join(t.span, item.span) });
+        t = item;
+      }
       // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
       out = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
       if (this.at('<')) {
@@ -733,20 +744,31 @@ class Parser {
         return { k: 'lambda', fn, caps: [], span: fn.span, ty: 'error' };
       }
       case 'ident': {
-        if (this.at('{') && !this.noStruct) return this.structLit(t);
-        if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
-        this.next();
-        const args: Expr[] = [];
-        if (!this.at(')')) {
-          do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+        if (this.modules.has(t.text) && this.at('.') && this.peek().kind === 'ident') {
+          // module.item: the qualifier is dropped here and checked by the analyzer
+          this.next();
+          const item = this.next();
+          this.qualified.push({ module: t.text, name: item.text, span: this.join(t.span, item.span) });
+          return this.identExpr(item);
         }
-        const close = this.expect(')');
-        return { k: 'call', name: t.text, nameSpan: t.span, args, span: this.join(t.span, close.span), ty: 'error' };
+        return this.identExpr(t);
       }
     }
     const found = t.kind === 'eof' ? 'end of file' : `'${t.text}'`;
     if (t.kind !== 'eof') this.pos--; // leave the bad token for sync() to skip
     this.fail(`expected an expression, found ${found}`, t.span);
+  }
+
+  identExpr(t: Token): Expr {
+    if (this.at('{') && !this.noStruct) return this.structLit(t);
+    if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
+    this.next();
+    const args: Expr[] = [];
+    if (!this.at(')')) {
+      do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+    }
+    const close = this.expect(')');
+    return { k: 'call', name: t.text, nameSpan: t.span, args, span: this.join(t.span, close.span), ty: 'error' };
   }
 }
 

@@ -151,7 +151,14 @@ export interface ImplFor {
   span: Span;
 }
 
+export interface Qualified {
+  module: string;
+  name: string;
+  span: Span;
+}
+
 export interface Program {
+  qualified: Qualified[];
   traits: TraitDecl[];
   impls: ImplFor[];
   body: Stmt[];
