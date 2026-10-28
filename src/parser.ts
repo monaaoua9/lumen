@@ -87,7 +87,7 @@ class Parser {
         const name = this.toks[i + 1].text;
         if (!names.has(name)) letOwners.set(name, (letOwners.get(name) ?? 0) + 1);
         names.add(name);
-      } else if (depth === 0 && (t.kind === 'fn' || t.kind === 'struct' || t.kind === 'enum') && this.toks[i + 1].kind === 'ident') {
+      } else if (depth === 0 && (t.kind === 'fn' || t.kind === 'struct' || t.kind === 'enum' || t.kind === 'trait') && this.toks[i + 1].kind === 'ident') {
         const file = this.fileOf(t);
         const name = this.toks[i + 1].text;
         if (!this.declared.has(file)) this.declared.set(file, new Map());
@@ -122,6 +122,19 @@ class Parser {
     if (!this.letClash.has(t.text)) return t;
     const file = this.fileOf(t);
     return this.lets.get(file)?.has(t.text) ? { ...t, text: `${this.modName(file)}$${t.text}` } : t;
+  }
+
+  // a trait name in a bound or `dyn`, optionally written module.Trait
+  traitRef(): Token {
+    const t = this.expect('ident', 'a trait name');
+    if (this.modules.has(t.text) && this.at('.')) {
+      this.next();
+      const item = this.expect('ident', 'a trait name');
+      const q = this.qualify(t.text, item);
+      this.qualified.push({ module: t.text, name: q.text, span: this.join(t.span, item.span) });
+      return q;
+    }
+    return this.rn(t);
   }
 
   qualify(module: string, item: Token): Token {
@@ -205,7 +218,7 @@ class Parser {
     if (this.cur.kind === 'ident' && this.cur.text === 'dyn' && this.peek().kind === 'ident') {
       // `dyn Shape` is an enum the analyzer builds from the impls of the trait
       this.next();
-      out = enumType(`${this.next().text}__dyn`);
+      out = enumType(`${this.traitRef().text}__dyn`);
     } else if (this.eat('(')) {
       // parentheses tell `(fn(int): int)[]` apart from `fn(int): int[]`
       out = this.type() as Elem;
@@ -260,7 +273,9 @@ class Parser {
       case 'fn': return this.fnDecl();
       case 'pub': {
         this.next();
+        const isTrait = this.cur.kind === 'trait';
         const d = this.statement();
+        if (isTrait) return d;
         if (d.k === 'fn' || d.k === 'struct' || d.k === 'enum') d.pub = true;
         else this.diags.push({ severity: 'error', code: 'P005', message: "'pub' applies to fn, struct and enum declarations", span: t.span });
         return d;
@@ -542,7 +557,7 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'traits can only be declared at the top level', span: kw.span });
     }
-    const name = this.expect('ident', 'a trait name');
+    const name = this.rn(this.expect('ident', 'a trait name'));
     this.expect('{');
     const methods: TraitDecl['methods'] = [];
     while (!this.at('}') && !this.at('eof')) {
@@ -592,7 +607,7 @@ class Parser {
         if (this.eat(':')) {
           implBounds ??= {};
           implBounds[tp] = [];
-          do implBounds[tp].push(this.expect('ident', 'a trait name').text); while (this.eat('+'));
+          do implBounds[tp].push(this.traitRef().text); while (this.eat('+'));
         }
       } while (this.eat(','));
       this.expect('>');
@@ -601,7 +616,7 @@ class Parser {
     let trait: Token | undefined;
     if (this.eat('for')) {
       // impl Trait for Type: the methods are ordinary `Type$m` functions, the analyzer checks them against the trait
-      trait = name;
+      trait = this.rn(name);
       name = this.expect('ident', 'a type name');
     }
     name = this.rn(name);
@@ -642,7 +657,7 @@ class Parser {
         if (this.eat(':')) {
           bounds ??= {};
           bounds[tp] = [];
-          do bounds[tp].push(this.expect('ident', 'a trait name').text); while (this.eat('+'));
+          do bounds[tp].push(this.traitRef().text); while (this.eat('+'));
         }
       } while (this.eat(','));
       this.expect('>');

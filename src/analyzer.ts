@@ -1499,7 +1499,7 @@ class Analyzer {
       this.dynTraits.set(t.name, { enumName, variants });
       this.dynByEnum.set(enumName, { enumName, variants });
       prog.enums.push({
-        k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan,
+        k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan, pub: true, // traits are not access-checked
         variants: variants.map(v => ({ name: v.variant, span: v.span, payload: [v.type] })),
       });
     }
@@ -1548,7 +1548,7 @@ class Analyzer {
   checkQualified(prog: Program) {
     for (const q of prog.qualified) {
       const decl = this.fns.get(q.name)?.decl ?? this.generics.get(q.name) ?? this.structs.get(q.name) ?? this.structTemplates.get(q.name)
-        ?? this.enums.get(q.name) ?? this.enumTemplates.get(q.name);
+        ?? this.enums.get(q.name) ?? this.enumTemplates.get(q.name) ?? this.traits.get(q.name);
       if (!decl) {
         this.err('E028', `module '${q.module}' has no item '${q.name}'`, q.span);
         continue;

@@ -183,6 +183,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- A generic function body is only checked when it is instantiated; modules do not namespace traits (global `let`s with the same name in two files are fine, but a global is private to its file).
+- A generic function body is only checked when it is instantiated; a global is private to its file, traits are namespaced per file like functions but not access-checked (`pub trait` is accepted and ignored).
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

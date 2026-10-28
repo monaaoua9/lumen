@@ -118,6 +118,14 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.equal(gl.status, 0, gl.stderr);
     assert.deepEqual(gl.stdout.trim().split(/\r?\n/), ['24', '35']);
 
+    // the same trait name in two modules, used through module.Trait and dyn
+    writeFileSync(join(dir, 't1.lum'), 'pub trait Named { fn name(self): string; }\npub struct A { x: int }\nimpl Named for A { fn name(self): string { return "a"; } }\n');
+    writeFileSync(join(dir, 't2.lum'), 'pub trait Named { fn name(self): string; }\npub struct B { x: int }\nimpl Named for B { fn name(self): string { return "b"; } }\n');
+    writeFileSync(join(dir, 't_main.lum'), 'import "t1.lum";\nimport "t2.lum";\nfn one<T: t1.Named>(t: T): string { return t.name(); }\nprint(one(t1.A { x: 1 }));\nlet d: dyn t2.Named = t2.B { x: 2 };\nprint(d.name());\n');
+    const tr = cli('run', join(dir, 't_main.lum'));
+    assert.equal(tr.status, 0, tr.stderr);
+    assert.deepEqual(tr.stdout.trim().split(/\r?\n/), ['a', 'b']);
+
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
     writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');
