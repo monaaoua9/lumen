@@ -1,0 +1,35 @@
+// word frequencies: split, lower, a counting pass, then a selection sort by count
+struct Entry { word: string, count: int }
+
+fn tally(words: string[]): Entry[] {
+  let seen: Entry[] = [];
+  for w in words {
+    if w == "" { continue; }
+    var hit = false;
+    for e in seen {
+      if e.word == w {
+        e.count += 1;
+        hit = true;
+      }
+    }
+    if !hit { push(seen, Entry { word: w, count: 1 }); }
+  }
+  return seen;
+}
+
+fn before(a: Entry, b: Entry): bool {
+  return a.count > b.count || (a.count == b.count && a.word < b.word);
+}
+
+let text = "the quick brown fox jumps over the lazy dog The DOG barks and the fox runs";
+let entries = tally(split(lower(text), " "));
+for i in 0..len(entries) {
+  var best = i;
+  for j in i + 1..len(entries) {
+    if before(entries[j], entries[best]) { best = j; }
+  }
+  let t = entries[i];
+  entries[i] = entries[best];
+  entries[best] = t;
+}
+for e in entries { print("{e.word}: {e.count}"); }

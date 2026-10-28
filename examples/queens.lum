@@ -1,0 +1,26 @@
+// n-queens by backtracking: counts every placement on a board of size n
+fn safe(cols: int[], row: int, col: int): bool {
+  for r in 0..row {
+    let c = cols[r];
+    if c == col || abs(c - col) == row - r { return false; }
+  }
+  return true;
+}
+
+fn place(cols: int[], row: int, n: int): int {
+  if row == n { return 1; }
+  var found = 0;
+  for col in 0..n {
+    if safe(cols, row, col) {
+      cols[row] = col;
+      found += place(cols, row + 1, n);
+    }
+  }
+  return found;
+}
+
+for n in 1..9 {
+  let cols: int[] = [];
+  for _ in 0..n { push(cols, 0); }
+  print("{n} queens: {place(cols, 0, n)}");
+}
