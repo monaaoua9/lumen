@@ -1272,7 +1272,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1324,6 +1324,24 @@ class Analyzer {
       case 'read_line':
       case 'at_eof':
         return ret;
+      case 'sort':
+        if (t0 === 'error') return ret;
+        if (t0 !== 'int[]' && t0 !== 'float[]' && t0 !== 'string[]') bad('expects an int[], float[] or string[]');
+        return ret;
+      case 'reverse':
+        if (t0 !== 'error' && !isArray(t0)) bad('expects an array');
+        return ret;
+      case 'contains':
+        if (t0 === 'error') return ret;
+        if (t0 !== 'int[]' && t0 !== 'float[]' && t0 !== 'string[]' && t0 !== 'bool[]') { bad('expects an int[], float[], string[] or bool[]'); return ret; }
+        if (t1 !== 'error' && t1 !== elemOf(t0)) this.mismatch(elemOf(t0), t1, e.args[1].span, `in argument 2 of 'contains'`);
+        return ret;
+      case 'slice':
+        if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'slice'`);
+        if (t2 !== 'error' && t2 !== 'int') this.mismatch('int', t2, e.args[2].span, `in argument 3 of 'slice'`);
+        if (t0 === 'error') return 'error';
+        if (!isArray(t0)) { bad('expects an array'); return 'error'; }
+        return t0;
       case 'exit':
         if (t0 !== 'error' && t0 !== 'int') this.mismatch('int', t0, e.args[0].span, `in argument 1 of 'exit'`);
         return ret;

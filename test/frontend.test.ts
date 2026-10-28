@@ -350,6 +350,15 @@ test('exit builtin', () => {
   assert.deepEqual(errs('exit();'), ['E004']);
 });
 
+test('array builtins: checking', () => {
+  assert.deepEqual(errs('let a = [3, 1]; sort(a); reverse(a); print(slice(a, 0, 1)); print(contains(a, 1));'), []);
+  assert.deepEqual(errs('let s = [[1]]; reverse(s); print(slice(s, 0, 1));'), []);
+  assert.deepEqual(errs('sort([[1]]);'), ['E003']);
+  assert.deepEqual(errs('print(contains([1], "x"));'), ['E003']);
+  assert.deepEqual(errs('print(slice(1, 0, 1));'), ['E003']);
+  assert.deepEqual(errs('let a: int[] = slice(["a"], 0, 1);'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

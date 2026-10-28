@@ -1,4 +1,4 @@
-// sieve + bubble sort + building arrays with push
+// sieve + bubble bubble_sort + building arrays with push
 fn sieve(n: int): int[] {
   let flags: bool[] = [];
   var i = 0;
@@ -22,7 +22,7 @@ fn sieve(n: int): int[] {
   return primes;
 }
 
-fn sort(xs: int[]) {
+fn bubble_sort(xs: int[]) {
   var i = 0;
   while i < len(xs) {
     var j = 0;
@@ -50,7 +50,7 @@ print(primes);
 print(len(primes));
 
 let data = [5, 2, 9, 1, 7, 3];
-sort(data);
+bubble_sort(data);
 print(data);
 data[0] += 100;
 print(data[0]);

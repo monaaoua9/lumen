@@ -113,6 +113,10 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
     case 'read_line': return readLine();
     case 'at_eof': return atEof();
+    case 'sort': sortArr(a as Value[]); return null;
+    case 'reverse': (a as Value[]).reverse(); return null;
+    case 'contains': return (a as Value[]).includes(args[1]);
+    case 'slice': return sliceOf(a as Value[], args[1] as number, args[2] as number, span);
     case 'exit': throw exitWith(a as number, span);
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
@@ -152,6 +156,16 @@ function stdinLines(): string[] {
     pending = pending.map(l => l.replace(/\r$/, '')).reverse();
   }
   return pending;
+}
+
+export function sortArr(a: Value[]) {
+  if (typeof a[0] === 'string') a.sort((x, y) => cmpStr(x as string, y as string));
+  else a.sort((x, y) => (x as number) - (y as number));
+}
+
+export function sliceOf(a: Value[], start: number, n: number, span?: Span): Value[] {
+  if (start < 0 || n < 0 || start + n > a.length) throw new RuntimeError('slice out of range', span);
+  return a.slice(start, start + n);
 }
 
 export function exitWith(code: number, span?: Span): Error {

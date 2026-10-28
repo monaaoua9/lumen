@@ -204,3 +204,18 @@ test('repl: expressions print, state carries over, bad input is rejected', () =>
     '8', '17', "error[E001]: cannot find variable 'nope'", 'error[E012]: division by zero', '5',
   ]);
 });
+
+test('slice traps out of range on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-slice-'));
+  try {
+    const f = join(dir, 't.lum');
+    writeFileSync(f, 'print(slice([1, 2], 1, 5));\n');
+    for (const engine of ['interp', 'vm']) {
+      const r = cli('run', f, '--engine', engine);
+      assert.equal(r.status, 1, engine);
+      assert.ok(r.stderr.includes('slice out of range'), engine);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

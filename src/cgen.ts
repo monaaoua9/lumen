@@ -296,6 +296,25 @@ static const char *lm_trim(const char *s) {
   memcpy(r, s, (size_t)(e - s));
   return r;
 }
+static int lm_cmp_i(const void *a, const void *b) { long long x = ((const lm_val *)a)->i, y = ((const lm_val *)b)->i; return (x > y) - (x < y); }
+static int lm_cmp_f(const void *a, const void *b) { double x = ((const lm_val *)a)->f, y = ((const lm_val *)b)->f; return (x > y) - (x < y); }
+static int lm_cmp_s(const void *a, const void *b) { return strcmp(((const lm_val *)a)->s, ((const lm_val *)b)->s); }
+static void lm_sort_i(lm_arr *a) { qsort(a->d, (size_t)a->len, sizeof(lm_val), lm_cmp_i); }
+static void lm_sort_f(lm_arr *a) { qsort(a->d, (size_t)a->len, sizeof(lm_val), lm_cmp_f); }
+static void lm_sort_s(lm_arr *a) { qsort(a->d, (size_t)a->len, sizeof(lm_val), lm_cmp_s); }
+static void lm_reverse(lm_arr *a) {
+  for (long long i = 0, j = a->len - 1; i < j; i++, j--) { lm_val t = a->d[i]; a->d[i] = a->d[j]; a->d[j] = t; }
+}
+static bool lm_contains_i(lm_arr *a, long long x) { for (long long i = 0; i < a->len; i++) if (a->d[i].i == x) return true; return false; }
+static bool lm_contains_f(lm_arr *a, double x) { for (long long i = 0; i < a->len; i++) if (a->d[i].f == x) return true; return false; }
+static bool lm_contains_b(lm_arr *a, bool x) { for (long long i = 0; i < a->len; i++) if (a->d[i].b == x) return true; return false; }
+static bool lm_contains_s(lm_arr *a, const char *x) { for (long long i = 0; i < a->len; i++) if (strcmp(a->d[i].s, x) == 0) return true; return false; }
+static lm_arr *lm_slice(lm_arr *a, long long start, long long n) {
+  if (start < 0 || n < 0 || start + n > a->len) lm_die("slice out of range");
+  lm_arr *r = lm_arr_new(n);
+  memcpy(r->d, a->d + start, sizeof(lm_val) * (size_t)n);
+  return r;
+}
 static void lm_exit(long long code) {
   if (code < 0 || code > 255) lm_die("exit code must be 0..255");
   fflush(stdout);
@@ -659,6 +678,10 @@ class Gen {
         case 'assert': text = `lm_assert(${a}, ${args[1]})`; break;
         case 'read_line': text = 'lm_read_line()'; break;
         case 'at_eof': text = 'lm_at_eof()'; break;
+        case 'sort': text = `lm_sort_${slot(elemOf(aty as ArrayType))}(${a})`; break;
+        case 'reverse': text = `lm_reverse(${a})`; break;
+        case 'contains': text = `lm_contains_${slot(elemOf(aty as ArrayType))}(${a}, ${args[1]})`; break;
+        case 'slice': text = `lm_slice(${a}, ${args[1]}, ${args[2]})`; break;
         case 'exit': text = `lm_exit(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;

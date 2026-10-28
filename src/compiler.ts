@@ -368,6 +368,10 @@ class FnCompiler {
           case 'chr': this.emit(Op.CHR); break;
           case 'assert': this.emit(Op.ASSERT); break;
           case 'exit': this.emit(Op.EXIT); break;
+          case 'sort': this.emit(Op.SORT); break;
+          case 'reverse': this.emit(Op.REVERSE); break;
+          case 'contains': this.emit(Op.CONTAINS); break;
+          case 'slice': this.emit(Op.SLICE); break;
           case 'read_line': this.emit(Op.READLN); break;
           case 'at_eof': this.emit(Op.ATEOF); break;
           case 'join': this.emit(Op.JOIN); break;
