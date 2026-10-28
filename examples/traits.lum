@@ -53,3 +53,9 @@ for s in mixed {
     print(s.summary());
 }
 print(all);
+
+// no Shape.from needed where the type is already known
+fn show(s: dyn Shape) { print(s.name()); }
+show(Circle { r: 1.0 });
+let more: dyn Shape[] = [Circle { r: 2.0 }, Rect { w: 1.0, h: 1.0 }];
+print(len(more));

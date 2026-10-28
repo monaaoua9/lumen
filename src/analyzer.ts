@@ -188,6 +188,7 @@ class Analyzer {
   allVars: VarSym[] = [];
   ninst = 0;
   traits = new Map<string, TraitDecl>();
+  dynByEnum = new Map<string, { enumName: string; variants: { variant: string; type: Type; implType: string }[] }>();
   dynTraits = new Map<string, { enumName: string; variants: { variant: string; type: Type; implType: string }[] }>();
   impls = new Set<string>(); // "Trait for <type string>"
   enumTemplates = new Map<string, EnumDecl>();
@@ -964,6 +965,17 @@ class Analyzer {
     const cached = this.keep.get(e);
     if (cached !== undefined) return cached;
     const t = this.expr0(e, want);
+    // a value of an implementing type is accepted where `dyn Trait` is expected
+    if (want && t !== want && isEnum(want)) {
+      const dt = this.dynByEnum.get(want.slice(1));
+      const idx = dt ? dt.variants.findIndex(v => v.type === t) : -1;
+      if (dt && idx >= 0) {
+        const inner = { ...e } as Expr;
+        Object.assign(e, { k: 'enumctor', enumName: dt.enumName, variant: dt.variants[idx].variant, idx, args: [inner] });
+        e.ty = want;
+        return want;
+      }
+    }
     e.ty = t;
     return t;
   }
@@ -1352,6 +1364,7 @@ class Analyzer {
       const enumName = `${t.name}__dyn`;
       const variants = impls.map(i => ({ variant: `As${i.type}`, type: typeStr(i.type), implType: i.type, span: i.span }));
       this.dynTraits.set(t.name, { enumName, variants });
+      this.dynByEnum.set(enumName, { enumName, variants });
       prog.enums.push({
         k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan,
         variants: variants.map(v => ({ name: v.variant, span: v.span, payload: [v.type] })),

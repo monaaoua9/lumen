@@ -391,3 +391,9 @@ test('traits: dyn (dynamic dispatch)', () => {
   assert.deepEqual(errs(T + 'fn f<T: Area>(x: T): float { return x.area(); } print(f(Area.from(Sq { s: 1.0 })));'), []);
   assert.deepEqual(errs('trait E { fn f(self); } let x: dyn E = 1;'), ['E016', 'E003']);
 });
+
+test('traits: implicit coercion to dyn', () => {
+  const T = 'trait A { fn f(self): int; } struct X { v: int } struct Y { v: int } impl A for X { fn f(self): int { return 1; } } ';
+  assert.deepEqual(errs(T + 'fn g(a: dyn A): int { return a.f(); } print(g(X { v: 1 })); let a: dyn A = X { v: 2 }; fn h(): dyn A { return X { v: 3 }; }'), []);
+  assert.deepEqual(errs(T + 'fn g(a: dyn A): int { return a.f(); } print(g(Y { v: 1 }));'), ['E003']);
+});
