@@ -389,6 +389,13 @@ test('local functions', () => {
   assert.deepEqual(errs('fn f(): int { fn g(k: int): int { return g(k); } return g(1); } print(f());'), ['E002']);
 });
 
+test('syntax: trailing commas and field shorthand', () => {
+  const S = 'struct P { x: int, y: int } ';
+  assert.deepEqual(errs(S + 'fn mk(a: int,): P { return P { x: a, y: 2, }; } print(mk(1,)); print([1, 2,]);'), []);
+  assert.deepEqual(errs(S + 'let x = 1; let y = 2; print(P { x, y }); print(P { x, y: 3 });'), []);
+  assert.deepEqual(errs(S + 'let x = 1; print(P { x, y });'), ['E001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

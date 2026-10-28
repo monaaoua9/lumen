@@ -98,6 +98,8 @@ Function values: `fn(int, int): int` is a type, a function name is a value (`app
 
 Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are always inferred from the call (`E024` when a parameter is not mentioned by any argument), and every distinct set of type arguments is checked and compiled as its own copy of the function (monomorphization), so the three backends need no special support. A generic function is only checked when it is called, and it cannot be used as a value.
 
+Trailing commas are accepted in parameter lists, call arguments, array literals and struct literals, and `P { x, y }` is shorthand for `P { x: x, y: y }`.
+
 Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`).
 
 Generic enums: `enum Option<T> { Some(T), None }`, written `Option<int>`. `Option.Some(7)` infers its argument, `Option.None` takes it from the expected type (`let n: Option<int> = Option.None;`, a return type, a parameter) and is `E024` when nothing says which instance is meant. Matching works as usual with the instance's variants.

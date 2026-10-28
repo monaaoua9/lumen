@@ -227,7 +227,7 @@ class Parser {
       this.expect('(');
       const ps: Type[] = [];
       if (!this.at(')')) {
-        do ps.push(this.type()); while (this.eat(','));
+        do ps.push(this.type()); while (this.eat(',') && !this.at(')'));
       }
       this.expect(')');
       out = fnType(ps, this.eat(':') ? this.type() : 'void');
@@ -408,7 +408,7 @@ class Parser {
       const v = this.expect('ident', 'a variant name');
       const payload: Type[] = [];
       if (this.eat('(')) {
-        do payload.push(this.type()); while (this.eat(','));
+        do payload.push(this.type()); while (this.eat(',') && !this.at(')'));
         this.expect(')');
       }
       variants.push({ name: v.text, span: v.span, payload });
@@ -524,7 +524,7 @@ class Parser {
             do {
               const b = this.vn(this.expect('ident', 'a binding name'));
               binds.push(b.text === '_' ? null : { name: b.text, span: b.span });
-            } while (this.eat(','));
+            } while (this.eat(',') && !this.at(')'));
           }
           end = this.expect(')').span;
         }
@@ -595,7 +595,7 @@ class Parser {
           }
           this.expect(':');
           params.push({ name: p.text, span: p.span, ty: this.type() });
-        } while (this.eat(','));
+        } while (this.eat(',') && !this.at(')'));
       }
       this.expect(')');
       const ret: Type = this.eat(':') ? this.type() : 'void';
@@ -670,7 +670,7 @@ class Parser {
             const p = this.vn(this.expect('ident', 'a parameter name'));
             this.expect(':');
             params.push({ name: p.text, span: p.span, ty: this.type() });
-          } while (this.eat(','));
+          } while (this.eat(',') && !this.at(')'));
         }
         this.expect(')');
         const ret: Type = this.eat(':') ? this.type() : 'void';
@@ -714,7 +714,7 @@ class Parser {
         }
         this.expect(':');
         params.push({ name: p.text, span: p.span, ty: this.type() });
-      } while (this.eat(','));
+      } while (this.eat(',') && !this.at(')'));
     }
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
@@ -790,8 +790,11 @@ class Parser {
     this.allowStruct(() => {
       while (!this.at('}') && !this.at('eof')) {
         const f = this.expect('ident', 'a field name');
-        this.expect(':');
-        fields.push({ name: f.text, nameSpan: f.span, value: this.expr(), idx: -1 });
+        // `P { x, y }` is `P { x: x, y: y }`
+        const value: Expr = !this.at(':') && (this.at(',') || this.at('}'))
+          ? { k: 'var', name: this.vn(f).text, span: f.span, ty: 'error' }
+          : (this.expect(':'), this.expr());
+        fields.push({ name: f.text, nameSpan: f.span, value, idx: -1 });
         if (!this.eat(',')) break;
       }
     });
@@ -811,7 +814,7 @@ class Parser {
         this.next();
         const args: Expr[] = [];
         if (!this.at(')')) {
-          do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+          do args.push(this.allowStruct(() => this.expr())); while (this.eat(',') && !this.at(')'));
         }
         const close = this.expect(')');
         e = { k: 'call', name: 'call', nameSpan: e.span, args, callee: e, span: this.join(e.span, close.span), ty: 'error' };
@@ -822,7 +825,7 @@ class Parser {
           this.next();
           const args: Expr[] = [];
           if (!this.at(')')) {
-            do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+            do args.push(this.allowStruct(() => this.expr())); while (this.eat(',') && !this.at(')'));
           }
           const close = this.expect(')');
           e = { k: 'mcall', obj: e, name: f.text, nameSpan: f.span, args, span: this.join(e.span, close.span), ty: 'error' };
@@ -868,7 +871,7 @@ class Parser {
       case '[': {
         const elems: Expr[] = [];
         if (!this.at(']')) {
-          do elems.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+          do elems.push(this.allowStruct(() => this.expr())); while (this.eat(',') && !this.at(']'));
         }
         const close = this.expect(']');
         return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
@@ -903,7 +906,7 @@ class Parser {
     this.next();
     const args: Expr[] = [];
     if (!this.at(')')) {
-      do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+      do args.push(this.allowStruct(() => this.expr())); while (this.eat(',') && !this.at(')'));
     }
     const close = this.expect(')');
     return { k: 'call', name: t.text, nameSpan: t.span, args, span: this.join(t.span, close.span), ty: 'error' };
