@@ -14,3 +14,4 @@ jobs:
       - run: node src/cli.ts check examples/fib.lum --Werror
       - run: node src/cli.ts test examples/tests/arith.lum
       - run: node src/cli.ts test examples/tests/text.lum --engine interp
+      - run: node src/cli.ts test examples/tests/list.lum

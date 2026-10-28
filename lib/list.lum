@@ -116,3 +116,44 @@ pub fn sort_by<T>(xs: T[], before: fn(T, T): bool): T[] {
   }
   return cur;
 }
+
+pub fn flatten<T>(xss: T[][]): T[] {
+  let out: T[] = [];
+  for xs in xss {
+    for x in xs { push(out, x); }
+  }
+  return out;
+}
+
+pub fn flat_map<T, U>(xs: T[], f: fn(T): U[]): U[] {
+  let out: U[] = [];
+  for x in xs {
+    for y in f(x) { push(out, y); }
+  }
+  return out;
+}
+
+// first occurrence wins, order is kept
+pub fn unique<T>(xs: T[]): T[] {
+  let out: T[] = [];
+  for x in xs {
+    if !contains(out, x) { push(out, x); }
+  }
+  return out;
+}
+
+pub fn max_of(xs: int[]): int {
+  var best = xs[0];
+  for x in xs {
+    if x > best { best = x; }
+  }
+  return best;
+}
+
+pub fn min_of(xs: int[]): int {
+  var best = xs[0];
+  for x in xs {
+    if x < best { best = x; }
+  }
+  return best;
+}

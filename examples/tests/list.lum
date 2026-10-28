@@ -1,0 +1,30 @@
+import "std/test.lum"
+import "std/list.lum"
+
+fn test_map_filter() {
+  let sq = list.map([1, 2, 3, 4], fn(x) => x * x);
+  test.eq_int(list.sum(sq), 30);
+  test.eq_int(len(list.filter(sq, fn(x) => x > 4)), 2);
+}
+
+fn test_flat() {
+  test.eq_int(len(list.flatten([[1, 2], [], [3]])), 3);
+  test.eq_int(list.sum(list.flat_map([1, 2, 3], fn(x) => [x, x * 10])), 66);
+}
+
+fn test_unique() {
+  test.eq_int(len(list.unique([3, 1, 3, 2, 1])), 3);
+  test.eq_str(join(list.unique(["a", "b", "a"]), ","), "a,b");
+}
+
+fn test_extremes() {
+  test.eq_int(list.max_of([4, 9, 2]), 9);
+  test.eq_int(list.min_of([4, 9, 2]), 2);
+}
+
+fn test_sort_take() {
+  let s = list.sort_by([5, 3, 8, 1], fn(a, b) => a < b);
+  test.eq_int(s[0], 1);
+  test.eq_int(list.sum(list.take(s, 2)), 4);
+  test.eq_int(len(list.drop(s, 3)), 1);
+}

@@ -11,3 +11,7 @@ print(list.any(nums, fn(x: int): bool { return x > 9; }));
 print(list.all(nums, fn(x: int): bool { return x > 1; }));
 let lens = list.map(["a", "bcd", "ef"], fn(s: string): int { return len(s); });
 print(lens);
+print(list.flatten([[1, 2], [3], []]));
+print(list.flat_map(["ab", "c"], fn(s) => [s, s + s]));
+print(list.unique(["x", "y", "x"]));
+print(list.max_of([3, 8, 2]) - list.min_of([3, 8, 2]));
