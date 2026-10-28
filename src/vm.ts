@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op, TYPE_TAGS } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, checkInt, floatToInt, format, intDiv, intMod } from './runtime.ts';
+import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 interface CallFrame {
@@ -95,7 +95,38 @@ export function run(m: Module, io: IO) {
         case Op.PRINT: io.out(format(stack[--sp], TYPE_TAGS[code[pc++]]) + '\n'); break;
         case Op.STR: stack[sp - 1] = format(stack[sp - 1], TYPE_TAGS[code[pc++]]); break;
         case Op.F2I: stack[sp - 1] = floatToInt(num(sp - 1)); break;
-        case Op.LEN: stack[sp - 1] = Buffer.byteLength(stack[sp - 1] as string); break;
+        case Op.LEN: {
+          const v = stack[sp - 1];
+          stack[sp - 1] = Array.isArray(v) ? v.length : Buffer.byteLength(v as string);
+          break;
+        }
+
+        case Op.NEWARR: {
+          const n = code[pc++];
+          sp -= n;
+          stack[sp] = stack.slice(sp, sp + n);
+          sp++;
+          break;
+        }
+        case Op.INDEX: {
+          sp--;
+          const arr = stack[sp - 1] as Value[];
+          stack[sp - 1] = arr[checkIndex(arr, num(sp))];
+          break;
+        }
+        case Op.SETINDEX: {
+          sp -= 3;
+          const arr = stack[sp] as Value[];
+          arr[checkIndex(arr, num(sp + 1))] = stack[sp + 2];
+          break;
+        }
+        case Op.PUSHA: sp -= 2; (stack[sp] as Value[]).push(stack[sp + 1]); break;
+        case Op.POPA: {
+          const arr = stack[sp - 1] as Value[];
+          if (arr.length === 0) throw new RuntimeError('pop from empty array');
+          stack[sp - 1] = arr.pop()!;
+          break;
+        }
 
         case Op.HALT: return;
 

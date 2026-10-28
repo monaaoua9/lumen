@@ -137,3 +137,26 @@ test('C backend matches the interpreter', { skip: cc ? false : 'no C compiler on
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('arrays: semantics agree across engines', () => {
+  assert.equal(allEngines('let a = [3, 1, 2]; a[1] = 10; push(a, 4); print(a); print(len(a)); print(pop(a)); print(a[0] + a[1]);'), '[3, 10, 2, 4]\n4\n4\n13\n');
+  assert.equal(allEngines('let a = [1]; let b = a; b[0] = 9; print(a);'), '[9]\n'); // reference semantics
+  assert.equal(allEngines('print([1.5, 2.0]); print(["x"]); print([true, false]);'), '[1.5, 2.0]\n["x"]\n[true, false]\n');
+});
+
+test('arrays: runtime errors agree', () => {
+  assert.equal(allEngines('let a = [1]; print(a[1]);'), 'ERR:index out of bounds');
+  assert.equal(allEngines('let a = [1]; print(a[0 - 1]);'), 'ERR:index out of bounds');
+  assert.equal(allEngines('let a: int[] = []; print(pop(a));'), 'ERR:pop from empty array');
+  assert.equal(allEngines('fn z(): int { return 0; } let a = [1]; a[5] = 1 / z();'), 'ERR:division by zero');
+});
+
+test('arrays: evaluation order with side effects', () => {
+  const src = `
+    fn t(n: int): int { print(n); return n; }
+    let a = [t(1), t(2), t(3)];
+    a[t(0)] = t(7);
+    print(a[t(1)] + a[t(2)]);
+  `;
+  assert.equal(allEngines(src), '1\n2\n3\n0\n7\n1\n2\n5\n');
+});

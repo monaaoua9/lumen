@@ -10,7 +10,7 @@ export interface Token {
 const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'return', 'break', 'continue', 'true', 'false']);
 
 const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=']);
-const ONE = new Set('+-*/%(){},;:=<>!'.split(''));
+const ONE = new Set('+-*/%(){}[],;:=<>!'.split(''));
 
 const isDigit = (c: string) => c >= '0' && c <= '9';
 const isIdStart = (c: string) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';

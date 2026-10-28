@@ -2,7 +2,7 @@ import { RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
 import type { BuiltinName, Type } from './types.ts';
 
-export type Value = number | string | boolean | null;
+export type Value = number | string | boolean | null | Value[];
 
 export const MAX_DEPTH = 1000;
 
@@ -21,7 +21,13 @@ export function format(v: Value, ty: Type): string {
     case 'float': return formatFloat(v as number);
     case 'int': return String(v);
     case 'bool': return v ? 'true' : 'false';
-    default: return v as string;
+    case 'string': return v as string;
+    default: {
+      // arrays; strings are quoted inside so ["a", "b"] is distinguishable from [a, b]
+      const et = ty.slice(0, -2) as Type;
+      const items = (v as Value[]).map(x => (et === 'string' ? `"${x}"` : format(x, et)));
+      return '[' + items.join(', ') + ']';
+    }
   }
 }
 
@@ -49,13 +55,24 @@ export function floatToInt(v: number, span?: Span): number {
   return Math.trunc(v) + 0; // + 0 turns -0 into 0
 }
 
-// the one-arg builtins, arg type is known statically
-export function callBuiltin(name: BuiltinName, arg: Value, argTy: Type, io: IO, span?: Span): Value {
+export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: IO, span?: Span): Value {
+  const a = args[0];
   switch (name) {
-    case 'print': io.out(format(arg, argTy) + '\n'); return null;
-    case 'str': return format(arg, argTy);
-    case 'int': return argTy === 'int' ? arg : floatToInt(arg as number, span);
-    case 'float': return arg;
-    case 'len': return Buffer.byteLength(arg as string);
+    case 'print': io.out(format(a, tys[0]) + '\n'); return null;
+    case 'str': return format(a, tys[0]);
+    case 'int': return tys[0] === 'int' ? a : floatToInt(a as number, span);
+    case 'float': return a;
+    case 'len': return Array.isArray(a) ? a.length : Buffer.byteLength(a as string);
+    case 'push': (a as Value[]).push(args[1]); return null;
+    case 'pop': {
+      const arr = a as Value[];
+      if (arr.length === 0) throw new RuntimeError('pop from empty array', span);
+      return arr.pop()!;
+    }
   }
+}
+
+export function checkIndex(arr: Value[], i: number, span?: Span): number {
+  if (i < 0 || i >= arr.length) throw new RuntimeError('index out of bounds', span);
+  return i;
 }

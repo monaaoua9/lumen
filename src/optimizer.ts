@@ -59,6 +59,15 @@ function foldExpr(e: Expr): Expr {
       e.args = e.args.map(foldExpr);
       return e;
 
+    case 'array':
+      e.elems = e.elems.map(foldExpr);
+      return e;
+
+    case 'index':
+      e.arr = foldExpr(e.arr);
+      e.idx = foldExpr(e.idx);
+      return e;
+
     default:
       return e;
   }
@@ -86,6 +95,11 @@ function foldStmt(s: Stmt): Stmt | null {
       return s;
     case 'expr':
       s.e = foldExpr(s.e);
+      return s;
+    case 'setindex':
+      s.arr = foldExpr(s.arr);
+      s.idx = foldExpr(s.idx);
+      s.value = foldExpr(s.value);
       return s;
     case 'return':
       if (s.value) s.value = foldExpr(s.value);

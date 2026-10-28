@@ -13,6 +13,7 @@ const TABLE = [
   ['JMP', 1], ['JMPF', 1],
   ['CALL', 1], ['RET', 0], ['RETV', 0],
   ['PRINT', 1], ['STR', 1], ['F2I', 0], ['LEN', 0],
+  ['NEWARR', 1], ['INDEX', 0], ['SETINDEX', 0], ['PUSHA', 0], ['POPA', 0],
   ['HALT', 0],
 ] as const;
 
@@ -23,7 +24,7 @@ export const OP_NAMES: string[] = TABLE.map(([n]) => n);
 export const OP_ARGS: number[] = TABLE.map(([, n]) => n);
 
 // type tags used as PRINT / STR operands
-export const TYPE_TAGS: Type[] = ['int', 'float', 'bool', 'string'];
+export const TYPE_TAGS: Type[] = ['int', 'float', 'bool', 'string', 'int[]', 'float[]', 'bool[]', 'string[]'];
 
 export interface Proto {
   name: string;
@@ -53,7 +54,7 @@ export function disassemble(m: Module): string {
       if (op === Op.CONST) note = `   ; ${JSON.stringify(m.consts[args[0]])}`;
       else if (op === Op.CALL) note = `   ; ${m.fns[args[0]].name}`;
       else if (op === Op.PRINT || op === Op.STR) note = `   ; ${TYPE_TAGS[args[0]]}`;
-      out.push(`  ${String(pc).padStart(4, '0')}  ${OP_NAMES[op].padEnd(7)} ${args.join(' ')}${note}`);
+      out.push(`  ${String(pc).padStart(4, '0')}  ${OP_NAMES[op].padEnd(8)} ${args.join(' ')}${note}`);
       pc += 1 + n;
     }
     out.push('');

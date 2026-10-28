@@ -1,6 +1,6 @@
 import { RuntimeError } from './diagnostics.ts';
 import type { Expr, FnDecl, Program, Stmt } from './ast.ts';
-import { MAX_DEPTH, callBuiltin, checkInt, intDiv, intMod } from './runtime.ts';
+import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const NORMAL = 0;
@@ -51,6 +51,14 @@ export class Interpreter {
         const sym = s.sym!;
         if (sym.where === 'global') this.globals[sym.slot] = v;
         else f.locals[sym.slot] = v;
+        return NORMAL;
+      }
+
+      case 'setindex': {
+        const arr = this.eval(s.arr, f) as Value[];
+        const i = this.eval(s.idx, f) as number;
+        const v = this.eval(s.value, f);
+        arr[checkIndex(arr, i, s.span)] = v;
         return NORMAL;
       }
 
@@ -120,8 +128,16 @@ export class Interpreter {
         return null;
       }
 
+      case 'array': return e.elems.map(x => this.eval(x, f));
+
+      case 'index': {
+        const arr = this.eval(e.arr, f) as Value[];
+        const i = this.eval(e.idx, f) as number;
+        return arr[checkIndex(arr, i, e.span)];
+      }
+
       case 'call': {
-        if (e.builtin) return callBuiltin(e.builtin, this.eval(e.args[0], f), e.args[0].ty, this.io, e.span);
+        if (e.builtin) return callBuiltin(e.builtin, e.args.map(a => this.eval(a, f)), e.args.map(a => a.ty), this.io, e.span);
         return this.callFn(e.fn!.decl, e.args.map(a => this.eval(a, f)), e.span);
       }
     }

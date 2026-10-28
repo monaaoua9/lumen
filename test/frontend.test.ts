@@ -112,3 +112,25 @@ test('analyzer: errors do not cascade', () => {
   // one bad name should give one error, not one per use
   assert.deepEqual(diagCodes('print(zz + 1); print(zz * 2.5);'), ['E001', 'E001']);
 });
+
+test('arrays: type checking', () => {
+  assert.deepEqual(diagCodes('let a = [1, 2]; print(a[0]);'), []);
+  assert.deepEqual(diagCodes('let a = [1, 2.5]; print(a);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = []; print(a);'), ['E013']);
+  assert.deepEqual(diagCodes('let a: int[] = []; print(a);'), []);
+  assert.deepEqual(diagCodes('let a: int[] = [1.5]; print(a);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = [1]; print(a["x"]);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = 5; print(a[0]);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = [1]; a[0] = "s";'), ['E003']);
+  assert.deepEqual(diagCodes('let a = [1]; let b = [1]; print(a == b);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = [[1]]; print(a);'), ['E013']);
+  assert.deepEqual(diagCodes('let a = [1]; push(a, 2.0);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = [1]; push(a);'), ['E004']);
+  assert.deepEqual(diagCodes('fn f(xs: int[]): int { return xs[0]; } print(f([1]));'), []);
+  assert.deepEqual(diagCodes('fn f(xs: int[]): int { return xs[0]; } print(f([]));'), []);
+});
+
+test('arrays: parser', () => {
+  assert.ok(parse('fn f() { let a = [1]; a[f()] += 1; }').diags.length > 0);
+  assert.equal(parse('let a = [1, 2]; a[0] += 3;').diags.length, 0);
+});

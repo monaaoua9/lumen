@@ -60,6 +60,14 @@ class FnCompiler {
         return;
       }
 
+      case 'setindex':
+        this.expr(s.arr);
+        this.expr(s.idx);
+        this.expr(s.value);
+        this.span = s.span;
+        this.emit(Op.SETINDEX);
+        return;
+
       case 'expr':
         this.expr(s.e);
         if (s.e.ty !== 'void') this.emit(Op.POP);
@@ -155,6 +163,19 @@ class FnCompiler {
         return;
       }
 
+      case 'array':
+        e.elems.forEach(x => this.expr(x));
+        this.span = e.span;
+        this.emit(Op.NEWARR, e.elems.length);
+        return;
+
+      case 'index':
+        this.expr(e.arr);
+        this.expr(e.idx);
+        this.span = e.span;
+        this.emit(Op.INDEX);
+        return;
+
       case 'call': {
         e.args.forEach(a => this.expr(a));
         this.span = e.span;
@@ -168,6 +189,8 @@ class FnCompiler {
           case 'str': this.emit(Op.STR, TYPE_TAGS.indexOf(argTy)); break;
           case 'int': if (argTy === 'float') this.emit(Op.F2I); break;
           case 'len': this.emit(Op.LEN); break;
+          case 'push': this.emit(Op.PUSHA); break;
+          case 'pop': this.emit(Op.POPA); break;
           case 'float': break; // same representation as int
         }
       }

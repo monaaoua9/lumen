@@ -1,7 +1,7 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
 import type { Expr, FnDecl, FnSym, Program, Stmt, VarSym } from './ast.ts';
-import { BUILTINS, isBuiltin, isNumeric } from './types.ts';
-import type { Type } from './types.ts';
+import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric } from './types.ts';
+import type { Scalar, Type } from './types.ts';
 
 class Scope {
   vars = new Map<string, VarSym>();
@@ -195,7 +195,7 @@ class Analyzer {
         return NEXT;
 
       case 'let': {
-        const t = this.expr(s.init);
+        const t = this.expr(s.init, s.annot);
         let ty: Type = s.annot ?? t;
         if (t === 'void') {
           this.err('E010', 'a function that returns nothing cannot be used as a value', s.init.span);
@@ -209,8 +209,8 @@ class Analyzer {
       }
 
       case 'assign': {
-        const t = this.expr(s.value);
         const sym = this.scope.lookup(s.name);
+        const t = this.expr(s.value, sym?.ty);
         if (!sym) {
           this.undefinedVar(s.name, s.nameSpan);
           return NEXT;
@@ -224,6 +224,17 @@ class Analyzer {
         if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', s.value.span);
         else if (t !== 'error' && sym.ty !== 'error' && t !== sym.ty) this.mismatch(sym.ty, t, s.value.span);
         if (s.value.k === 'var' && s.value.name === s.name) this.warn('W009', `'${s.name}' is assigned to itself`, s.span);
+        return NEXT;
+      }
+
+      case 'setindex': {
+        const at = this.expr(s.arr);
+        const it = this.expr(s.idx);
+        const elem = isArray(at) ? elemOf(at) : undefined;
+        const vt = this.expr(s.value, elem);
+        if (at !== 'error' && !elem) this.err('E003', `cannot index a value of type ${at}`, s.arr.span);
+        if (it !== 'error' && it !== 'int') this.err('E003', `array index must be int, found ${it}`, s.idx.span);
+        if (elem && vt !== 'error' && vt !== elem) this.mismatch(elem, vt, s.value.span, 'in array element assignment');
         return NEXT;
       }
 
@@ -257,7 +268,7 @@ class Analyzer {
         }
         const want = this.ctx.ret;
         if (s.value) {
-          const t = this.expr(s.value);
+          const t = this.expr(s.value, want);
           if (want === 'void') this.err('E003', `function '${this.ctx.name}' returns nothing, but a value is returned`, s.value.span);
           else if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', s.value.span);
           else if (t !== 'error' && t !== want) this.mismatch(want, t, s.value.span, `in the return value of '${this.ctx.name}'`);
@@ -306,13 +317,13 @@ class Analyzer {
     this.err('E001', `cannot find variable '${name}'`, span, sug ? `did you mean '${sug}'?` : undefined);
   }
 
-  expr(e: Expr): Type {
-    const t = this.expr0(e);
+  expr(e: Expr, want?: Type): Type {
+    const t = this.expr0(e, want);
     e.ty = t;
     return t;
   }
 
-  expr0(e: Expr): Type {
+  expr0(e: Expr, want?: Type): Type {
     switch (e.k) {
       case 'int': return 'int';
       case 'float': return 'float';
@@ -344,6 +355,42 @@ class Analyzer {
       }
 
       case 'binary': return this.binary(e);
+
+      case 'array': {
+        if (e.elems.length === 0) {
+          if (want && isArray(want)) return want;
+          this.err('E013', 'cannot infer the type of an empty array', e.span, 'annotate the target, e.g. let xs: int[] = [];');
+          return 'error';
+        }
+        const wantElem = want && isArray(want) ? elemOf(want) : undefined;
+        const tys = e.elems.map(x => this.expr(x, wantElem));
+        const first = tys.find(t => t !== 'error');
+        if (!first) return 'error';
+        if (isArray(first) || first === 'void') {
+          this.err('E013', first === 'void' ? 'a function that returns nothing cannot be used as a value' : 'nested arrays are not supported', e.elems[tys.indexOf(first)].span);
+          return 'error';
+        }
+        let ok = true;
+        tys.forEach((t, i) => {
+          if (t !== 'error' && t !== first) {
+            this.mismatch(first, t, e.elems[i].span, 'in array literal');
+            ok = false;
+          }
+        });
+        return ok ? ((first + '[]') as Type) : 'error';
+      }
+
+      case 'index': {
+        const at = this.expr(e.arr);
+        const it = this.expr(e.idx);
+        if (it !== 'error' && it !== 'int') this.err('E003', `array index must be int, found ${it}`, e.idx.span);
+        if (at === 'error') return 'error';
+        if (!isArray(at)) {
+          this.err('E003', `cannot index a value of type ${at}`, e.arr.span);
+          return 'error';
+        }
+        return elemOf(at);
+      }
 
       case 'call': return this.call(e);
     }
@@ -390,7 +437,8 @@ class Analyzer {
         if (isNumeric(a) && a === b) return 'bool';
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);
       case '==': case '!=':
-        if (a === b && a !== 'void') return 'bool';
+        if (a === b && a !== 'void' && !isArray(a)) return 'bool';
+        if (a === b && isArray(a)) return opErr('arrays cannot be compared with == or !=', 'compare the elements in a loop');
         return opErr(`cannot compare ${a} with ${b}`, sameHint);
       case '&&': case '||':
         if (a === 'bool' && b === 'bool') return 'bool';
@@ -398,24 +446,52 @@ class Analyzer {
     }
   }
 
-  call(e: Extract<Expr, { k: 'call' }>): Type {
-    const argTys = e.args.map(a => this.expr(a));
+  builtin(e: Extract<Expr, { k: 'call' }>, name: keyof typeof BUILTINS): Type {
+    e.builtin = name;
+    const tys = e.args.map(a => this.expr(a));
+    const arity = BUILTINS[name].arity;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error' }[name] as Type;
 
-    if (isBuiltin(e.name)) {
-      const sig = BUILTINS[e.name];
-      e.builtin = e.name;
-      if (e.args.length !== 1) {
-        this.err('E004', `'${e.name}' takes 1 argument, but ${e.args.length} were given`, e.span);
-      } else if (argTys[0] !== 'error' && !sig.accepts.includes(argTys[0])) {
-        const msg = argTys[0] === 'void'
-          ? 'a function that returns nothing cannot be used as a value'
-          : `'${e.name}' does not accept ${argTys[0]} (expected ${sig.accepts.join(' | ')})`;
-        this.err(argTys[0] === 'void' ? 'E010' : 'E003', msg, e.args[0].span);
-      }
-      return sig.ret;
+    if (e.args.length !== arity) {
+      this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
+      return ret;
     }
+    const [t0, t1] = tys;
+    if (t0 === 'void') {
+      this.err('E010', 'a function that returns nothing cannot be used as a value', e.args[0].span);
+      return ret;
+    }
+    const bad = (what: string) => this.err('E003', `'${name}' ${what}, found ${t0}`, e.args[0].span);
+
+    switch (name) {
+      case 'print':
+      case 'str':
+        return ret;
+      case 'int':
+      case 'float':
+        if (t0 !== 'error' && !isNumeric(t0)) bad('expects int or float');
+        return ret;
+      case 'len':
+        if (t0 !== 'error' && t0 !== 'string' && !isArray(t0)) bad('expects a string or an array');
+        return ret;
+      case 'push':
+        if (t0 === 'error') return ret;
+        if (!isArray(t0)) { bad('expects an array as its first argument'); return ret; }
+        if (t1 !== 'error' && t1 !== elemOf(t0)) this.mismatch(elemOf(t0), t1, e.args[1].span, `in argument 2 of 'push'`);
+        return ret;
+      case 'pop':
+        if (t0 === 'error') return 'error';
+        if (!isArray(t0)) { bad('expects an array'); return 'error'; }
+        return elemOf(t0);
+    }
+  }
+
+  call(e: Extract<Expr, { k: 'call' }>): Type {
+    if (isBuiltin(e.name)) return this.builtin(e, e.name);
 
     const fn = this.fns.get(e.name);
+    const argTys = e.args.map((a, i) => this.expr(a, fn?.params[i]));
+
     if (!fn) {
       const v = this.scope.lookup(e.name);
       if (v) {

@@ -2,10 +2,21 @@ import type { Diagnostic, Span } from './diagnostics.ts';
 import type { BinOp, Expr, FnDecl, Param, Program, Stmt } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
-import { typeFromName } from './types.ts';
-import type { Type } from './types.ts';
+import { arrayOf, typeFromName } from './types.ts';
+import type { Scalar, Type } from './types.ts';
 
 class Bail extends Error {}
+
+function hasCall(e: Expr): boolean {
+  switch (e.k) {
+    case 'call': return true;
+    case 'unary': return hasCall(e.arg);
+    case 'binary': return hasCall(e.l) || hasCall(e.r);
+    case 'index': return hasCall(e.arr) || hasCall(e.idx);
+    case 'array': return e.elems.some(hasCall);
+    default: return false;
+  }
+}
 
 // binding power per binary operator, higher binds tighter
 const PREC: Record<string, number> = {
@@ -107,6 +118,10 @@ class Parser {
     const t = this.expect('ident', 'a type name');
     const ty = typeFromName(t.text);
     if (!ty) this.fail(`unknown type '${t.text}'`, t.span, 'valid types: int, float, bool, string');
+    if (this.eat('[')) {
+      this.expect(']');
+      return arrayOf(ty as Scalar);
+    }
     return ty;
   }
 
@@ -157,6 +172,18 @@ class Parser {
     }
 
     const e = this.expr();
+    if (e.k === 'index' && (this.at('=') || this.cur.kind in COMPOUND)) {
+      const opTok = this.next();
+      const rhs = this.expr();
+      this.expect(';');
+      let value = rhs;
+      if (opTok.kind !== '=') {
+        // a[i] += v  ==>  a[i] = a[i] + v, which would run a call in the target twice
+        if (hasCall(e)) this.fail('compound assignment needs a target without function calls', e.span, 'write it out: a[i] = a[i] + ...');
+        value = { k: 'binary', op: COMPOUND[opTok.kind], l: e, r: rhs, span: this.join(e.span, rhs.span), ty: 'error' };
+      }
+      return { k: 'setindex', span: this.join(e.span, this.prevSpan()), arr: e.arr, idx: e.idx, value };
+    }
     this.expect(';');
     return { k: 'expr', span: this.join(e.span, this.prevSpan()), e };
   }
@@ -240,7 +267,18 @@ class Parser {
       const arg = this.unary();
       return { k: 'unary', op: t.kind, arg, span: this.join(t.span, arg.span), ty: 'error' };
     }
-    return this.primary();
+    return this.postfix();
+  }
+
+  postfix(): Expr {
+    let e = this.primary();
+    while (this.at('[')) {
+      this.next();
+      const idx = this.expr();
+      const close = this.expect(']');
+      e = { k: 'index', arr: e, idx, span: this.join(e.span, close.span), ty: 'error' };
+    }
+    return e;
   }
 
   primary(): Expr {
@@ -255,6 +293,14 @@ class Parser {
         const e = this.expr();
         this.expect(')');
         return e;
+      }
+      case '[': {
+        const elems: Expr[] = [];
+        if (!this.at(']')) {
+          do elems.push(this.expr()); while (this.eat(','));
+        }
+        const close = this.expect(']');
+        return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
       }
       case 'ident': {
         if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };

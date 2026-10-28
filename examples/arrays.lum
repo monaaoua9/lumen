@@ -1,0 +1,66 @@
+// sieve + bubble sort + building arrays with push
+fn sieve(n: int): int[] {
+  let flags: bool[] = [];
+  var i = 0;
+  while i <= n { push(flags, true); i += 1; }
+  flags[0] = false;
+  flags[1] = false;
+  var p = 2;
+  while p * p <= n {
+    if flags[p] {
+      var m = p * p;
+      while m <= n { flags[m] = false; m += p; }
+    }
+    p += 1;
+  }
+  let primes: int[] = [];
+  var k = 0;
+  while k <= n {
+    if flags[k] { push(primes, k); }
+    k += 1;
+  }
+  return primes;
+}
+
+fn sort(xs: int[]) {
+  var i = 0;
+  while i < len(xs) {
+    var j = 0;
+    while j < len(xs) - 1 - i {
+      if xs[j] > xs[j + 1] {
+        let t = xs[j];
+        xs[j] = xs[j + 1];
+        xs[j + 1] = t;
+      }
+      j += 1;
+    }
+    i += 1;
+  }
+}
+
+fn sum(xs: float[]): float {
+  var s = 0.0;
+  var i = 0;
+  while i < len(xs) { s += xs[i]; i += 1; }
+  return s;
+}
+
+let primes = sieve(50);
+print(primes);
+print(len(primes));
+
+let data = [5, 2, 9, 1, 7, 3];
+sort(data);
+print(data);
+data[0] += 100;
+print(data[0]);
+print(pop(data));
+print(data);
+
+print(sum([1.5, 2.25, 3.0]));
+let names = ["ada", "bob"];
+push(names, "eve");
+print(names);
+print(str(names) + "!");
+let empty: string[] = [];
+print(empty);

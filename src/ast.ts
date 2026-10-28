@@ -38,6 +38,8 @@ export type Expr =
   | (Base & { k: 'var'; name: string; sym?: VarSym })
   | (Base & { k: 'unary'; op: '-' | '!'; arg: Expr })
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
+  | (Base & { k: 'array'; elems: Expr[] })
+  | (Base & { k: 'index'; arr: Expr; idx: Expr })
   | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName });
 
 export interface Param {
@@ -62,6 +64,7 @@ export interface FnDecl {
 export type Stmt =
   | { k: 'let'; span: Span; name: string; nameSpan: Span; mutable: boolean; annot?: Type; annotSpan?: Span; init: Expr; sym?: VarSym }
   | { k: 'assign'; span: Span; name: string; nameSpan: Span; value: Expr; sym?: VarSym }
+  | { k: 'setindex'; span: Span; arr: Expr; idx: Expr; value: Expr }
   | { k: 'expr'; span: Span; e: Expr }
   | { k: 'if'; span: Span; cond: Expr; then: Stmt[]; els: Stmt[] | null }
   | { k: 'while'; span: Span; cond: Expr; body: Stmt[] }
