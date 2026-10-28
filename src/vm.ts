@@ -36,6 +36,8 @@ export function run(m: Module, io: IO) {
 
         case Op.LOADL: stack[sp++] = stack[bp + code[pc++]]; break;
         case Op.STOREL: stack[bp + code[pc++]] = stack[--sp]; break;
+        case Op.ADDLI: { const r = num(bp + code[pc]) + code[pc + 1]; pc += 2; if (!Number.isSafeInteger(r)) checkInt(r); stack[sp++] = r; break; }
+        case Op.ADDGI: { const r = (globals[code[pc]] as number) + code[pc + 1]; pc += 2; if (!Number.isSafeInteger(r)) checkInt(r); stack[sp++] = r; break; }
         case Op.LOADG: stack[sp++] = globals[code[pc++]]; break;
         case Op.STOREG: globals[code[pc++]] = stack[--sp]; break;
 

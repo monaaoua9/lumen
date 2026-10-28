@@ -260,6 +260,12 @@ class FnCompiler {
           this.patch(end);
           return;
         }
+        // `x + 3` / `x - 3` on an int variable is one instruction (superinstruction)
+        if ((e.op === '+' || e.op === '-') && e.l.ty === 'int' && e.l.k === 'var' && e.r.k === 'int') {
+          this.span = e.span;
+          this.emit(e.l.sym!.where === 'global' ? Op.ADDGI : Op.ADDLI, e.l.sym!.slot, e.op === '+' ? e.r.value : -e.r.value);
+          return;
+        }
         this.expr(e.l);
         this.expr(e.r);
         this.span = e.span;
