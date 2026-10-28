@@ -46,8 +46,9 @@ test('parser: stray closing brace does not hang', () => {
   assert.ok(diags.length >= 1);
 });
 
-test('parser: nested functions are rejected', () => {
-  assert.ok(parse('fn a() { fn b() {} }').diags.some(d => d.code === 'P002'));
+test('parser: nested structs and impls are rejected', () => {
+  assert.ok(parse('fn a() { struct S { x: int } }').diags.some(d => d.code === 'P002'));
+  assert.ok(parse('fn a() { impl S { } }').diags.some(d => d.code === 'P002'));
 });
 
 test('analyzer: type errors', () => {
@@ -381,6 +382,11 @@ test('lexer: number forms and block comments', () => {
   assert.deepEqual(diagCodes('print(1 /* two */ + 2);'), []);
   assert.deepEqual(diagCodes('/* open'), ['L005']);
   assert.deepEqual(diagCodes('print(0x);'), ['L003']);
+});
+
+test('local functions', () => {
+  assert.deepEqual(errs('fn f(k: int): int { fn g(x: int): int { return x * k; } return g(2); } print(f(3));'), []);
+  assert.deepEqual(errs('fn f(): int { fn g(k: int): int { return g(k); } return g(1); } print(f());'), ['E002']);
 });
 
 test('closures: capturing', () => {

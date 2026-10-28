@@ -38,3 +38,12 @@ fn nested(a: int): fn(int): fn(int): int {
     };
 }
 print(nested(1)(2)(3));
+
+// a named fn inside a body is a local function: it captures like a lambda
+fn scale_all(xs: int[], k: int): int[] {
+  fn scaled(x: int): int { return x * k; }
+  let out: int[] = [];
+  for x in xs { push(out, scaled(x)); }
+  return out;
+}
+print(scale_all([1, 2, 3], 10));

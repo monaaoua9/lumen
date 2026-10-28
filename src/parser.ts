@@ -270,7 +270,16 @@ class Parser {
       return { k: 'block', span: t.span, body: [] };
     }
     switch (t.kind) {
-      case 'fn': return this.fnDecl();
+      case 'fn': {
+        if (this.depth > 0 && this.toks[this.pos + 1]?.kind === 'ident') {
+          // a named fn inside a body is a let bound to a lambda: it captures like one and cannot call itself
+          const kw = this.next();
+          const name = this.vn(this.next());
+          const init = this.lambdaExpr(kw);
+          return { k: 'let', span: this.join(kw.span, init.span), name: name.text, nameSpan: name.span, mutable: false, init };
+        }
+        return this.fnDecl();
+      }
       case 'pub': {
         this.next();
         const isTrait = this.cur.kind === 'trait';
@@ -652,6 +661,26 @@ class Parser {
     return { k: 'block', span: this.join(kw.span, close.span), body };
   }
 
+  // the body becomes an ordinary function under a made-up name, the analyzer adds the captured locals as extra params
+  lambdaExpr(t: Token): Expr {
+        this.expect('(');
+        const params: Param[] = [];
+        if (!this.at(')')) {
+          do {
+            const p = this.vn(this.expect('ident', 'a parameter name'));
+            this.expect(':');
+            params.push({ name: p.text, span: p.span, ty: this.type() });
+          } while (this.eat(','));
+        }
+        this.expect(')');
+        const ret: Type = this.eat(':') ? this.type() : 'void';
+        const body = this.allowStruct(() => this.block());
+        const name = `lambda$${this.lambdas++}`;
+        const fn: FnDecl = { k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 };
+        this.fns.push(fn);
+        return { k: 'lambda', fn, caps: [], span: fn.span, ty: 'error' };
+  }
+
   fnDecl(owner?: string, ownerTy?: Type, implParams?: string[], implBounds?: Record<string, string[]>): FnDecl {
     const kw = this.next();
     if (this.depth > 0) {
@@ -844,25 +873,7 @@ class Parser {
         const close = this.expect(']');
         return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
       }
-      case 'fn': {
-        // the body becomes an ordinary function under a made-up name, the analyzer adds the captured locals as extra params
-        this.expect('(');
-        const params: Param[] = [];
-        if (!this.at(')')) {
-          do {
-            const p = this.vn(this.expect('ident', 'a parameter name'));
-            this.expect(':');
-            params.push({ name: p.text, span: p.span, ty: this.type() });
-          } while (this.eat(','));
-        }
-        this.expect(')');
-        const ret: Type = this.eat(':') ? this.type() : 'void';
-        const body = this.allowStruct(() => this.block());
-        const name = `lambda$${this.lambdas++}`;
-        const fn: FnDecl = { k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 };
-        this.fns.push(fn);
-        return { k: 'lambda', fn, caps: [], span: fn.span, ty: 'error' };
-      }
+      case 'fn': return this.lambdaExpr(t);
       case 'ident': {
         if (this.modules.has(t.text) && this.at('.') && this.peek().kind === 'ident') {
           // module.item: the qualifier is dropped here and checked by the analyzer

@@ -14,7 +14,7 @@ export const EXPLAIN: Record<string, Entry> = {
   L005: { title: 'unterminated block comment', text: 'A /* comment was opened and the file ended before the closing */.', bad: '/* TODO' },
 
   P001: { title: 'syntax error', text: 'The parser expected something else at this point. The message names what it found.', bad: 'let = 5;', fix: 'let x = 5;' },
-  P002: { title: 'declaration in the wrong place', text: 'traits and impl blocks can only appear at the top level of a file.' },
+  P002: { title: 'declaration in the wrong place', text: 'struct, enum, trait and impl declarations can only appear at the top level of a file. A named fn inside a body is a local function; at the top level it is an ordinary one.' },
   P003: { title: 'empty enum', text: 'An enum needs at least one variant.', bad: 'enum Nothing { }' },
   P004: { title: 'cannot import file', text: 'The file named in an import line does not exist or cannot be read. Paths are relative to the importing file.', bad: 'import "nope.lum";' },
   P005: { title: 'pub on the wrong item', text: 'pub applies to fn, struct, enum and trait declarations.', bad: 'pub let x = 1;' },
