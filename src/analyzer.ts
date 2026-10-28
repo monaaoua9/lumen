@@ -1,6 +1,6 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
-import type { Expr, FnDecl, FnSym, Program, Stmt, StructDecl, VarSym } from './ast.ts';
-import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric, isRef, isStruct, structName } from './types.ts';
+import type { EnumDecl, Expr, FnDecl, FnSym, Program, Stmt, StructDecl, VarSym } from './ast.ts';
+import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Type } from './types.ts';
 
 class Scope {
@@ -62,6 +62,7 @@ class Analyzer {
   diags: Diagnostic[] = [];
   fns = new Map<string, FnSym>();
   structs = new Map<string, StructDecl>();
+  enums = new Map<string, EnumDecl>();
   globals = new Scope(null);
   scope = this.globals;
   ctx: FnCtx = { ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
@@ -76,6 +77,7 @@ class Analyzer {
   warn(code: string, message: string, span: Span, hint?: string) { this.report('warning', code, message, span, hint); }
 
   run(prog: Program) {
+    this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
     for (const f of prog.fns) this.declareFn(f);
 
@@ -91,9 +93,25 @@ class Analyzer {
     this.diags.sort((a, b) => a.span.start - b.span.start);
   }
 
+  declareEnums(list: EnumDecl[]) {
+    for (const d of list) {
+      if (this.enums.has(d.name)) {
+        this.err('E006', `enum '${d.name}' is already defined`, d.nameSpan);
+        continue;
+      }
+      this.enums.set(d.name, d);
+      const seen = new Set<string>();
+      for (const v of d.variants) {
+        if (seen.has(v.name)) this.err('E006', `variant '${v.name}' is declared twice in enum '${d.name}'`, v.span);
+        seen.add(v.name);
+      }
+    }
+  }
+
   declareStructs(list: StructDecl[]) {
     for (const s of list) {
-      if (this.structs.has(s.name)) this.err('E006', `struct '${s.name}' is already defined`, s.nameSpan);
+      if (this.enums.has(s.name)) this.err('E006', `'${s.name}' is already defined as an enum`, s.nameSpan);
+      else if (this.structs.has(s.name)) this.err('E006', `struct '${s.name}' is already defined`, s.nameSpan);
       else this.structs.set(s.name, s);
     }
     for (const s of this.structs.values()) {
@@ -125,7 +143,9 @@ class Analyzer {
   // struct names are only known after parsing, so every written type goes through here
   checkType(t: Type, span: Span) {
     const base = isArray(t) ? elemOf(t) : t;
-    if (isStruct(base) && !this.structs.has(structName(base))) {
+    if (isEnum(base) && !this.enums.has(base.slice(1))) {
+      this.err('E016', `unknown type '${base.slice(1)}'`, span);
+    } else if (isStruct(base) && !this.structs.has(structName(base))) {
       const sug = closest(structName(base), this.structs.keys());
       this.err('E016', `unknown type '${structName(base)}'`, span, sug ? `did you mean '${sug}'?` : 'valid types: int, float, bool, string, or a declared struct');
     }
@@ -244,7 +264,10 @@ class Analyzer {
         return NEXT;
 
       case 'struct':
+      case 'enum':
         return NEXT;
+
+      case 'match': return this.matchStmt(s);
 
       case 'setfield': {
         const ot = this.expr(s.obj);
@@ -355,6 +378,69 @@ class Analyzer {
     }
   }
 
+  // Color.Red parses as a field access; once we know Color is an enum, turn the node into a constant
+  enumValue(e: Extract<Expr, { k: 'field' }>): Type {
+    const decl = this.enums.get((e.obj as Extract<Expr, { k: 'var' }>).name)!;
+    const idx = decl.variants.findIndex(v => v.name === e.name);
+    if (idx < 0) {
+      this.err('E021', `enum '${decl.name}' has no variant '${e.name}'`, e.nameSpan, closestHint(e.name, decl.variants.map(v => v.name)));
+      return 'error';
+    }
+    Object.assign(e, { k: 'enumval', enumName: decl.name, variant: e.name, idx });
+    return ('#' + decl.name) as Type;
+  }
+
+  matchStmt(s: Extract<Stmt, { k: 'match' }>): Flow {
+    const st = this.expr(s.scrut);
+    s.tmp = this.ctx.nlocals++;
+    const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
+    const matchable = st === 'bool' || st === 'int' || st === 'string' || !!decl;
+    if (st !== 'error' && !matchable) this.err('E003', `cannot match on a value of type ${st}`, s.scrut.span, 'match works on enums, bool, int and string');
+
+    const seen = new Set<string>();
+    let wild = false;
+    const flows: Flow[] = [];
+    for (const arm of s.arms) {
+      for (const p of arm.pats) {
+        let key: string | null = null;
+        if (p.k === 'wild') {
+          if (wild) this.warn('W010', 'unreachable pattern', p.span);
+          wild = true;
+          continue;
+        }
+        if (p.k === 'variant') {
+          const idx = decl ? decl.variants.findIndex(v => v.name === p.name) : -1;
+          if (!decl) {
+            if (matchable) this.err('E003', `'${p.name}' is not a valid pattern for ${st}`, p.span);
+          } else if (idx < 0) {
+            this.err('E021', `enum '${decl.name}' has no variant '${p.name}'`, p.span, closestHint(p.name, decl.variants.map(v => v.name)));
+          } else {
+            p.idx = idx;
+            key = `v${idx}`;
+          }
+        } else {
+          if (matchable && p.ty !== st) this.mismatch(st, p.ty, p.span, 'in match pattern');
+          else key = `l${p.value}`;
+        }
+        if (key) {
+          if (wild || seen.has(key)) this.warn('W010', 'unreachable pattern', p.span);
+          seen.add(key);
+        }
+      }
+      flows.push(this.withScope(() => this.block(arm.body)));
+    }
+
+    const exhaustive = wild
+      || (st === 'bool' && seen.has('ltrue') && seen.has('lfalse'))
+      || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)));
+    if (matchable && !exhaustive) {
+      const missing = decl ? decl.variants.filter((_, i) => !seen.has(`v${i}`)).map(v => `${decl.name}.${v.name}`) : [];
+      this.err('E020', 'non-exhaustive match', s.scrut.span, missing.length ? `missing: ${missing.join(', ')}` : "add a '_' arm");
+    }
+    const all = (k: 'diverges' | 'returns') => flows.length > 0 && exhaustive && flows.every(f => f[k]);
+    return { diverges: all('diverges'), returns: all('returns') };
+  }
+
   fieldOf(ot: Type, name: string, nameSpan: Span, objSpan: Span): { ty: Type; idx: number } | null {
     if (ot === 'error') return null;
     if (!isStruct(ot)) {
@@ -413,6 +499,7 @@ class Analyzer {
       case 'float': return 'float';
       case 'str': return 'string';
       case 'bool': return 'bool';
+      case 'enumval': return ('#' + e.enumName) as Type;
 
       case 'var': {
         const sym = this.scope.lookup(e.name);
@@ -465,6 +552,7 @@ class Analyzer {
       }
 
       case 'field': {
+        if (e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && this.enums.has(e.obj.name)) return this.enumValue(e);
         const ot = this.expr(e.obj);
         const fld = this.fieldOf(ot, e.name, e.nameSpan, e.obj.span);
         if (!fld) return 'error';

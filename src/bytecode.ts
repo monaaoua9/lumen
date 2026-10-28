@@ -1,6 +1,6 @@
 import type { Span } from './diagnostics.ts';
 import type { Type } from './types.ts';
-import type { StructInfo, Value } from './runtime.ts';
+import type { EnumInfo, StructInfo, Value } from './runtime.ts';
 
 // [name, operand count]
 const TABLE = [
@@ -36,6 +36,7 @@ export interface Module {
   consts: Value[];
   types: Type[]; // operand of PRINT / STR indexes into this
   structs: StructInfo[];
+  enums: EnumInfo[];
   fns: Proto[];
   main: Proto;
   nglobals: number;

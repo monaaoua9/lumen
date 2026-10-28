@@ -170,3 +170,28 @@ test('structs: literal vs block ambiguity', () => {
   assert.deepEqual(diagCodes('let ok = true; if ok { print(1); } while ok { break; }'), []);
   assert.deepEqual(diagCodes(P + 'if (P { x: 1, y: 1.0 }).x == 1 { print(1); }'), []);
 });
+
+const E = 'enum C { R, G, B } ';
+
+test('enums and match: checking', () => {
+  assert.deepEqual(diagCodes(E + 'let c = C.R; match c { R => { print(1); } G | B => { print(2); } }'), []);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; match c { R => { print(1); } }'), ['E020']);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; match c { R => { print(1); } _ => { print(2); } }'), []);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; match c { X => { print(1); } _ => { } }'), ['E021']);
+  assert.deepEqual(diagCodes(E + 'print(C.X);'), ['E021']);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; match c { 1 => { } _ => { } }'), ['E003']);
+  assert.deepEqual(diagCodes('match 5 { 1 => { print(1); } }'), ['E020']);
+  assert.deepEqual(diagCodes('match true { true => { } false => { } }'), []);
+  assert.deepEqual(diagCodes('match 1.5 { _ => { } }'), ['E003']);
+  assert.ok(diagCodes(E + 'let c = C.R; match c { R => { } R => { } _ => { } }').includes('W010'));
+  assert.ok(diagCodes(E + 'let c = C.R; match c { _ => { } R => { } }').includes('W010'));
+  assert.deepEqual(diagCodes(E + 'let a = C.R; let b: C = a; print(a == b); print(a < b);'), ['E003']);
+  assert.deepEqual(diagCodes('enum A { X } enum A { Y }').filter(c => c === 'E006'), ['E006']);
+  assert.ok(parse('enum A { }').diags.some(d => d.code === 'P003'));
+});
+
+test('match: return analysis', () => {
+  const f = (body: string) => diagCodes(E + `fn f(c: C): int { ${body} } print(f(C.R));`);
+  assert.ok(!f('match c { R => { return 1; } G => { return 2; } B => { return 3; } }').includes('E007'));
+  assert.ok(f('match c { R => { return 1; } _ => { } }').includes('E007'));
+});

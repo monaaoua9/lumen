@@ -104,6 +104,10 @@ function foldStmt(s: Stmt): Stmt | null {
     case 'expr':
       s.e = foldExpr(s.e);
       return s;
+    case 'match':
+      s.scrut = foldExpr(s.scrut);
+      s.arms.forEach(a => { a.body = foldBlock(a.body); });
+      return s;
     case 'setfield':
       s.obj = foldExpr(s.obj);
       s.value = foldExpr(s.value);

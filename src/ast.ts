@@ -40,6 +40,7 @@ export type Expr =
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
+  | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number })
   | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
   | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[] })
   | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName });
@@ -65,6 +66,25 @@ export interface StructDecl {
   fields: StructField[];
 }
 
+export interface EnumDecl {
+  k: 'enum';
+  span: Span;
+  name: string;
+  nameSpan: Span;
+  variants: { name: string; span: Span }[];
+}
+
+export type Pat =
+  | { k: 'wild'; span: Span }
+  | { k: 'variant'; span: Span; name: string; idx: number }
+  | { k: 'lit'; span: Span; value: number | string | boolean; ty: Type };
+
+export interface MatchArm {
+  pats: Pat[];
+  body: Stmt[];
+  span: Span;
+}
+
 export interface Param {
   name: string;
   ty: Type;
@@ -87,6 +107,7 @@ export interface FnDecl {
 export type Stmt =
   | { k: 'let'; span: Span; name: string; nameSpan: Span; mutable: boolean; annot?: Type; annotSpan?: Span; init: Expr; sym?: VarSym }
   | { k: 'assign'; span: Span; name: string; nameSpan: Span; value: Expr; sym?: VarSym }
+  | { k: 'match'; span: Span; scrut: Expr; arms: MatchArm[]; tmp: number }
   | { k: 'setfield'; span: Span; obj: Expr; name: string; nameSpan: Span; idx: number; value: Expr }
   | { k: 'setindex'; span: Span; arr: Expr; idx: Expr; value: Expr }
   | { k: 'expr'; span: Span; e: Expr }
@@ -97,12 +118,14 @@ export type Stmt =
   | { k: 'continue'; span: Span }
   | { k: 'block'; span: Span; body: Stmt[] }
   | StructDecl
+  | EnumDecl
   | FnDecl;
 
 export interface Program {
   body: Stmt[];
   fns: FnDecl[];
   structs: StructDecl[];
+  enums: EnumDecl[];
   nlocals: number;
   nglobals: number;
 }

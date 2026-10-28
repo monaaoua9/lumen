@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerStructs } from './runtime.ts';
+import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerTypes } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 interface CallFrame {
@@ -13,7 +13,7 @@ interface CallFrame {
 const STACK_SIZE = 1 << 16;
 
 export function run(m: Module, io: IO) {
-  registerStructs(m.structs);
+  registerTypes(m.structs, m.enums);
   const stack: Value[] = new Array(STACK_SIZE).fill(null);
   const globals: Value[] = new Array(m.nglobals).fill(null);
   const frames: CallFrame[] = [];

@@ -1,0 +1,66 @@
+// enums, match with exhaustiveness checking, enums inside structs and arrays
+enum Light { Red, Yellow, Green }
+enum Op { Add, Sub, Mul }
+
+struct Car { name: string, light: Light }
+
+fn next(l: Light): Light {
+  match l {
+    Red => { return Light.Green; }
+    Green => { return Light.Yellow; }
+    Yellow => { return Light.Red; }
+  }
+}
+
+fn apply(op: Op, a: int, b: int): int {
+  match op {
+    Add => { return a + b; }
+    Sub => { return a - b; }
+    Mul => { return a * b; }
+  }
+}
+
+fn classify(n: int): string {
+  match n {
+    0 => { return "zero"; }
+    1 | 2 | 3 => { return "small"; }
+    _ => { return "big"; }
+  }
+}
+
+var l = Light.Red;
+var i = 0;
+while i < 4 {
+  print(l);
+  l = next(l);
+  i += 1;
+}
+
+print(apply(Op.Mul, 6, 7));
+print(apply(Op.Sub, 1, 9));
+print(classify(0) + " " + classify(2) + " " + classify(99));
+
+let car = Car { name: "mini", light: Light.Yellow };
+print(car);
+car.light = next(car.light);
+print(car.light == Light.Red);
+let all = [Light.Red, Light.Green];
+push(all, Light.Yellow);
+print(all);
+
+match car.name {
+  "mini" => { print("it's a mini"); }
+  _ => { print("something else"); }
+}
+
+var k = 0;
+while k < 5 {
+  k += 1;
+  match k % 3 {
+    0 => { continue; }
+    1 => { print("one mod 3"); }
+    _ => { if k > 4 { break; } }
+  }
+}
+print(k);
+match true { true => { print("yes"); } false => { print("no"); } }

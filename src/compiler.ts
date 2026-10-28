@@ -65,7 +65,38 @@ class FnCompiler {
     switch (s.k) {
       case 'fn':
       case 'struct':
+      case 'enum':
         return;
+
+      case 'match': {
+        this.expr(s.scrut);
+        this.span = s.span;
+        this.emit(Op.STOREL, s.tmp);
+        const ends: number[] = [];
+        for (const arm of s.arms) {
+          const toBody: number[] = [];
+          let wild = false;
+          for (const p of arm.pats) {
+            if (p.k === 'wild') {
+              wild = true;
+              break;
+            }
+            this.emit(Op.LOADL, s.tmp);
+            this.konst(p.k === 'variant' ? p.idx : p.value);
+            this.emit(Op.EQ);
+            const skip = this.jump(Op.JMPF);
+            toBody.push(this.jump(Op.JMP));
+            this.patch(skip);
+          }
+          const next = wild ? -1 : this.jump(Op.JMP);
+          toBody.forEach(j => this.patch(j));
+          this.block(arm.body);
+          ends.push(this.jump(Op.JMP));
+          if (next >= 0) this.patch(next);
+        }
+        ends.forEach(j => this.patch(j));
+        return;
+      }
 
       case 'let':
       case 'assign': {
@@ -192,6 +223,10 @@ class FnCompiler {
         this.emit(Op.NEWARR, e.elems.length);
         return;
 
+      case 'enumval':
+        this.konst(e.idx);
+        return;
+
       case 'field':
         this.expr(e.obj);
         this.span = e.span;
@@ -278,5 +313,6 @@ export function compile(prog: Program): Module {
 
   const main = build('<main>', 0, prog.nlocals, false, prog.body, Op.HALT);
   const structs = prog.structs.map(d => ({ name: d.name, fields: d.fields.map(f => ({ name: f.name, ty: f.ty })) }));
-  return { consts, types, structs, fns, main, nglobals: prog.nglobals };
+  const enums = prog.enums.map(d => ({ name: d.name, variants: d.variants.map(v => v.name) }));
+  return { consts, types, structs, enums, fns, main, nglobals: prog.nglobals };
 }

@@ -1,6 +1,6 @@
 import { RuntimeError } from './diagnostics.ts';
 import type { Expr, FnDecl, Program, Stmt } from './ast.ts';
-import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod, registerStructs } from './runtime.ts';
+import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod, registerTypes } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const NORMAL = 0;
@@ -24,7 +24,10 @@ export class Interpreter {
   }
 
   run(prog: Program) {
-    registerStructs(prog.structs.map(s => ({ name: s.name, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })));
+    registerTypes(
+      prog.structs.map(s => ({ name: s.name, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })),
+      prog.enums.map(e => ({ name: e.name, variants: e.variants.map(v => v.name) })),
+    );
     const main: Frame = { locals: new Array(prog.nlocals).fill(null), ret: null };
     try {
       this.exec(prog.body, main);
@@ -46,7 +49,18 @@ export class Interpreter {
     switch (s.k) {
       case 'fn':
       case 'struct':
+      case 'enum':
         return NORMAL;
+
+      case 'match': {
+        const v = this.eval(s.scrut, f);
+        for (const arm of s.arms) {
+          if (arm.pats.some(p => p.k === 'wild' || (p.k === 'variant' ? p.idx === v : p.value === v))) {
+            return this.exec(arm.body, f);
+          }
+        }
+        return NORMAL;
+      }
 
       case 'let':
       case 'assign': {
@@ -138,6 +152,8 @@ export class Interpreter {
       }
 
       case 'array': return e.elems.map(x => this.eval(x, f));
+
+      case 'enumval': return e.idx;
 
       case 'field': return (this.eval(e.obj, f) as Value[])[e.idx];
 

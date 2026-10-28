@@ -59,10 +59,23 @@ while i < 10 {
 }
 ```
 
-Types `int float bool string`, one-dimensional arrays (`int[]`, `Point[]`, ...) and user `struct`s; `let` (immutable) / `var`; `fn`, `if/else`, `while`,
+Types `int float bool string`, one-dimensional arrays (`int[]`, `Point[]`, ...) user `struct`s and `enum`s; `let` (immutable) / `var`; `fn`, `if/else`, `while`,
 `break/continue/return`; operators `+ - * / % == != < <= > >= && || !` plus `+= -= ...`.
 Builtins: `print(x)`, `str(x)`, `int(f)`, `float(i)`, `len(s | arr)`, `push(arr, x)`, `pop(arr)`.
 Structs: `struct Point { x: float, y: float }`, `Point { x: 1.0, y: 2.0 }`, `p.x`, `p.x = 3.0`, `p.x += 1.0`; they can nest and be stored in arrays.
+Enums: `enum Light { Red, Yellow, Green }`, values are written `Light.Red`, compare with `==`, print by variant name.
+`match` (statement) works on enums, bool, int and string:
+
+```
+match light {
+  Red => { stop(); }
+  Yellow | Green => { go(); }
+}
+```
+
+Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive
+(`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose
+every arm returns counts as returning on all paths.
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
 
 Semantics worth knowing:
@@ -83,11 +96,11 @@ Semantics worth knowing:
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access.
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access, `E020` non-exhaustive match, `E021` unknown enum variant.
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
-`W008` expression statement with no effect, `W009` self-assignment. Prefix a name with `_` to silence W001/W002/W007.
+`W008` expression statement with no effect, `W009` self-assignment, `W010` unreachable match pattern. Prefix a name with `_` to silence W001/W002/W007.
 
 Missing-return detection is a real flow analysis (`diverges` / `returns` per statement), so
 `while true { }` without `break` counts as terminating and `if` needs both branches to return.
@@ -124,7 +137,7 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No nested arrays, methods/impl blocks, enums or closures yet.
+- No nested arrays, enum payloads (variants carry no data), match as an expression, methods or closures yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

@@ -191,3 +191,24 @@ test('structs: literal fields run in written order', () => {
   `;
   assert.equal(allEngines(src), '1\n2\nP { x: 2, y: 1 }\n');
 });
+
+test('match: semantics agree across engines', () => {
+  const src = `
+    enum D { N, S }
+    fn name(d: D): string { match d { N => { return "north"; } S => { return "south"; } } }
+    print(name(D.N) + name(D.S));
+    print(D.S);
+    var i = 0;
+    while i < 6 {
+      i += 1;
+      match i {
+        2 | 4 => { continue; }
+        5 => { break; }
+        _ => { print(i); }
+      }
+    }
+    match "b" { "a" => { print("A"); } "b" => { print("B"); } _ => { } }
+    match -1 { -1 => { print("neg"); } _ => { } }
+  `;
+  assert.equal(allEngines(src), 'northsouth\nS\n1\n3\nB\nneg\n');
+});

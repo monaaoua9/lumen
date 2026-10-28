@@ -1,8 +1,8 @@
 import type { Diagnostic, Span } from './diagnostics.ts';
-import type { BinOp, Expr, FieldInit, FnDecl, Param, Program, Stmt, StructDecl, StructField } from './ast.ts';
+import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, MatchArm, Param, Pat, Program, Stmt, StructDecl, StructField } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
-import { arrayOf, structType, typeFromName } from './types.ts';
+import { arrayOf, enumType, structType, typeFromName } from './types.ts';
 import type { Elem, Type } from './types.ts';
 
 class Bail extends Error {}
@@ -38,12 +38,18 @@ class Parser {
   diags: Diagnostic[];
   fns: FnDecl[] = [];
   structs: StructDecl[] = [];
+  enums: EnumDecl[] = [];
+  enumNames = new Set<string>();
   noStruct = false; // `if x {` must not parse as a struct literal
   depth = 0; // block nesting, fn is only legal at 0
 
   constructor(toks: Token[], diags: Diagnostic[]) {
     this.toks = toks;
     this.diags = diags;
+    // enums may be used before they are declared, so find their names up front
+    for (let i = 0; i < toks.length - 1; i++) {
+      if (toks[i].kind === 'enum' && toks[i + 1].kind === 'ident') this.enumNames.add(toks[i + 1].text);
+    }
   }
 
   get cur() { return this.toks[this.pos]; }
@@ -82,7 +88,7 @@ class Parser {
       if (s) body.push(s);
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
-    return { body, fns: this.fns, structs: this.structs, nlocals: 0, nglobals: 0 };
+    return { body, fns: this.fns, structs: this.structs, enums: this.enums, nlocals: 0, nglobals: 0 };
   }
 
   statementRecovering(): Stmt | null {
@@ -96,7 +102,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'struct', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'struct', 'enum', 'match', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -121,7 +127,7 @@ class Parser {
   type(): Type {
     const t = this.expect('ident', 'a type name');
     // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
-    const ty = (typeFromName(t.text) ?? structType(t.text)) as Elem;
+    const ty = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
     if (this.eat('[')) {
       this.expect(']');
       return arrayOf(ty);
@@ -134,6 +140,8 @@ class Parser {
     switch (t.kind) {
       case 'fn': return this.fnDecl();
       case 'struct': return this.structDecl();
+      case 'enum': return this.enumDecl();
+      case 'match': return this.matchStmt();
       case 'let':
       case 'var': return this.letStmt();
       case 'if': return this.ifStmt();
@@ -223,6 +231,64 @@ class Parser {
     } finally {
       this.noStruct = saved;
     }
+  }
+
+  enumDecl(): EnumDecl {
+    const kw = this.next();
+    if (this.depth > 0) {
+      this.diags.push({ severity: 'error', code: 'P002', message: 'enums can only be declared at the top level', span: kw.span });
+    }
+    const name = this.expect('ident', 'an enum name');
+    this.expect('{');
+    const variants: EnumDecl['variants'] = [];
+    while (!this.at('}') && !this.at('eof')) {
+      const v = this.expect('ident', 'a variant name');
+      variants.push({ name: v.text, span: v.span });
+      if (!this.eat(',')) break;
+    }
+    this.expect('}');
+    if (variants.length === 0) {
+      this.diags.push({ severity: 'error', code: 'P003', message: `enum '${name.text}' needs at least one variant`, span: name.span });
+    }
+    const decl: EnumDecl = { k: 'enum', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, variants };
+    this.enums.push(decl);
+    return decl;
+  }
+
+  matchStmt(): Stmt {
+    const kw = this.next();
+    const scrut = this.condExpr();
+    this.expect('{');
+    const arms: MatchArm[] = [];
+    while (!this.at('}') && !this.at('eof')) {
+      const first = this.cur.span;
+      const pats: Pat[] = [this.pattern()];
+      while (this.eat('|')) pats.push(this.pattern());
+      this.expect('=>');
+      const body = this.block();
+      this.eat(',');
+      arms.push({ pats, body, span: this.join(first, this.prevSpan()) });
+    }
+    const close = this.expect('}');
+    return { k: 'match', span: this.join(kw.span, close.span), scrut, arms, tmp: -1 };
+  }
+
+  pattern(): Pat {
+    const t = this.next();
+    switch (t.kind) {
+      case 'ident':
+        return t.text === '_' ? { k: 'wild', span: t.span } : { k: 'variant', span: t.span, name: t.text, idx: -1 };
+      case 'int': return { k: 'lit', span: t.span, value: t.value as number, ty: 'int' };
+      case 'string': return { k: 'lit', span: t.span, value: t.value as string, ty: 'string' };
+      case 'true':
+      case 'false': return { k: 'lit', span: t.span, value: t.kind === 'true', ty: 'bool' };
+      case '-': {
+        const n = this.expect('int', 'an integer');
+        return { k: 'lit', span: this.join(t.span, n.span), value: -(n.value as number), ty: 'int' };
+      }
+    }
+    if (t.kind !== 'eof') this.pos--;
+    this.fail(`expected a pattern, found '${t.text}'`, t.span, 'patterns are: Variant, _, an int, string or bool literal');
   }
 
   structDecl(): StructDecl {

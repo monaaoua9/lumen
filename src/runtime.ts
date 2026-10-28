@@ -21,12 +21,21 @@ export interface StructInfo {
   fields: { name: string; ty: Type }[];
 }
 
+export interface EnumInfo {
+  name: string;
+  variants: string[];
+}
+
+const enumLayouts = new Map<string, EnumInfo>();
+
 // struct layouts, needed to print a struct from a bare value array. set once per run
 const layouts = new Map<string, StructInfo>();
 
-export function registerStructs(list: StructInfo[]) {
+export function registerTypes(structs: StructInfo[], enums: EnumInfo[]) {
   layouts.clear();
-  for (const s of list) layouts.set(s.name, s);
+  enumLayouts.clear();
+  for (const s of structs) layouts.set(s.name, s);
+  for (const e of enums) enumLayouts.set(e.name, e);
 }
 
 // inside containers strings are quoted so ["a", "b"] differs from [a, b]
@@ -41,6 +50,7 @@ export function format(v: Value, ty: Type): string {
     case 'bool': return v ? 'true' : 'false';
     case 'string': return v as string;
   }
+  if (ty.startsWith('#') && !ty.endsWith('[]')) return enumLayouts.get(ty.slice(1))!.variants[v as number];
   if (ty.endsWith('[]')) {
     const et = ty.slice(0, -2) as Type;
     return '[' + (v as Value[]).map(x => formatInner(x, et)).join(', ') + ']';

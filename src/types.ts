@@ -1,15 +1,19 @@
 export type Scalar = 'int' | 'float' | 'bool' | 'string';
 export type StructType = `@${string}`; // user types carry their name after '@'
-export type Elem = Scalar | StructType;
+export type EnumType = `#${string}`; // enum values are ordinals at runtime
+export type Elem = Scalar | StructType | EnumType;
 export type ArrayType = `${Elem}[]`;
 export type Type = Elem | ArrayType | 'void' | 'error';
 
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
 export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
+export const isEnum = (t: Type): t is EnumType => t.startsWith('#') && !t.endsWith('[]');
 export const elemOf = (t: ArrayType): Elem => t.slice(0, -2) as Elem;
 export const arrayOf = (t: Elem): ArrayType => `${t}[]` as ArrayType;
 export const structType = (name: string): StructType => `@${name}`;
 export const structName = (t: StructType): string => t.slice(1);
+export const enumType = (name: string): EnumType => `#${name}`;
+export const enumName = (t: EnumType): string => t.slice(1);
 // arrays and structs are shared references
 export const isRef = (t: Type) => isArray(t) || isStruct(t);
 
