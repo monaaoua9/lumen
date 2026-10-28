@@ -180,6 +180,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No trait objects (dynamic dispatch), default trait methods or bounds on `impl<T>` yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- No bounds on `impl<T>` and no trait impls for generic types; a generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).
