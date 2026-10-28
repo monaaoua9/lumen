@@ -140,6 +140,9 @@ function boxNamesOf(body: Stmt[]): Set<string> {
   return out;
 }
 
+// builtins that do something besides returning a value
+const EFFECTS = new Set(['print', 'push', 'pop', 'sort', 'reverse', 'assert', 'exit', 'read_line']);
+
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
 function showTypes(msg: string): string {
   let out = msg.replaceAll('@', '').replaceAll('$', '.');
@@ -720,6 +723,7 @@ class Analyzer {
       case 'expr': {
         this.expr(s.e);
         if (s.e.k !== 'call') this.warn('W008', 'expression result is unused', s.e.span);
+        else if (s.e.builtin && !EFFECTS.has(s.e.builtin)) this.warn('W008', `result of '${s.e.builtin}' is unused`, s.e.span);
         return NEXT;
       }
 

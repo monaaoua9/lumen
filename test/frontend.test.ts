@@ -359,6 +359,11 @@ test('array builtins: checking', () => {
   assert.deepEqual(errs('let a: int[] = slice(["a"], 0, 1);'), ['E003']);
 });
 
+test('lint: unused builtin results', () => {
+  assert.deepEqual(diagCodes('abs(3);'), ['W008']);
+  assert.deepEqual(diagCodes('let a = [2, 1]; sort(a); push(a, 3); print(a);'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
