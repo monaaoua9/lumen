@@ -380,3 +380,9 @@ test('check takes several files and fails if any does', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('lumen test takes several files', () => {
+  const r = cli('test', 'examples/tests/arith.lum', 'examples/tests/list.lum', 'examples/tests/maps.lum', 'examples/tests/text.lum');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.equal((r.stdout.match(/\d+ passed, 0 failed/g) ?? []).length, 4);
+});

@@ -1,0 +1,31 @@
+import "std/test.lum"
+import "std/map.lum"
+import "std/option.lum"
+
+fn test_map_basics() {
+  let m: map.Map<int> = map.new();
+  map.set(m, "a", 1);
+  map.set(m, "b", 2);
+  map.set(m, "a", 5);
+  test.eq_int(map.size(m), 2);
+  test.eq_int(map.get(m, "a", 0), 5);
+  test.eq_int(map.get(m, "zz", -1), -1);
+  test.is_true(map.delete(m, "b"), "delete existing");
+  test.is_true(!map.has(m, "b"), "gone after delete");
+}
+
+fn test_map_update() {
+  let m: map.Map<int> = map.new();
+  for w in ["x", "y", "x"] {
+    map.update(m, w, 0, fn(n) => n + 1);
+  }
+  test.eq_int(map.get(m, "x", 0), 2);
+  test.eq_str(join(map.keys(m), "+"), "x+y");
+}
+
+fn test_option() {
+  let o = option.Option.Some(4);
+  test.eq_int(option.unwrap_or(option.map_option(o, fn(v) => v * 3), 0), 12);
+  let none: option.Option<int> = option.Option.None;
+  test.eq_int(option.unwrap_or(option.map_option(none, fn(v) => v * 3), -1), -1);
+}
