@@ -9,8 +9,9 @@ export const EXPLAIN: Record<string, Entry> = {
   L000: { title: 'unexpected character', text: 'The lexer met a character that is not part of the language.', bad: 'let x = 3 # 4;' },
   L001: { title: 'unterminated string literal', text: 'A string started with a quote and the line ended before the closing quote.', bad: 'print("hello);', fix: 'print("hello");' },
   L002: { title: 'unknown escape sequence', text: 'Supported escapes are \\n \\t \\r \\0 \\\\ \\" \\{ and \\}.', bad: 'print("a\\q");' },
-  L003: { title: 'integer literal too large', text: 'Integers are limited to 2^53 - 1 so that every backend agrees on their value.' },
+  L003: { title: 'bad number literal', text: 'Integers are limited to 2^53 - 1 so that every backend agrees on their value, and 0x / 0b literals need digits.' },
   L004: { title: 'bad interpolation', text: 'A "{" inside a string opens an interpolation and needs a matching "}" with an expression between. Use \\{ for a literal brace.', bad: 'print("{}");', fix: 'print("{n}");' },
+  L005: { title: 'unterminated block comment', text: 'A /* comment was opened and the file ended before the closing */.', bad: '/* TODO' },
 
   P001: { title: 'syntax error', text: 'The parser expected something else at this point. The message names what it found.', bad: 'let = 5;', fix: 'let x = 5;' },
   P002: { title: 'declaration in the wrong place', text: 'traits and impl blocks can only appear at the top level of a file.' },

@@ -375,6 +375,14 @@ test('for ... step', () => {
   assert.deepEqual(diagCodes('for i in 0..10 step -1 { print(i); }').includes('P001'), true);
 });
 
+test('lexer: number forms and block comments', () => {
+  const nums = (src: string) => lex(src).tokens.filter(t => t.kind === 'int' || t.kind === 'float').map(t => t.value);
+  assert.deepEqual(nums('0xFF 0b101 1_000 0x7f_ff 2_5.5_5'), [255, 5, 1000, 32767, 25.55]);
+  assert.deepEqual(diagCodes('print(1 /* two */ + 2);'), []);
+  assert.deepEqual(diagCodes('/* open'), ['L005']);
+  assert.deepEqual(diagCodes('print(0x);'), ['L003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

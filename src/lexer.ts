@@ -29,6 +29,17 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
       i++;
       continue;
     }
+    if (c === '/' && src[i + 1] === '*') {
+      const open = i;
+      const end = src.indexOf('*/', i + 2);
+      if (end < 0) {
+        err('L005', 'unterminated block comment', open, open + 2);
+        i = src.length;
+      } else {
+        i = end + 2;
+      }
+      continue;
+    }
     if (c === '/' && src[i + 1] === '/') {
       while (i < src.length && src[i] !== '\n') i++;
       continue;
@@ -36,16 +47,32 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
 
     const start = i;
 
+    if (c === '0' && (src[i + 1] === 'x' || src[i + 1] === 'b')) {
+      const radix = src[i + 1] === 'x' ? 16 : 2;
+      const ok = (ch: string) => ch === '_' || (radix === 16 ? /[0-9a-fA-F]/.test(ch) : ch === '0' || ch === '1');
+      i += 2;
+      const digits = i;
+      while (i < src.length && ok(src[i])) i++;
+      const body = src.slice(digits, i).replace(/_/g, '');
+      if (body === '') {
+        err('L003', radix === 16 ? 'hex literal has no digits' : 'binary literal has no digits', start, i);
+      }
+      const value = parseInt(body || '0', radix);
+      if (!Number.isSafeInteger(value)) err('L003', 'integer literal is too large', start, i);
+      tokens.push({ kind: 'int', text: src.slice(start, i), span: { start, end: i }, value });
+      continue;
+    }
+
     if (isDigit(c)) {
-      while (isDigit(src[i] ?? '')) i++;
+      while (isDigit(src[i] ?? '') || (src[i] === '_' && isDigit(src[i + 1] ?? ''))) i++;
       let isFloat = false;
       if (src[i] === '.' && isDigit(src[i + 1] ?? '')) {
         isFloat = true;
         i++;
-        while (isDigit(src[i] ?? '')) i++;
+        while (isDigit(src[i] ?? '') || (src[i] === '_' && isDigit(src[i + 1] ?? ''))) i++;
       }
       const text = src.slice(start, i);
-      const value = Number(text);
+      const value = Number(text.replace(/_/g, ''));
       if (!isFloat && !Number.isSafeInteger(value)) {
         err('L003', 'integer literal is too large', start, i);
       }
