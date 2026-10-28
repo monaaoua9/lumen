@@ -19,7 +19,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 commands
   check    static analysis only (types, scopes, lints)
   run      analyze, then execute        [--engine interp|vm|c]  (default: vm)
-  disasm   print the bytecode
+  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm]
   emit-c   translate to C              [-o out.c]
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
@@ -87,7 +87,7 @@ function main(): number | Promise<number> {
   }
 
   const warnings = fe.diagnostics.filter(d => d.severity === 'warning');
-  if (warnings.length && cmd !== 'ast') process.stderr.write(renderAll(fe.source, warnings, color) + '\n\n');
+  if (warnings.length && cmd !== 'ast' && cmd !== 'test') process.stderr.write(renderAll(fe.source, warnings, color) + '\n\n');
 
   try {
     switch (cmd) {
@@ -96,6 +96,39 @@ function main(): number | Promise<number> {
         if (eng === 'c') return runNative(toC(fe));
         execute(fe, eng, { out: s => process.stdout.write(s) });
         return 0;
+      }
+      case 'test': {
+        // every `fn test_*()` runs on its own: the file plus one call appended
+        const names = [...text.matchAll(/^fn (test_\w+)\s*\(\s*\)/gm)].map(m => m[1]);
+        if (names.length === 0) {
+          process.stderr.write(`no test_ functions in ${name}
+`);
+          return 1;
+        }
+        const eng = (opt('--engine') ?? 'vm') as Engine;
+        let failed = 0;
+        for (const t of names) {
+          let out = '';
+          try {
+            const call = `
+${t}();
+`;
+            // the call belongs to the entry file, which is the last segment
+            const segs = segments.map((sg, i) => (i === segments.length - 1 ? { ...sg, end: sg.end + call.length } : sg));
+            execute(checked(text + call, name, flag('-O'), segs), eng, { out: s => { out += s; } });
+            process.stdout.write(`ok    ${t}
+`);
+          } catch (e) {
+            if (!(e instanceof RuntimeError || e instanceof ExitSignal)) throw e;
+            failed++;
+            const why = e instanceof RuntimeError ? e.message : `exit ${e.code}`;
+            process.stdout.write(`FAIL  ${t}: ${why}
+${out}`);
+          }
+        }
+        process.stdout.write(`${names.length - failed} passed, ${failed} failed
+`);
+        return failed ? 1 : 0;
       }
       case 'disasm':
         process.stdout.write(disassemble(toBytecode(fe)) + '\n');

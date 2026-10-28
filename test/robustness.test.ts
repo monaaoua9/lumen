@@ -346,3 +346,21 @@ test('std/text.lum helpers agree on every engine', () => {
   assert.equal(outs[2], outs[0]);
   assert.equal(outs[0].split('\n')[0], '[000042]');
 });
+
+test('lumen test runs each test_ function and reports failures', () => {
+  const good = cli('test', 'examples/tests/arith.lum');
+  assert.equal(good.status, 0, good.stdout + good.stderr);
+  assert.ok(good.stdout.includes('3 passed, 0 failed'), good.stdout);
+
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-test-'));
+  try {
+    writeFileSync(join(dir, 't.lum'), 'fn test_a() {\n  assert(1 == 1, "a");\n}\n\nfn test_b() {\n  assert(1 == 2, "b is wrong");\n}\n');
+    const r = cli('test', join(dir, 't.lum'), '--engine', 'interp');
+    assert.equal(r.status, 1);
+    assert.ok(r.stdout.includes('ok    test_a') && r.stdout.includes('FAIL  test_b: assertion failed: b is wrong'), r.stdout);
+    writeFileSync(join(dir, 'none.lum'), 'print(1);\n');
+    assert.equal(cli('test', join(dir, 'none.lum')).status, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
