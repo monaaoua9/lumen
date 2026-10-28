@@ -414,3 +414,8 @@ test('impls for instances of generic types', () => {
   assert.deepEqual(errs(S + 'impl Show for Box<float> { }'), ['E026']);
   assert.deepEqual(errs(S + 'impl Box<int> { fn twice(self): int { return self.v * 2; } } print(Box { v: 2 }.twice());'), []);
 });
+
+test('lint: generic function never instantiated', () => {
+  assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x + x + nope; }'), ['W011']);
+  assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x; } print(id(1));'), []);
+});

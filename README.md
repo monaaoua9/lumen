@@ -136,7 +136,7 @@ Errors (block execution): `E001` unknown variable, `E002` unknown function, `E00
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
-`W008` expression statement with no effect, `W009` self-assignment, `W010` unreachable match pattern. Prefix a name with `_` to silence W001/W002/W007.
+`W008` expression statement with no effect, `W009` self-assignment, `W010` unreachable match pattern, `W011` generic function never called (its body was never checked). Prefix a name with `_` to silence W001/W002/W007.
 
 Missing-return detection is a real flow analysis (`diverges` / `returns` per statement), so
 `while true { }` without `break` counts as terminating and `if` needs both branches to return.

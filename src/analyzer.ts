@@ -217,6 +217,7 @@ class Analyzer {
   structKeys = new Map<string, string>(); // Box<int> -> Box__int
   structInst = new Map<string, { tmpl: string; args: Type[] }>();
   generics = new Map<string, FnDecl>();
+  calledGenerics = new Set<string>();
   insts = new Map<string, FnSym>();
   prog!: Program;
 
@@ -298,6 +299,11 @@ class Analyzer {
       if (!f.used) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
     }
 
+    for (const g of this.generics.values()) {
+      if (!this.calledGenerics.has(g.name) && !g.name.startsWith('_')) {
+        this.warn('W011', `generic function '${g.name}' is never called, so its body was not checked`, g.nameSpan);
+      }
+    }
     prog.fns = prog.fns.filter(f => f.sym);
     prog.nlocals = this.ctx.nlocals;
     prog.nglobals = this.nglobals;
@@ -1512,6 +1518,7 @@ class Analyzer {
       return 'error';
     }
     if (tys.includes('error')) return 'error';
+    this.calledGenerics.add(gen.name);
     const names = gen.typeParams!;
     const binds = new Map<string, Type>();
     gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds, this.structInst));
