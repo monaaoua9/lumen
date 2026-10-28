@@ -23,3 +23,11 @@ print(math.lcm(4, 6));
 print(math.pow(2, 10));
 print(math.clamp(15, 0, 10));
 print(math.is_prime(97));
+
+let doubled = option.map_option(first_even([3, 8]), fn(x) => x * 2);
+print(option.unwrap_or(doubled, 0));
+let none = option.map_option(first_even([3]), fn(x) => x * 2);
+print(option.is_some(none));
+let msg = option.map_result(safe_div(9, 3), fn(x) => "got " + str(x));
+print(option.ok_or(msg, "failed"));
+print(option.ok_or(option.map_result(safe_div(1, 0), fn(x) => x + 1), -7));

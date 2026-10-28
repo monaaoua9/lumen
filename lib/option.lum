@@ -29,3 +29,17 @@ pub fn is_ok<T>(r: Result<T>): bool {
     Err(_) => false,
   };
 }
+
+pub fn map_option<T, U>(o: Option<T>, f: fn(T): U): Option<U> {
+  return match o {
+    Some(v) => Option.Some(f(v)),
+    None => Option.None,
+  };
+}
+
+pub fn map_result<T, U>(r: Result<T>, f: fn(T): U): Result<U> {
+  return match r {
+    Ok(v) => Result.Ok(f(v)),
+    Err(m) => Result.Err(m),
+  };
+}
