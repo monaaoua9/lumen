@@ -1,0 +1,30 @@
+// an arm can carry a condition; if it fails the next arm is tried
+enum Shape { Circle(float), Rect(float, float), Unit }
+
+fn describe(s: Shape): string {
+  return match s {
+    Circle(r) if r > 10.0 => "huge circle",
+    Circle(r) if r > 1.0 => "circle",
+    Rect(w, h) if w == h => "square",
+    Rect(_, _) => "rect",
+    Circle(_) => "tiny circle",
+    Unit => "unit",
+  };
+}
+
+print(describe(Shape.Circle(20.0)));
+print(describe(Shape.Circle(2.0)));
+print(describe(Shape.Circle(0.5)));
+print(describe(Shape.Rect(2.0, 2.0)));
+print(describe(Shape.Rect(2.0, 3.0)));
+print(describe(Shape.Unit));
+
+fn bucket(n: int) {
+  match n {
+    0 => { print("zero"); }
+    _ if n < 0 => { print("negative"); }
+    _ if n % 2 == 0 => { print("even"); }
+    _ => { print("odd"); }
+  }
+}
+for n in -1..4 { bucket(n); }

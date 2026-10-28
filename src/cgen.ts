@@ -463,7 +463,7 @@ function hasCall(e: Expr): boolean {
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
-    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value));
+    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value) || (a.guard !== undefined && hasCall(a.guard)));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
   }
@@ -608,6 +608,13 @@ class Gen {
         const v = this.newTmp(e.scrut.ty, this.expr(e.scrut));
         const r = `t${this.tmp++}`;
         this.line(`${ctype(e.ty)} ${r};`);
+        if (e.arms.some(a => a.guard)) {
+          this.guardedMatch(v, e.scrut.ty, e.arms, arm => {
+            const val = this.expr(arm.value);
+            this.line(`${r} = ${val};`);
+          });
+          return r;
+        }
         let first = true;
         for (const arm of e.arms) {
           const wild = arm.pats.some(p => p.k === 'wild');
@@ -744,6 +751,10 @@ class Gen {
 
       case 'match': {
         const v = this.newTmp(s.scrut.ty, this.expr(s.scrut));
+        if (s.arms.some(a => a.guard)) {
+          this.guardedMatch(v, s.scrut.ty, s.arms, arm => this.block(arm.body));
+          return;
+        }
         let first = true;
         for (const arm of s.arms) {
           const wild = arm.pats.some(p => p.k === 'wild');
@@ -864,6 +875,31 @@ class Gen {
         this.ind--;
         this.line('}');
         return;
+    }
+  }
+
+  // arms with guards can fall through to the next one, so the else-if chain becomes a "done" flag
+  guardedMatch<A extends { pats: Pat[]; guard?: Expr }>(v: string, scrutTy: Type, arms: A[], body: (arm: A) => void) {
+    const done = `t${this.tmp++}`;
+    this.line(`bool ${done} = false;`);
+    for (const arm of arms) {
+      const wild = arm.pats.some(p => p.k === 'wild');
+      const cond = wild ? '' : ` && (${arm.pats.map(p => this.patTest(v, p, scrutTy)).join(' || ')})`;
+      this.line(`if (!${done}${cond}) {`);
+      this.ind++;
+      this.bindArm(v, arm.pats);
+      if (arm.guard) {
+        this.line(`if (${this.expr(arm.guard)}) {`);
+        this.ind++;
+      }
+      this.line(`${done} = true;`);
+      body(arm);
+      if (arm.guard) {
+        this.ind--;
+        this.line('}');
+      }
+      this.ind--;
+      this.line('}');
     }
   }
 

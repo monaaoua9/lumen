@@ -55,7 +55,7 @@ export class Interpreter {
       case 'match': {
         const v = this.eval(s.scrut, f);
         for (const arm of s.arms) {
-          if (this.armMatches(arm.pats, v, f)) return this.exec(arm.body, f);
+          if (this.armMatches(arm.pats, v, f) && (!arm.guard || this.eval(arm.guard, f))) return this.exec(arm.body, f);
         }
         return NORMAL;
       }
@@ -164,7 +164,7 @@ export class Interpreter {
       case 'matchx': {
         const v = this.eval(e.scrut, f);
         for (const arm of e.arms) {
-          if (this.armMatches(arm.pats, v, f)) return this.eval(arm.value, f);
+          if (this.armMatches(arm.pats, v, f) && (!arm.guard || this.eval(arm.guard, f))) return this.eval(arm.value, f);
         }
         return null;
       }

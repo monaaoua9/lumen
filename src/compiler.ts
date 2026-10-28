@@ -131,8 +131,10 @@ class FnCompiler {
         for (const arm of s.arms) {
           const next = this.armTest(s.tmp, arm.pats);
           this.bindArm(s.tmp, arm.pats);
+          const fail = arm.guard ? this.condJump(arm.guard) : -1;
           this.block(arm.body);
           ends.push(this.jump(Op.JMP));
+          if (fail >= 0) this.patch(fail);
           if (next >= 0) this.patch(next);
         }
         ends.forEach(j => this.patch(j));
@@ -305,8 +307,10 @@ class FnCompiler {
         for (const arm of e.arms) {
           const next = this.armTest(e.tmp, arm.pats);
           this.bindArm(e.tmp, arm.pats);
+          const fail = arm.guard ? this.condJump(arm.guard) : -1;
           this.expr(arm.value);
           ends.push(this.jump(Op.JMP));
+          if (fail >= 0) this.patch(fail);
           if (next >= 0) this.patch(next);
         }
         ends.forEach(j => this.patch(j));

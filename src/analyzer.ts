@@ -35,7 +35,7 @@ function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
       case 'mcall': ex(e.obj); e.args.forEach(ex); return;
       case 'enumctor': e.args.forEach(ex); return;
       case 'structlit': e.fields.forEach(f => ex(f.value)); return;
-      case 'matchx': ex(e.scrut); e.arms.forEach(a => { a.pats.forEach(pat); ex(a.value); }); return;
+      case 'matchx': ex(e.scrut); e.arms.forEach(a => { a.pats.forEach(pat); if (a.guard) ex(a.guard); ex(a.value); }); return;
       case 'lambda': e.fn.params.forEach(p => declared.add(p.name)); namesIn(e.fn.body, used, declared); return;
     }
   };
@@ -50,7 +50,7 @@ function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
       case 'block': s.body.forEach(st); return;
       case 'setindex': ex(s.arr); ex(s.idx); ex(s.value); return;
       case 'setfield': ex(s.obj); ex(s.value); return;
-      case 'match': ex(s.scrut); s.arms.forEach(a => { a.pats.forEach(pat); a.body.forEach(st); }); return;
+      case 'match': ex(s.scrut); s.arms.forEach(a => { a.pats.forEach(pat); if (a.guard) ex(a.guard); a.body.forEach(st); }); return;
     }
   };
   body.forEach(st);
@@ -911,8 +911,9 @@ class Analyzer {
   }
 
   matchStmt(s: Extract<Stmt, { k: 'match' }>): Flow {
-    const r = this.matchCore(s.scrut, s.arms.map(a => a.pats), i => this.withScope(() => {
+    const r = this.matchCore(s.scrut, s.arms.map(a => a.pats), s.arms.map(a => a.guard !== undefined), i => this.withScope(() => {
       this.declareBinds(s.arms[i].pats);
+      this.armGuard(s.arms[i].guard);
       return this.block(s.arms[i].body);
     }));
     s.tmp = r.tmp;
@@ -921,8 +922,9 @@ class Analyzer {
   }
 
   matchExpr(e: Extract<Expr, { k: 'matchx' }>, want?: Type): Type {
-    const r = this.matchCore(e.scrut, e.arms.map(a => a.pats), i => this.withScope(() => {
+    const r = this.matchCore(e.scrut, e.arms.map(a => a.pats), e.arms.map(a => a.guard !== undefined), i => this.withScope(() => {
       this.declareBinds(e.arms[i].pats);
+      this.armGuard(e.arms[i].guard);
       return this.expr(e.arms[i].value, want);
     }));
     e.tmp = r.tmp;
@@ -938,7 +940,12 @@ class Analyzer {
   }
 
   // shared by match statements and match expressions: pattern checks + exhaustiveness
-  matchCore<T>(scrut: Expr, patLists: Pat[][], runArm: (i: number) => T): { tmp: number; out: T[]; exhaustive: boolean } {
+  armGuard(g: Expr | undefined) {
+    if (g) this.cond(g, 'match guard');
+  }
+
+  // an arm with a guard can fall through, so it covers nothing for exhaustiveness or reachability
+  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T): { tmp: number; out: T[]; exhaustive: boolean } {
     const st = this.expr(scrut);
     const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
@@ -953,7 +960,7 @@ class Analyzer {
         let key: string | null = null;
         if (p.k === 'wild') {
           if (wild) this.warn('W010', 'unreachable pattern', p.span);
-          wild = true;
+          if (!guarded[ai]) wild = true;
           continue;
         }
         if (p.k === 'variant') {
@@ -983,7 +990,7 @@ class Analyzer {
         }
         if (key) {
           if (wild || seen.has(key)) this.warn('W010', 'unreachable pattern', p.span);
-          seen.add(key);
+          if (!guarded[ai]) seen.add(key);
         }
       }
       out.push(runArm(ai));

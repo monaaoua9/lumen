@@ -16,7 +16,7 @@ function hasCall(e: Expr): boolean {
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
     case 'mcall': return true;
-    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value));
+    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value) || (a.guard !== undefined && hasCall(a.guard)));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
   }
@@ -502,10 +502,11 @@ class Parser {
       const first = this.cur.span;
       const pats: Pat[] = [this.pattern()];
       while (this.eat('|')) pats.push(this.pattern());
+      const guard = this.eat('if') ? this.expr() : undefined;
       this.expect('=>');
       const body = this.block();
       this.eat(',');
-      arms.push({ pats, body, span: this.join(first, this.prevSpan()) });
+      arms.push({ pats, guard, body, span: this.join(first, this.prevSpan()) });
     }
     const close = this.expect('}');
     return { k: 'match', span: this.join(kw.span, close.span), scrut, arms, tmp: -1 };
@@ -860,9 +861,10 @@ class Parser {
           const first = this.cur.span;
           const pats: Pat[] = [this.pattern()];
           while (this.eat('|')) pats.push(this.pattern());
+          const guard = this.eat('if') ? this.allowStruct(() => this.expr()) : undefined;
           this.expect('=>');
           const value = this.allowStruct(() => this.expr());
-          arms.push({ pats, value, span: this.join(first, value.span) });
+          arms.push({ pats, guard, value, span: this.join(first, value.span) });
           if (!this.eat(',')) break;
         }
         const close = this.expect('}');

@@ -45,7 +45,7 @@ export type Expr =
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
-  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; value: Expr; span: Span }[]; tmp: number })
+  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span }[]; tmp: number })
   | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number; boxed: boolean })
   | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })
   | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[] })
@@ -94,6 +94,7 @@ export type Pat =
 
 export interface MatchArm {
   pats: Pat[];
+  guard?: Expr;
   body: Stmt[];
   span: Span;
 }

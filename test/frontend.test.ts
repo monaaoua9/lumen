@@ -404,6 +404,15 @@ test('constants flow through immutable lets', () => {
   assert.deepEqual(diagCodes('let d = 2; print(1 / d);'), []);
 });
 
+test('match guards', () => {
+  const E = 'enum E { A(int), B } ';
+  assert.deepEqual(errs(E + 'let e = E.A(1); print(match e { A(n) if n > 0 => 1, A(_) => 2, B => 3 });'), []);
+  assert.deepEqual(errs(E + 'let e = E.B; print(match e { A(n) if n > 0 => 1, B => 3 });'), ['E020']);
+  assert.deepEqual(errs(E + 'let e = E.B; print(match e { A(n) if n => 1, _ => 3 });'), ['E011']);
+  assert.deepEqual(errs('let n = 1; match n { _ if n > 0 => { print(1); } }'), ['E020']);
+  assert.deepEqual(diagCodes('let n = 1; match n { 1 if n > 0 => { print(1); } 1 => { print(2); } _ => { } }'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

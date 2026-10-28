@@ -95,7 +95,7 @@ function foldExpr(e: Expr): Expr {
 
     case 'matchx':
       e.scrut = foldExpr(e.scrut);
-      e.arms.forEach(a => { a.value = foldExpr(a.value); });
+      e.arms.forEach(a => { if (a.guard) a.guard = foldExpr(a.guard); a.value = foldExpr(a.value); });
       return e;
 
     case 'structlit':
@@ -132,7 +132,7 @@ function foldStmt(s: Stmt): Stmt | null {
       return s;
     case 'match':
       s.scrut = foldExpr(s.scrut);
-      s.arms.forEach(a => { a.body = foldBlock(a.body); });
+      s.arms.forEach(a => { if (a.guard) a.guard = foldExpr(a.guard); a.body = foldBlock(a.body); });
       return s;
     case 'setfield':
       s.obj = foldExpr(s.obj);
