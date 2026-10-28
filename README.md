@@ -154,6 +154,7 @@ node src/cli.ts disasm examples/fib.lum
 node src/cli.ts emit-c examples/fib.lum -o fib.c
 node src/cli.ts build examples/bench.lum -o bench  # emit C + gcc/clang/cc
 node src/cli.ts bench examples/bench.lum           # interpreter vs VM
+node src/cli.ts repl                              # interactive; a bare expression prints its value
 npm test                         # unit tests + cross-backend parity
 npm run typecheck
 ```

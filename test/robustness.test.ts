@@ -195,3 +195,12 @@ test('exit(code) sets the status and keeps earlier output', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('repl: expressions print, state carries over, bad input is rejected', () => {
+  const input = 'let x = 4\nx * 2\nfn sq(n: int): int {\n  return n * n;\n}\nsq(x) + 1\nnope\nx / 0\nx + 1\n';
+  const r = spawnSync(process.execPath, ['src/cli.ts', 'repl'], { encoding: 'utf8', input });
+  assert.equal(r.status, 0);
+  assert.deepEqual(r.stdout.trim().split(/\r?\n/), [
+    '8', '17', "error[E001]: cannot find variable 'nope'", 'error[E012]: division by zero', '5',
+  ]);
+});

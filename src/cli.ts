@@ -8,6 +8,8 @@ import { bundle } from './modules.ts';
 import { checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
 import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
+import { Repl, incomplete } from './repl.ts';
+import { createInterface } from 'node:readline';
 
 const USAGE = `lumen <command> <file.lum> [options]
 
@@ -19,6 +21,7 @@ commands
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
   bench    run on both engines and compare timings
+  repl     interactive prompt (no file)
 
 options
   -O          constant folding / dead branch removal before codegen
@@ -35,8 +38,9 @@ const opt = (n: string) => {
 
 const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 
-function main(): number {
+function main(): number | Promise<number> {
   const cmd = args[0];
+  if (cmd === 'repl') return repl();
   const file = args.find((a, i) => i > 0 && !a.startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--engine');
   if (!cmd || cmd === '-h' || cmd === '--help' || !file) {
     process.stderr.write(USAGE);
@@ -114,6 +118,27 @@ function main(): number {
   }
 }
 
+function repl(): Promise<number> {
+  const r = new Repl();
+  const rl = createInterface({ input: process.stdin, output: process.stdout, prompt: '> ', terminal: !!process.stdin.isTTY });
+  let buf = '';
+  if (process.stdin.isTTY) rl.prompt();
+  rl.on('line', line => {
+    if (r.done) return;
+    buf += line + '\n';
+    if (incomplete(buf)) {
+      rl.setPrompt('. ');
+    } else {
+      process.stdout.write(r.feed(buf));
+      buf = '';
+      rl.setPrompt('> ');
+      if (r.done) return rl.close();
+    }
+    if (process.stdin.isTTY) rl.prompt();
+  });
+  return new Promise(res => rl.on('close', () => res(0)));
+}
+
 function check(text: string, name: string, segments: Segment[]): number {
   const fe = frontend(text, name, segments);
   const ds = fe.diagnostics;
@@ -159,4 +184,4 @@ function bench(fe: ReturnType<typeof frontend>): number {
   return 0;
 }
 
-process.exitCode = main();
+Promise.resolve(main()).then(c => { process.exitCode = c; });
