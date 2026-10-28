@@ -15,6 +15,7 @@ function hasCall(e: Expr): boolean {
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
+    case 'mcall': return true;
     case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
@@ -246,7 +247,12 @@ class Parser {
     const variants: EnumDecl['variants'] = [];
     while (!this.at('}') && !this.at('eof')) {
       const v = this.expect('ident', 'a variant name');
-      variants.push({ name: v.text, span: v.span });
+      const payload: Type[] = [];
+      if (this.eat('(')) {
+        do payload.push(this.type()); while (this.eat(','));
+        this.expect(')');
+      }
+      variants.push({ name: v.text, span: v.span, payload });
       if (!this.eat(',')) break;
     }
     this.expect('}');
@@ -318,8 +324,22 @@ class Parser {
   pattern(): Pat {
     const t = this.next();
     switch (t.kind) {
-      case 'ident':
-        return t.text === '_' ? { k: 'wild', span: t.span } : { k: 'variant', span: t.span, name: t.text, idx: -1 };
+      case 'ident': {
+        if (t.text === '_') return { k: 'wild', span: t.span };
+        let binds: Extract<Pat, { k: 'variant' }>['binds'] = null;
+        let end = t.span;
+        if (this.eat('(')) {
+          binds = [];
+          if (!this.at(')')) {
+            do {
+              const b = this.expect('ident', 'a binding name');
+              binds.push(b.text === '_' ? null : { name: b.text, span: b.span });
+            } while (this.eat(','));
+          }
+          end = this.expect(')').span;
+        }
+        return { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
+      }
       case 'int': return { k: 'lit', span: t.span, value: t.value as number, ty: 'int' };
       case 'string': return { k: 'lit', span: t.span, value: t.value as string, ty: 'string' };
       case 'true':
@@ -464,7 +484,17 @@ class Parser {
       } else if (this.at('.')) {
         this.next();
         const f = this.expect('ident', 'a field name');
-        e = { k: 'field', obj: e, name: f.text, nameSpan: f.span, idx: -1, span: this.join(e.span, f.span), ty: 'error' };
+        if (this.at('(')) {
+          this.next();
+          const args: Expr[] = [];
+          if (!this.at(')')) {
+            do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+          }
+          const close = this.expect(')');
+          e = { k: 'mcall', obj: e, name: f.text, nameSpan: f.span, args, span: this.join(e.span, close.span), ty: 'error' };
+        } else {
+          e = { k: 'field', obj: e, name: f.text, nameSpan: f.span, idx: -1, span: this.join(e.span, f.span), ty: 'error' };
+        }
       } else {
         return e;
       }

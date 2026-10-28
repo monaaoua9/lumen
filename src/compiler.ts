@@ -67,6 +67,7 @@ class FnCompiler {
         break;
       }
       this.emit(Op.LOADL, tmp);
+      if (p.k === 'variant' && p.boxed) this.emit(Op.GETF, 0);
       this.konst(p.k === 'variant' ? p.idx : p.value);
       this.emit(Op.EQ);
       const skip = this.jump(Op.JMPF);
@@ -76,6 +77,18 @@ class FnCompiler {
     const next = wild ? -1 : this.jump(Op.JMP);
     toBody.forEach(j => this.patch(j));
     return next;
+  }
+
+  // copy `Variant(a, b)` payload values into the binding slots
+  bindArm(tmp: number, pats: Pat[]) {
+    const p = pats[0];
+    if (pats.length !== 1 || p.k !== 'variant' || !p.binds) return;
+    p.binds.forEach((b, j) => {
+      if (!b?.sym) return;
+      this.emit(Op.LOADL, tmp);
+      this.emit(Op.GETF, j + 1);
+      this.emit(Op.STOREL, b.sym.slot);
+    });
   }
 
   block(body: Stmt[]) {
@@ -97,6 +110,7 @@ class FnCompiler {
         const ends: number[] = [];
         for (const arm of s.arms) {
           const next = this.armTest(s.tmp, arm.pats);
+          this.bindArm(s.tmp, arm.pats);
           this.block(arm.body);
           ends.push(this.jump(Op.JMP));
           if (next >= 0) this.patch(next);
@@ -232,6 +246,14 @@ class FnCompiler {
 
       case 'enumval':
         this.konst(e.idx);
+        if (e.boxed) this.emit(Op.NEWARR, 1);
+        return;
+
+      case 'enumctor':
+        this.konst(e.idx);
+        e.args.forEach(a => this.expr(a));
+        this.span = e.span;
+        this.emit(Op.NEWARR, e.args.length + 1);
         return;
 
       case 'matchx': {
@@ -241,6 +263,7 @@ class FnCompiler {
         const ends: number[] = [];
         for (const arm of e.arms) {
           const next = this.armTest(e.tmp, arm.pats);
+          this.bindArm(e.tmp, arm.pats);
           this.expr(arm.value);
           ends.push(this.jump(Op.JMP));
           if (next >= 0) this.patch(next);
@@ -335,6 +358,6 @@ export function compile(prog: Program): Module {
 
   const main = build('<main>', 0, prog.nlocals, false, prog.body, Op.HALT);
   const structs = prog.structs.map(d => ({ name: d.name, fields: d.fields.map(f => ({ name: f.name, ty: f.ty })) }));
-  const enums = prog.enums.map(d => ({ name: d.name, variants: d.variants.map(v => v.name) }));
+  const enums = prog.enums.map(d => ({ name: d.name, variants: d.variants.map(v => ({ name: v.name, payload: v.payload })) }));
   return { consts, types, structs, enums, fns, main, nglobals: prog.nglobals };
 }

@@ -26,7 +26,7 @@ export class Interpreter {
   run(prog: Program) {
     registerTypes(
       prog.structs.map(s => ({ name: s.name, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })),
-      prog.enums.map(e => ({ name: e.name, variants: e.variants.map(v => v.name) })),
+      prog.enums.map(e => ({ name: e.name, variants: e.variants.map(v => ({ name: v.name, payload: v.payload })) })),
     );
     const main: Frame = { locals: new Array(prog.nlocals).fill(null), ret: null };
     try {
@@ -55,9 +55,7 @@ export class Interpreter {
       case 'match': {
         const v = this.eval(s.scrut, f);
         for (const arm of s.arms) {
-          if (arm.pats.some(p => p.k === 'wild' || (p.k === 'variant' ? p.idx === v : p.value === v))) {
-            return this.exec(arm.body, f);
-          }
+          if (this.armMatches(arm.pats, v, f)) return this.exec(arm.body, f);
         }
         return NORMAL;
       }
@@ -156,14 +154,16 @@ export class Interpreter {
       case 'matchx': {
         const v = this.eval(e.scrut, f);
         for (const arm of e.arms) {
-          if (arm.pats.some(p => p.k === 'wild' || (p.k === 'variant' ? p.idx === v : p.value === v))) {
-            return this.eval(arm.value, f);
-          }
+          if (this.armMatches(arm.pats, v, f)) return this.eval(arm.value, f);
         }
         return null;
       }
 
-      case 'enumval': return e.idx;
+      case 'enumval': return e.boxed ? [e.idx] : e.idx;
+
+      case 'mcall': throw new Error('unresolved method call');
+
+      case 'enumctor': return [e.idx, ...e.args.map(a => this.eval(a, f))];
 
       case 'field': return (this.eval(e.obj, f) as Value[])[e.idx];
 
@@ -185,6 +185,24 @@ export class Interpreter {
         return this.callFn(e.fn!.decl, e.args.map(a => this.eval(a, f)), e.span);
       }
     }
+  }
+
+  // true when one of the patterns matches; also stores `Variant(a, b)` bindings into the frame
+  armMatches(pats: import('./ast.ts').Pat[], v: Value, f: Frame): boolean {
+    for (const p of pats) {
+      if (p.k === 'wild') return true;
+      if (p.k === 'lit') {
+        if (p.value === v) return true;
+        continue;
+      }
+      const tag = p.boxed ? (v as Value[])[0] : v;
+      if (p.idx !== tag) continue;
+      p.binds?.forEach((b, j) => {
+        if (b?.sym) f.locals[b.sym.slot] = (v as Value[])[j + 1];
+      });
+      return true;
+    }
+    return false;
   }
 
   callFn(fn: FnDecl, args: Value[], span: Expr['span']): Value {

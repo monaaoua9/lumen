@@ -1,0 +1,39 @@
+// enums that carry data, taken apart with match
+enum Shape { Circle(float), Rect(float, float), Unit }
+enum List { Nil, Cons(int, List) }
+
+fn area(s: Shape): float {
+  return match s {
+    Circle(r) => 3.0 * r * r,
+    Rect(w, h) => w * h,
+    Unit => 1.0
+  };
+}
+
+fn describe(s: Shape): string {
+  match s {
+    Circle(_) => { return "round"; }
+    Rect(w, h) => {
+      if w == h { return "square"; }
+      return "rect";
+    }
+    _ => { return "other"; }
+  }
+}
+
+fn sum(l: List): int {
+  return match l { Nil => 0, Cons(h, t) => h + sum(t) };
+}
+
+let shapes = [Shape.Circle(2.0), Shape.Rect(3.0, 4.0), Shape.Rect(2.0, 2.0), Shape.Unit];
+for s in shapes {
+  print(str(s) + " area=" + str(area(s)) + " " + describe(s));
+}
+
+let l = List.Cons(1, List.Cons(2, List.Cons(3, List.Nil)));
+print(sum(l));
+print(l);
+
+struct Item { name: string, shape: Shape }
+let it = Item { name: "x", shape: Shape.Circle(1.5) };
+print(it);

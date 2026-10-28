@@ -215,3 +215,23 @@ test('match expressions: checking', () => {
   assert.deepEqual(diagCodes('let a: int[] = match 1 { 1 => [], _ => [2] }; print(a);'), []);
   assert.ok(diagCodes('fn f() {} let x = match 1 { 1 => f(), _ => f() }; print(x);').includes('E010'));
 });
+
+const D = 'enum S { A(int), B(float, string), U } ';
+
+test('enums with data: checking', () => {
+  assert.deepEqual(diagCodes(D + 'let s = S.A(1); match s { A(n) => { print(n); } B(f, t) => { print(t); print(f); } U => { } }'), []);
+  assert.deepEqual(diagCodes(D + 'print(S.A("x"));'), ['E003']);
+  assert.deepEqual(diagCodes(D + 'print(S.A(1, 2));'), ['E004']);
+  assert.deepEqual(diagCodes(D + 'print(S.A);'), ['E022']);
+  assert.deepEqual(diagCodes(D + 'print(S.U(1));'), ['E004']);
+  assert.deepEqual(diagCodes(D + 'print(S.Q(1));'), ['E021']);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(x, y) => { } _ => { } }'), ['E022']);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(1) => { } _ => { } }').length > 0, true);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(_) | U => { } B(_, _) => { } }'), []);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(x) | U => { print(x); } _ => { } }').includes('E022'), true);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(n) => { print(n + 1.5); } _ => { } }'), ['E003']);
+  assert.deepEqual(diagCodes(D + 'let a = S.U; let b = S.U; print(a == b);'), ['E003']);
+  assert.deepEqual(diagCodes('enum T { X(Nope) }'), ['E016']);
+  assert.ok(diagCodes('struct P { x: int } print(P.go(1));').includes('E001'));
+  assert.ok(diagCodes('let a = 5; print(a.go(1));').includes('E019'));
+});

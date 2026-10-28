@@ -41,7 +41,9 @@ export type Expr =
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
   | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; value: Expr; span: Span }[]; tmp: number })
-  | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number })
+  | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number; boxed: boolean })
+  | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })
+  | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[] })
   | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
   | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[] })
   | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName });
@@ -72,12 +74,12 @@ export interface EnumDecl {
   span: Span;
   name: string;
   nameSpan: Span;
-  variants: { name: string; span: Span }[];
+  variants: { name: string; span: Span; payload: Type[] }[];
 }
 
 export type Pat =
   | { k: 'wild'; span: Span }
-  | { k: 'variant'; span: Span; name: string; idx: number }
+  | { k: 'variant'; span: Span; name: string; idx: number; binds: ({ name: string; span: Span; sym?: VarSym } | null)[] | null; tys: Type[]; boxed: boolean }
   | { k: 'lit'; span: Span; value: number | string | boolean; ty: Type };
 
 export interface MatchArm {

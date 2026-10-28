@@ -72,6 +72,10 @@ function foldExpr(e: Expr): Expr {
       e.obj = foldExpr(e.obj);
       return e;
 
+    case 'enumctor':
+      e.args = e.args.map(foldExpr);
+      return e;
+
     case 'matchx':
       e.scrut = foldExpr(e.scrut);
       e.arms.forEach(a => { a.value = foldExpr(a.value); });

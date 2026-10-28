@@ -235,3 +235,19 @@ test('match expressions: arms run lazily, values agree', () => {
   `;
   assert.equal(allEngines(src), '20\n21\n1\n2\n3\n4\n');
 });
+
+test('enums with data: semantics agree across engines', () => {
+  const src = `
+    enum T { Leaf(int), Node(T, T) }
+    fn total(t: T): int { return match t { Leaf(n) => n, Node(l, r) => total(l) + total(r) }; }
+    fn noisy(n: int): int { print(n); return n; }
+    let t = T.Node(T.Leaf(noisy(1)), T.Node(T.Leaf(noisy(2)), T.Leaf(noisy(3))));
+    print(total(t));
+    print(t);
+    match t {
+      Leaf(_) => { print("leaf"); }
+      Node(a, b) => { print(total(a) * 10 + total(b)); }
+    }
+  `;
+  assert.equal(allEngines(src), '1\n2\n3\n6\nNode(Leaf(1), Node(Leaf(2), Leaf(3)))\n15\n');
+});

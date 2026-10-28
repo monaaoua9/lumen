@@ -79,6 +79,9 @@ class Analyzer {
   run(prog: Program) {
     this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
+    for (const d of this.enums.values()) {
+      for (const v of d.variants) v.payload.forEach(t => this.checkType(t, v.span));
+    }
     for (const f of prog.fns) this.declareFn(f);
 
     this.analyzeBlockBody(prog.body);
@@ -91,6 +94,11 @@ class Analyzer {
     prog.nlocals = this.ctx.nlocals;
     prog.nglobals = this.nglobals;
     this.diags.sort((a, b) => a.span.start - b.span.start);
+  }
+
+  isBoxed(t: Type): boolean {
+    const d = isEnum(t) ? this.enums.get(t.slice(1)) : undefined;
+    return !!d && d.variants.some(v => v.payload.length > 0);
   }
 
   declareEnums(list: EnumDecl[]) {
@@ -393,19 +401,69 @@ class Analyzer {
       this.err('E021', `enum '${decl.name}' has no variant '${e.name}'`, e.nameSpan, closestHint(e.name, decl.variants.map(v => v.name)));
       return 'error';
     }
-    Object.assign(e, { k: 'enumval', enumName: decl.name, variant: e.name, idx });
+    const need = decl.variants[idx].payload.length;
+    if (need > 0) {
+      this.err('E022', `variant '${e.name}' carries ${need} value${need === 1 ? '' : 's'}, write ${decl.name}.${e.name}(...)`, e.span);
+      return 'error';
+    }
+    Object.assign(e, { k: 'enumval', enumName: decl.name, variant: e.name, idx, boxed: this.isBoxed(('#' + decl.name) as Type) });
     return ('#' + decl.name) as Type;
   }
 
+  // Shape.Circle(1.0): a call on `.name` is a constructor when the left side is an enum
+  methodCall(e: Extract<Expr, { k: 'mcall' }>): Type {
+    if (!(e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && this.enums.has(e.obj.name))) {
+      e.args.forEach(a => this.expr(a));
+      const ot = this.expr(e.obj);
+      if (ot !== 'error') this.err('E019', `'${e.name}' is not callable: methods are not supported yet`, e.nameSpan);
+      return 'error';
+    }
+    const decl = this.enums.get(e.obj.name)!;
+    const idx = decl.variants.findIndex(v => v.name === e.name);
+    if (idx < 0) {
+      e.args.forEach(a => this.expr(a));
+      this.err('E021', `enum '${decl.name}' has no variant '${e.name}'`, e.nameSpan, closestHint(e.name, decl.variants.map(v => v.name)));
+      return 'error';
+    }
+    const want = decl.variants[idx].payload;
+    const tys = e.args.map((a, i) => this.expr(a, want[i]));
+    if (e.args.length !== want.length) {
+      this.err('E004', `variant '${decl.name}.${e.name}' takes ${want.length} value${want.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
+    } else {
+      tys.forEach((t, i) => {
+        if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', e.args[i].span);
+        else if (t !== 'error' && t !== want[i]) this.mismatch(want[i], t, e.args[i].span, `in argument ${i + 1} of '${decl.name}.${e.name}'`);
+      });
+    }
+    Object.assign(e, { k: 'enumctor', enumName: decl.name, variant: e.name, idx });
+    return ('#' + decl.name) as Type;
+  }
+
+  // names bound by a `Variant(a, b)` pattern live in the arm's scope
+  declareBinds(pats: Pat[]) {
+    for (const p of pats) {
+      if (p.k !== 'variant' || !p.binds) continue;
+      p.binds.forEach((b, j) => {
+        if (b && p.tys[j]) b.sym = this.declareVar(b.name, p.tys[j], false, b.span);
+      });
+    }
+  }
+
   matchStmt(s: Extract<Stmt, { k: 'match' }>): Flow {
-    const r = this.matchCore(s.scrut, s.arms.map(a => a.pats), i => this.withScope(() => this.block(s.arms[i].body)));
+    const r = this.matchCore(s.scrut, s.arms.map(a => a.pats), i => this.withScope(() => {
+      this.declareBinds(s.arms[i].pats);
+      return this.block(s.arms[i].body);
+    }));
     s.tmp = r.tmp;
     const all = (k: 'diverges' | 'returns') => r.out.length > 0 && r.exhaustive && r.out.every(f => f[k]);
     return { diverges: all('diverges'), returns: all('returns') };
   }
 
   matchExpr(e: Extract<Expr, { k: 'matchx' }>, want?: Type): Type {
-    const r = this.matchCore(e.scrut, e.arms.map(a => a.pats), i => this.expr(e.arms[i].value, want));
+    const r = this.matchCore(e.scrut, e.arms.map(a => a.pats), i => this.withScope(() => {
+      this.declareBinds(e.arms[i].pats);
+      return this.expr(e.arms[i].value, want);
+    }));
     e.tmp = r.tmp;
     let ty: Type = 'error';
     r.out.forEach((t, i) => {
@@ -446,6 +504,17 @@ class Analyzer {
           } else {
             p.idx = idx;
             key = `v${idx}`;
+            const v = decl.variants[idx];
+            p.tys = v.payload;
+            p.boxed = decl.variants.some(x => x.payload.length > 0);
+            if (p.binds && p.binds.length !== v.payload.length) {
+              this.err('E022', `variant '${v.name}' has ${v.payload.length} value${v.payload.length === 1 ? '' : 's'}, the pattern binds ${p.binds.length}`, p.span);
+              p.binds = null;
+            }
+            if (p.binds?.some(b => b) && patLists[ai].length > 1) {
+              this.err('E022', 'an arm with several patterns cannot bind names', p.span, "split the arm, or use '_'");
+              p.binds = null;
+            }
           }
         } else {
           if (matchable && p.ty !== st) this.mismatch(st, p.ty, p.span, 'in match pattern');
@@ -529,6 +598,8 @@ class Analyzer {
       case 'bool': return 'bool';
       case 'enumval': return ('#' + e.enumName) as Type;
       case 'matchx': return this.matchExpr(e, want);
+      case 'mcall': return this.methodCall(e);
+      case 'enumctor': return ('#' + e.enumName) as Type;
 
       case 'var': {
         const sym = this.scope.lookup(e.name);
@@ -676,6 +747,7 @@ class Analyzer {
         if (isNumeric(a) && a === b) return 'bool';
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);
       case '==': case '!=':
+        if (a === b && isEnum(a) && this.isBoxed(a)) return opErr('enums with data cannot be compared with == or !=', 'use match');
         if (a === b && a !== 'void' && !isRef(a)) return 'bool';
         if (a === b && isRef(a)) return opErr('arrays and structs cannot be compared with == or !=', 'compare the elements or fields one by one');
         return opErr(`cannot compare ${a} with ${b}`, sameHint);

@@ -134,19 +134,19 @@ static long long lm_len(const char *s) { return (long long)strlen(s); }
 function ctype(t: Type): string {
   if (isArray(t)) return 'lm_arr *';
   if (isStruct(t)) return `S_${structName(t)} *`;
-  if (isEnum(t)) return 'long long';
+  if (isEnum(t)) return BOXED.has(enumName(t)) ? `E_${enumName(t)} *` : 'long long';
   return { int: 'long long', float: 'double', bool: 'bool', string: 'const char *', void: 'void', error: 'void' }[t as 'int'];
 }
 
 // which lm_val member holds a value of this type
 function slot(t: Type): 'i' | 'f' | 'b' | 's' | 'p' {
-  if (isEnum(t)) return 'i';
+  if (isEnum(t)) return BOXED.has(enumName(t)) ? 'p' : 'i';
   return ({ int: 'i', float: 'f', bool: 'b', string: 's' } as Record<string, 'i' | 'f' | 'b' | 's'>)[t] ?? 'p';
 }
 
 // reading a pointer back out of lm_val needs the cast
 function fromSlot(t: Type, e: string): string {
-  return isStruct(t) ? `((${ctype(t)})${e})` : e;
+  return isStruct(t) || (isEnum(t) && BOXED.has(enumName(t))) ? `((${ctype(t)})${e})` : e;
 }
 
 // C expression that turns `e` (of type t) into a string; strings are quoted inside containers
@@ -170,8 +170,12 @@ function elemFn(t: Type): string {
 const OPS: Record<string, string> = { '==': '==', '!=': '!=', '<': '<', '<=': '<=', '>': '>', '>=': '>=' };
 const INT_FN: Record<string, string> = { '+': 'lm_add', '-': 'lm_sub', '*': 'lm_mul', '/': 'lm_div', '%': 'lm_mod' };
 
+// enums where some variant carries data are heap objects, the rest are plain ordinals
+const BOXED = new Set<string>();
+
 function hasCall(e: Expr): boolean {
   switch (e.k) {
+    case 'enumctor': return e.args.some(hasCall);
     case 'call': return true;
     case 'unary': return hasCall(e.arg);
     case 'binary': return hasCall(e.l) || hasCall(e.r);
@@ -312,6 +316,7 @@ class Gen {
           else this.line(wild ? '} else {' : `} else if (${cond}) {`);
           first = false;
           this.ind++;
+          this.bindArm(v, arm.pats);
           const val = this.expr(arm.value);
           this.line(`${r} = ${val};`);
           this.ind--;
@@ -321,7 +326,26 @@ class Gen {
         return r;
       }
 
-      case 'enumval': return `${e.idx}LL`;
+      case 'enumval': {
+        if (!e.boxed) return `${e.idx}LL`;
+        const t = `t${this.tmp++}`;
+        this.line(`E_${e.enumName} *${t} = (E_${e.enumName} *)malloc(sizeof *${t});`);
+        this.line(`${t}->tag = ${e.idx};`);
+        return t;
+      }
+
+      case 'mcall': throw new Error('unresolved method call');
+
+      case 'enumctor': {
+        const t = `t${this.tmp++}`;
+        this.line(`E_${e.enumName} *${t} = (E_${e.enumName} *)malloc(sizeof *${t});`);
+        this.line(`${t}->tag = ${e.idx};`);
+        e.args.forEach((a, j) => {
+          const v = this.expr(a);
+          this.line(`${t}->u.v${e.idx}.a${j} = ${v};`);
+        });
+        return t;
+      }
 
       case 'field': return `(${this.expr(e.obj)}->f_${e.name})`;
 
@@ -397,6 +421,7 @@ class Gen {
           else this.line(wild ? '} else {' : `} else if (${cond}) {`);
           first = false;
           this.ind++;
+          this.bindArm(v, arm.pats);
           this.block(arm.body);
           this.ind--;
           if (wild) break; // anything after `_` can never run
@@ -511,8 +536,16 @@ class Gen {
     }
   }
 
+  bindArm(v: string, pats: Pat[]) {
+    const p = pats[0];
+    if (pats.length !== 1 || p.k !== 'variant' || !p.binds) return;
+    p.binds.forEach((b, j) => {
+      if (b?.sym) this.line(`${ctype(p.tys[j])} ${this.name(b.sym)} = ${v}->u.v${p.idx}.a${j};`);
+    });
+  }
+
   patTest(v: string, p: Pat, ty: Type): string {
-    if (p.k === 'variant') return `${v} == ${p.idx}LL`;
+    if (p.k === 'variant') return p.boxed ? `${v}->tag == ${p.idx}LL` : `${v} == ${p.idx}LL`;
     if (p.k === 'lit') {
       if (ty === 'string') return `strcmp(${v}, ${cString(p.value as string)}) == 0`;
       if (ty === 'bool') return p.value ? v : `!${v}`;
@@ -532,13 +565,24 @@ export function emitC(prog: Program): string {
   const fns = prog.fns.filter(f => f.sym);
   const out: string[] = [PRELUDE];
 
+  BOXED.clear();
+  for (const d of prog.enums) if (d.variants.some(v => v.payload.length > 0)) BOXED.add(d.name);
   for (const d of prog.enums) {
+    if (BOXED.has(d.name)) continue;
     out.push(`static const char *lm_str_E_${d.name}(long long v) { static const char *n[] = {${d.variants.map(x => `"${x.name}"`).join(', ')}}; return n[v]; }`);
     out.push(`static const char *lm_se_E_${d.name}(lm_val v) { return lm_str_E_${d.name}(v.i); }`);
   }
+  const boxed = prog.enums.filter(d => BOXED.has(d.name));
+  for (const d of boxed) out.push(`typedef struct E_${d.name} E_${d.name};`);
   for (const d of prog.structs) out.push(`typedef struct S_${d.name} S_${d.name};`);
   for (const d of prog.structs) {
     out.push(`struct S_${d.name} {`, ...d.fields.map(f => `  ${ctype(f.ty)} f_${f.name};`), '};');
+  }
+  for (const d of boxed) {
+    const members = d.variants.map((v, i) => (v.payload.length ? `struct { ${v.payload.map((t, j) => `${ctype(t)} a${j};`).join(' ')} } v${i};` : '')).join(' ');
+    out.push(`struct E_${d.name} { long long tag; union { ${members} } u; };`);
+    out.push(`static const char *lm_str_E_${d.name}(E_${d.name} *p);`);
+    out.push(`static const char *lm_se_E_${d.name}(lm_val v) { return lm_str_E_${d.name}((E_${d.name} *)v.p); }`);
   }
   for (const d of prog.structs) {
     out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p);`);
@@ -552,7 +596,23 @@ export function emitC(prog: Program): string {
     });
     out.push('  return lm_cat(r, " }");', '}');
   }
-  if (prog.structs.length) out.push('');
+  for (const d of boxed) {
+    out.push(`static const char *lm_str_E_${d.name}(E_${d.name} *p) {`, '  switch (p->tag) {');
+    d.variants.forEach((v, i) => {
+      if (!v.payload.length) {
+        out.push(`    case ${i}: return "${v.name}";`);
+        return;
+      }
+      out.push(`    case ${i}: {`, `      const char *r = "${v.name}(";`);
+      v.payload.forEach((t, j) => {
+        if (j) out.push('      r = lm_cat(r, ", ");');
+        out.push(`      r = lm_cat(r, ${strIn(t, `p->u.v${i}.a${j}`)});`);
+      });
+      out.push('      return lm_cat(r, ")");', '    }');
+    });
+    out.push('  }', '  return "";', '}');
+  }
+  if (prog.structs.length || boxed.length) out.push('');
 
   // pre-name params and globals so prototypes and bodies agree
   for (const f of fns) out.push(g.fnSig(f) + ';');

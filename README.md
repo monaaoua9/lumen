@@ -75,6 +75,18 @@ match light {
 
 `match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs).
 
+Variants can carry data, which `match` takes apart (recursive types work):
+
+```
+enum Shape { Circle(float), Rect(float, float), Unit }
+enum List { Nil, Cons(int, List) }
+let s = Shape.Rect(3.0, 4.0);
+let area = match s { Circle(r) => 3.0 * r * r, Rect(w, h) => w * h, Unit => 1.0 };
+```
+
+Patterns bind names (`Rect(w, _)`), `Circle` alone ignores the data. An arm with several patterns cannot bind names (`E022`).
+Enums with data are references and cannot be compared with `==`; use `match`.
+
 Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive
 (`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose
 every arm returns counts as returning on all paths.
@@ -99,7 +111,7 @@ Semantics worth knowing:
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access, `E020` non-exhaustive match, `E021` unknown enum variant.
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access, `E020` non-exhaustive match, `E021` unknown enum variant, `E022` wrong number of values for a variant (constructor or pattern).
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
@@ -140,7 +152,7 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No nested arrays, enum payloads (variants carry no data), methods or closures yet.
+- No nested arrays, methods or closures yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

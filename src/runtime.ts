@@ -23,7 +23,7 @@ export interface StructInfo {
 
 export interface EnumInfo {
   name: string;
-  variants: string[];
+  variants: { name: string; payload: Type[] }[];
 }
 
 const enumLayouts = new Map<string, EnumInfo>();
@@ -50,7 +50,15 @@ export function format(v: Value, ty: Type): string {
     case 'bool': return v ? 'true' : 'false';
     case 'string': return v as string;
   }
-  if (ty.startsWith('#') && !ty.endsWith('[]')) return enumLayouts.get(ty.slice(1))!.variants[v as number];
+  if (ty.startsWith('#') && !ty.endsWith('[]')) {
+    const info = enumLayouts.get(ty.slice(1))!;
+    if (!info.variants.some(x => x.payload.length > 0)) return info.variants[v as number].name;
+    // enums with data are [tag, ...values]
+    const vals = v as Value[];
+    const variant = info.variants[vals[0] as number];
+    if (variant.payload.length === 0) return variant.name;
+    return `${variant.name}(${variant.payload.map((t, j) => formatInner(vals[j + 1], t)).join(', ')})`;
+  }
   if (ty.endsWith('[]')) {
     const et = ty.slice(0, -2) as Type;
     return '[' + (v as Value[]).map(x => formatInner(x, et)).join(', ') + ']';
