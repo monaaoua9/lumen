@@ -307,6 +307,12 @@ test('string builtins: checking', () => {
   assert.deepEqual(errs('print(byte("a", "0"));'), ['E003']);
 });
 
+test('strings: ordering', () => {
+  assert.deepEqual(errs('print("a" < "b"); print("a" >= "a");'), []);
+  assert.deepEqual(errs('print("a" < 1);'), ['E003']);
+  assert.deepEqual(errs('print(true < false);'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

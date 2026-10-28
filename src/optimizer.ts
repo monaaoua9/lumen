@@ -32,6 +32,7 @@ function foldExpr(e: Expr): Expr {
       if (!isLit(e.l) || !isLit(e.r)) return e;
       const a = e.l.value as number;
       const b = e.r.value as number;
+      if (e.l.ty === 'string' && ['<', '<=', '>', '>='].includes(e.op)) return e;
       const isInt = e.l.ty === 'int';
       switch (e.op) {
         case '+':

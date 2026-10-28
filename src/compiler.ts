@@ -5,6 +5,8 @@ import type { Module, Proto } from './bytecode.ts';
 import type { Type } from './types.ts';
 import type { Value } from './runtime.ts';
 
+const strOrder = (e: Extract<Expr, { k: 'binary' }>) => e.l.ty === 'string' && ['<', '<=', '>', '>='].includes(e.op);
+
 // `a < b` feeding an if/while compiles to one compare-and-branch op instead of LT + JMPF
 const FUSED: Record<string, number> = {
   '<': Op.JFLT, '<=': Op.JFLE, '>': Op.JFGT, '>=': Op.JFGE, '==': Op.JFEQ, '!=': Op.JFNE,
@@ -40,7 +42,7 @@ class FnCompiler {
 
   // evaluates a condition, returns the jump to patch for "condition is false"
   condJump(e: Expr): number {
-    if (e.k === 'binary' && FUSED[e.op] !== undefined) {
+    if (e.k === 'binary' && FUSED[e.op] !== undefined && !strOrder(e)) {
       this.expr(e.l);
       this.expr(e.r);
       this.span = e.span;
@@ -269,6 +271,10 @@ class FnCompiler {
         this.expr(e.l);
         this.expr(e.r);
         this.span = e.span;
+        if (strOrder(e)) {
+          this.emit(Op.SCMP);
+          this.konst(0);
+        }
         this.emit(this.binOp(e));
         return;
       }

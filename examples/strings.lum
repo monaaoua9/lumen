@@ -16,3 +16,18 @@ for i in 0..len(word) {
   up = up + chr(b - 32);
 }
 print(up);
+
+// strings order by bytes
+let names = ["pear", "apple", "fig"];
+for _ in 0..len(names) {
+  for j in 0..len(names) - 1 {
+    if names[j] > names[j + 1] {
+      let t = names[j];
+      names[j] = names[j + 1];
+      names[j + 1] = t;
+    }
+  }
+}
+print(names);
+print("Z" < "a");
+print("abc" <= "abc");

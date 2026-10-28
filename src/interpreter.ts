@@ -1,6 +1,6 @@
 import { RuntimeError } from './diagnostics.ts';
 import type { Expr, FnDecl, Program, Stmt } from './ast.ts';
-import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod, registerTypes } from './runtime.ts';
+import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, cmpStr, intDiv, intMod, registerTypes } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const NORMAL = 0;
@@ -138,6 +138,10 @@ export class Interpreter {
         if (e.op === '||') return this.eval(e.l, f) || this.eval(e.r, f);
         const a = this.eval(e.l, f) as number;
         const b = this.eval(e.r, f) as number;
+        if (e.l.ty === 'string' && e.op !== '+' && e.op !== '==' && e.op !== '!=') {
+          const c = cmpStr(a as unknown as string, b as unknown as string);
+          return e.op === '<' ? c < 0 : e.op === '<=' ? c <= 0 : e.op === '>' ? c > 0 : c >= 0;
+        }
         const isInt = e.l.ty === 'int';
         switch (e.op) {
           case '+': return e.l.ty === 'string' ? (a as unknown as string) + (b as unknown as string) : isInt ? checkInt(a + b, e.span) : a + b;

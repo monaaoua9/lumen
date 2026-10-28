@@ -1253,7 +1253,7 @@ class Analyzer {
         if (a === 'int' && b === 'int') return 'int';
         return opErr(`'%' works on int only, found ${a} and ${b}`);
       case '<': case '<=': case '>': case '>=':
-        if (isNumeric(a) && a === b) return 'bool';
+        if ((isNumeric(a) || a === 'string') && a === b) return 'bool';
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);
       case '==': case '!=':
         if (a === b && isEnum(a) && this.isBoxed(a)) return opErr('enums with data cannot be compared with == or !=', 'use match');

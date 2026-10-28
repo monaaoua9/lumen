@@ -496,6 +496,7 @@ class Gen {
         if (e.op === '+' && ty === 'string') return `lm_cat(${l}, ${r})`;
         if (e.op === '==' && ty === 'string') return `(strcmp(${l}, ${r}) == 0)`;
         if (e.op === '!=' && ty === 'string') return `(strcmp(${l}, ${r}) != 0)`;
+        if (ty === 'string' && ['<', '<=', '>', '>='].includes(e.op)) return `(strcmp(${l}, ${r}) ${e.op} 0)`;
         if (OPS[e.op]) return `(${l} ${OPS[e.op]} ${r})`;
         if (ty === 'int') return `${INT_FN[e.op]}(${l}, ${r})`;
         return `(${l} ${e.op} ${r})`;

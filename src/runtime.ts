@@ -129,6 +129,11 @@ export function substrOf(s: string, start: number, n: number, span?: Span): stri
   return buf.toString('utf8', start, start + n);
 }
 
+// utf-8 byte order, same as strcmp on the C side (js `<` would compare utf-16 units)
+export function cmpStr(a: string, b: string): number {
+  return a === b ? 0 : Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
 export function byteAt(s: string, i: number, span?: Span): number {
   const buf = Buffer.from(s);
   if (i < 0 || i >= buf.length) throw new RuntimeError('byte index out of range', span);
