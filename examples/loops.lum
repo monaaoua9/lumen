@@ -1,0 +1,26 @@
+// for loops: ranges and arrays, with break/continue
+var total = 0;
+for i in 0..10 {
+  if i % 2 == 0 { continue; }
+  if i > 7 { break; }
+  total += i;
+}
+print(total);
+
+let words = ["ada", "grace", "linus"];
+for w in words {
+  print(w + "!" );
+}
+
+struct P { n: int }
+let ps = [P { n: 3 }, P { n: 4 }];
+var sum = 0;
+for p in ps { sum += p.n; }
+print(sum);
+
+for r in 0..3 {
+  for c in 0..3 {
+    if c > r { break; }
+    print(str(r) + "," + str(c));
+  }
+}

@@ -212,3 +212,16 @@ test('match: semantics agree across engines', () => {
   `;
   assert.equal(allEngines(src), 'northsouth\nS\n1\n3\nB\nneg\n');
 });
+
+test('for loops: continue cannot skip the counter', () => {
+  const src = `
+    var s = 0;
+    for i in 0..6 { if i % 2 == 1 { continue; } s += i; }
+    print(s);
+    var n = 0;
+    for x in [5, 6, 7] { n += x; if x == 6 { break; } }
+    print(n);
+    for i in 3..3 { print(99); }
+  `;
+  assert.equal(allEngines(src), '6\n11\n');
+});

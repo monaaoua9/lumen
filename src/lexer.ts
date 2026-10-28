@@ -7,9 +7,9 @@ export interface Token {
   value?: number | string;
 }
 
-const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false']);
+const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'for', 'in', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false']);
 
-const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '=>']);
+const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '=>', '..']);
 const ONE = new Set('+-*/%(){}[],;:=<>!.|'.split(''));
 
 const isDigit = (c: string) => c >= '0' && c <= '9';

@@ -40,6 +40,7 @@ class Parser {
   structs: StructDecl[] = [];
   enums: EnumDecl[] = [];
   enumNames = new Set<string>();
+  forId = 0;
   noStruct = false; // `if x {` must not parse as a struct literal
   depth = 0; // block nesting, fn is only legal at 0
 
@@ -102,7 +103,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'struct', 'enum', 'match', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -142,6 +143,7 @@ class Parser {
       case 'struct': return this.structDecl();
       case 'enum': return this.enumDecl();
       case 'match': return this.matchStmt();
+      case 'for': return this.forStmt();
       case 'let':
       case 'var': return this.letStmt();
       case 'if': return this.ifStmt();
@@ -253,6 +255,45 @@ class Parser {
     const decl: EnumDecl = { k: 'enum', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, variants };
     this.enums.push(decl);
     return decl;
+  }
+
+  // `for` is sugar over `while`. the counter is bumped *before* the body runs so
+  // `continue` can't skip it, and the hidden names start with '_$' (not typable, never linted)
+  forStmt(): Stmt {
+    const kw = this.next();
+    const name = this.expect('ident', 'a loop variable');
+    this.expect('in');
+    const first = this.condExpr();
+    const id = this.forId++;
+    const sp = kw.span;
+    const v = (n: string, span = sp): Expr => ({ k: 'var', name: n, span, ty: 'error' });
+    const int = (value: number): Expr => ({ k: 'int', value, span: sp, ty: 'error' });
+    const bin = (op: BinOp, l: Expr, r: Expr): Expr => ({ k: 'binary', op, l, r, span: sp, ty: 'error' });
+    const decl = (n: string, init: Expr, mutable: boolean, nameSpan = sp): Stmt =>
+      ({ k: 'let', span: sp, name: n, nameSpan, mutable, init });
+    const counter = `_$i${id}`;
+    const bump: Stmt = { k: 'assign', span: sp, name: counter, nameSpan: sp, value: bin('+', v(counter), int(1)) };
+
+    let setup: Stmt[];
+    let cond: Expr;
+    let elem: Expr;
+    if (this.eat('..')) {
+      const end = this.condExpr();
+      setup = [decl(`_$e${id}`, end, false), decl(counter, first, true)];
+      cond = bin('<', v(counter), v(`_$e${id}`));
+      elem = v(counter);
+    } else {
+      const arr = `_$a${id}`;
+      setup = [decl(arr, first, false), decl(counter, int(0), true)];
+      cond = bin('<', v(counter), { k: 'call', name: 'len', nameSpan: sp, args: [v(arr)], span: sp, ty: 'error' });
+      elem = { k: 'index', arr: v(arr), idx: v(counter), span: first.span, ty: 'error' };
+    }
+    const body = this.block();
+    const loop: Stmt = {
+      k: 'while', span: this.join(kw.span, this.prevSpan()), cond,
+      body: [decl(name.text, elem, false, name.span), bump, ...body],
+    };
+    return { k: 'block', span: loop.span, body: [...setup, loop] };
   }
 
   matchStmt(): Stmt {

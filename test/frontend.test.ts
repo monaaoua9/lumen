@@ -195,3 +195,13 @@ test('match: return analysis', () => {
   assert.ok(!f('match c { R => { return 1; } G => { return 2; } B => { return 3; } }').includes('E007'));
   assert.ok(f('match c { R => { return 1; } _ => { } }').includes('E007'));
 });
+
+test('for loops: checking', () => {
+  assert.deepEqual(diagCodes('for i in 0..3 { print(i); }'), []);
+  assert.deepEqual(diagCodes('for x in [1, 2] { print(x); }'), []);
+  assert.deepEqual(diagCodes('for i in 0..2.5 { print(i); }'), ['E003']);
+  assert.ok(diagCodes('for x in 5 { print(x); }').includes('E003'));
+  assert.ok(diagCodes('for i in 0..3 { print(1); }').includes('W001'));
+  assert.deepEqual(diagCodes('for _ in 0..3 { print(1); }'), []);
+  assert.ok(diagCodes('for i in 0..3 { i = 2; }').includes('E005'));
+});
