@@ -1,7 +1,7 @@
 pub struct Point { x: float, y: float }
 
 pub fn dist(a: Point, b: Point): float {
-    let dx = b.x - a.x;
-    let dy = b.y - a.y;
-    return sqrt(dx * dx + dy * dy);
+  let dx = b.x - a.x;
+  let dy = b.y - a.y;
+  return sqrt(dx * dx + dy * dy);
 }

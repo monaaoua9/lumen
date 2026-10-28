@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { basename, join } from 'node:path';
@@ -11,6 +11,7 @@ import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
 import { EXPLAIN, explain } from './explain.ts';
+import { format } from './fmt.ts';
 import { createInterface } from 'node:readline';
 
 const USAGE = `lumen <command> <file.lum> [options]
@@ -24,6 +25,7 @@ commands
   ast      dump the typed AST as JSON
   bench    run on both engines and compare timings
   repl     interactive prompt (no file)
+  fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
   explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
 options
@@ -44,6 +46,7 @@ const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 function main(): number | Promise<number> {
   const cmd = args[0];
   if (cmd === 'repl') return repl();
+  if (cmd === 'fmt') return fmtFiles();
   if (cmd === 'explain') {
     const code = args[1];
     const text = code ? explain(code) : null;
@@ -128,6 +131,25 @@ function main(): number | Promise<number> {
     }
     throw e;
   }
+}
+
+function fmtFiles(): number {
+  const files = args.slice(1).filter(a => !a.startsWith('-'));
+  if (files.length === 0) {
+    process.stderr.write(USAGE);
+    return 2;
+  }
+  let dirty = 0;
+  for (const f of files) {
+    const before = readFileSync(f, 'utf8');
+    const after = format(before);
+    if (after === before.replace(/\r\n/g, '\n')) continue;
+    dirty++;
+    if (flag('--write')) writeFileSync(f, after);
+    else if (flag('--check')) process.stdout.write(`${f} would be reformatted\n`);
+    else process.stdout.write(after);
+  }
+  return flag('--check') && dirty > 0 ? 1 : 0;
 }
 
 function repl(): Promise<number> {

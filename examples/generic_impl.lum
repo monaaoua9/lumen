@@ -1,35 +1,35 @@
 struct Stack<T> { items: T[] }
 
 impl<T> Stack<T> {
-    fn new(first: T): Stack<T> {
-        return Stack { items: [first] };
-    }
-    fn push(self, x: T) {
-        push(self.items, x);
-    }
-    fn pop(self): T {
-        return pop(self.items);
-    }
-    fn size(self): int {
-        return len(self.items);
-    }
+  fn new(first: T): Stack<T> {
+    return Stack { items: [first] };
+  }
+  fn push(self, x: T) {
+    push(self.items, x);
+  }
+  fn pop(self): T {
+    return pop(self.items);
+  }
+  fn size(self): int {
+    return len(self.items);
+  }
 }
 
 enum Option<T> { Some(T), None }
 
 impl<T> Option<T> {
-    fn unwrap_or(self, d: T): T {
-        match self {
-            Some(v) => { return v; }
-            None => { return d; }
-        }
+  fn unwrap_or(self, d: T): T {
+    match self {
+      Some(v) => { return v; }
+      None => { return d; }
     }
-    fn is_some(self): bool {
-        match self {
-            Some(_) => { return true; }
-            None => { return false; }
-        }
+  }
+  fn is_some(self): bool {
+    match self {
+      Some(_) => { return true; }
+      None => { return false; }
     }
+  }
 }
 
 let s = Stack.new(1);

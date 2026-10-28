@@ -1,38 +1,38 @@
 struct Pair { a: int, b: string }
 
 fn first<T>(xs: T[]): T {
-    return xs[0];
+  return xs[0];
 }
 
 fn swap<A, B>(a: A, b: B): B {
-    print(a);
-    return b;
+  print(a);
+  return b;
 }
 
 fn map<T, U>(xs: T[], f: fn(T): U): U[] {
-    let out: U[] = [];
-    for x in xs { push(out, f(x)); }
-    return out;
+  let out: U[] = [];
+  for x in xs { push(out, f(x)); }
+  return out;
 }
 
 fn fold<T, R>(xs: T[], init: R, f: fn(R, T): R): R {
-    var acc = init;
-    for x in xs { acc = f(acc, x); }
-    return acc;
+  var acc = init;
+  for x in xs { acc = f(acc, x); }
+  return acc;
 }
 
 fn replicate<T>(x: T, n: int): T[] {
-    let out: T[] = [];
-    for _i in 0..n { push(out, x); }
-    return out;
+  let out: T[] = [];
+  for _i in 0..n { push(out, x); }
+  return out;
 }
 
 fn largest<T>(xs: T[], gt: fn(T, T): bool): T {
-    var best = xs[0];
-    for x in xs {
-        if gt(x, best) { best = x; }
-    }
-    return best;
+  var best = xs[0];
+  for x in xs {
+    if gt(x, best) { best = x; }
+  }
+  return best;
 }
 
 print(first([10, 20, 30]));

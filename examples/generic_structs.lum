@@ -3,19 +3,19 @@ struct Pair<A, B> { first: A, second: B }
 struct Stack<T> { items: T[] }
 
 fn unbox<T>(b: Box<T>): T {
-    return b.value;
+  return b.value;
 }
 
 fn push_item<T>(s: Stack<T>, x: T) {
-    push(s.items, x);
+  push(s.items, x);
 }
 
 fn top<T>(s: Stack<T>): T {
-    return s.items[len(s.items) - 1];
+  return s.items[len(s.items) - 1];
 }
 
 fn swap<A, B>(p: Pair<A, B>): Pair<B, A> {
-    return Pair { first: p.second, second: p.first };
+  return Pair { first: p.second, second: p.first };
 }
 
 let a = Box { value: 41 };

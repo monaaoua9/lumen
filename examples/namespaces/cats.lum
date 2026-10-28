@@ -1,11 +1,11 @@
 pub struct Item { name: string, legs: int }
 
 pub fn make(name: string): Item {
-    return Item { name: name, legs: 4 };
+  return Item { name: name, legs: 4 };
 }
 
 pub fn describe(i: Item): string {
-    return i.name + " has " + str(i.legs) + " legs";
+  return i.name + " has " + str(i.legs) + " legs";
 }
 
 fn helper(): int { return 1; }

@@ -35,6 +35,7 @@ node src/cli.ts disasm examples/fib.lum
 node src/cli.ts build examples/bench.lum -o bench
 node src/cli.ts repl
 node src/cli.ts explain E003
+node src/cli.ts fmt --write file.lum
 npm test
 ```
 

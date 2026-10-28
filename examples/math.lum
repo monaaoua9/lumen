@@ -1,11 +1,11 @@
 fn dist(x1: float, y1: float, x2: float, y2: float): float {
-    let dx = x2 - x1;
-    let dy = y2 - y1;
-    return sqrt(dx * dx + dy * dy);
+  let dx = x2 - x1;
+  let dy = y2 - y1;
+  return sqrt(dx * dx + dy * dy);
 }
 
 fn clamp(v: int, lo: int, hi: int): int {
-    return max(lo, min(v, hi));
+  return max(lo, min(v, hi));
 }
 
 print(dist(0.0, 0.0, 3.0, 4.0));

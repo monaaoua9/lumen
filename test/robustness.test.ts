@@ -5,6 +5,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'n
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { frontend } from '../src/pipeline.ts';
+import { format } from '../src/fmt.ts';
 
 const PIECES = [
   'fn', 'struct', 'enum', 'match', 'let', 'var', 'if', 'else', 'while', 'return', 'break', 'continue',
@@ -279,4 +280,19 @@ test('insert and remove trap out of bounds on every engine', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('fmt: re-indents by bracket depth and is idempotent', () => {
+  const messy = 'fn f(a: int): int {\n\t  let s = "{ not a block";\n\n\n\n  if a > 0 {\nreturn 1; // }\n    }\n   return 2;\n}\n';
+  const once = format(messy);
+  assert.equal(once, 'fn f(a: int): int {\n  let s = "{ not a block";\n\n  if a > 0 {\n    return 1; // }\n  }\n  return 2;\n}\n');
+  assert.equal(format(once), once);
+  assert.equal(format('/* a\n     b */\nlet x = [\n1,\n2,\n];\n'), '/* a\n     b */\nlet x = [\n  1,\n  2,\n];\n');
+});
+
+test('fmt: every shipped example is already formatted', () => {
+  const files = ['examples', 'examples/modules', 'examples/namespaces', 'examples/io'].flatMap(d =>
+    readdirSync(new URL(`../${d}/`, import.meta.url)).filter(f => f.endsWith('.lum')).map(f => `${d}/${f}`));
+  const r = cli('fmt', '--check', ...files);
+  assert.equal(r.status, 0, r.stdout);
 });

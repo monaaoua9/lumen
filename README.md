@@ -39,6 +39,10 @@ src/
   vm.ts            stack machine
   cgen.ts          AST -> C99
   runtime.ts       semantics shared by all backends (int overflow, float printing, builtins)
+  modules.ts       import resolution, bundles several files into one program
+  explain.ts       long descriptions behind `lumen explain CODE`
+  fmt.ts           whitespace formatter behind `lumen fmt`
+  repl.ts          the `lumen repl` loop
   pipeline.ts      glue
   cli.ts           the `lumen` command
 examples/  test/
@@ -160,6 +164,7 @@ node src/cli.ts emit-c examples/fib.lum -o fib.c
 node src/cli.ts build examples/bench.lum -o bench  # emit C + gcc/clang/cc
 node src/cli.ts bench examples/bench.lum           # interpreter vs VM
 node src/cli.ts repl                              # interactive; a bare expression prints its value
+node src/cli.ts fmt --write file.lum              # re-indent by bracket depth (--check for CI)
 node src/cli.ts explain E003                      # what a diagnostic code means, with a bad/good example
 npm test                         # unit tests + cross-backend parity
 npm run typecheck

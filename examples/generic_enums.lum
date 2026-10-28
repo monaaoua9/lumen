@@ -1,37 +1,37 @@
 enum Option<T> {
-    Some(T),
-    None,
+  Some(T),
+  None,
 }
 
 enum Result<T, E> {
-    Ok(T),
-    Err(E),
+  Ok(T),
+  Err(E),
 }
 
 fn first_where<T>(xs: T[], pred: fn(T): bool): Option<T> {
-    for x in xs {
-        if pred(x) { return Option.Some(x); }
-    }
-    return Option.None;
+  for x in xs {
+    if pred(x) { return Option.Some(x); }
+  }
+  return Option.None;
 }
 
 fn unwrap_or<T>(o: Option<T>, fallback: T): T {
-    match o {
-        Some(v) => { return v; }
-        None => { return fallback; }
-    }
+  match o {
+    Some(v) => { return v; }
+    None => { return fallback; }
+  }
 }
 
 fn divide(a: int, b: int): Result<int, string> {
-    if b == 0 { return Result.Err("divide by zero"); }
-    return Result.Ok(a / b);
+  if b == 0 { return Result.Err("divide by zero"); }
+  return Result.Ok(a / b);
 }
 
 fn show(r: Result<int, string>) {
-    match r {
-        Ok(v) => { print("ok " + str(v)); }
-        Err(m) => { print("error: " + m); }
-    }
+  match r {
+    Ok(v) => { print("ok " + str(v)); }
+    Err(m) => { print("error: " + m); }
+  }
 }
 
 let nums = [3, 8, 12];
