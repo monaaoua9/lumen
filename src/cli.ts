@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { readFileSync, writeFileSync } from 'node:fs';
+import { writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
 import { CompileError, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
+import type { Segment } from './diagnostics.ts';
+import { bundle } from './modules.ts';
 import { checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
 import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
@@ -41,18 +43,23 @@ function main(): number {
     return cmd && !file && cmd !== '-h' && cmd !== '--help' ? 2 : 0;
   }
 
-  const text = readFileSync(file, 'utf8');
   const name = basename(file);
+  const b = bundle(file);
+  if (b.diags.length) {
+    process.stderr.write(renderAll(new Source(b.text, name, b.segments), b.diags, color) + '\n');
+    return 1;
+  }
+  const { text, segments } = b;
 
-  if (cmd === 'check') return check(text, name);
+  if (cmd === 'check') return check(text, name, segments);
 
   let fe;
   try {
-    fe = checked(text, name, flag('-O'));
+    fe = checked(text, name, flag('-O'), segments);
   } catch (e) {
     if (e instanceof CompileError) {
       const { frontend: f } = { frontend };
-      const src = f(text, name).source;
+      const src = f(text, name, segments).source;
       process.stderr.write(renderAll(src, e.diags, color) + '\n');
       const n = e.diags.filter(d => d.severity === 'error').length;
       process.stderr.write(`\n${n} error${n === 1 ? '' : 's'}, aborting\n`);
@@ -96,8 +103,8 @@ function main(): number {
     if (e instanceof RuntimeError) {
       let msg = `runtime error: ${e.message}`;
       if (e.span) {
-        const { line, col } = fe.source.locate(e.span.start);
-        msg += `\n  --> ${name}:${line}:${col}\n   | ${fe.source.lineText(line)}`;
+        const { line, col, file: where } = fe.source.locate(e.span.start);
+        msg += `\n  --> ${where}:${line}:${col}\n   | ${fe.source.lineText(line, where)}`;
       }
       process.stderr.write(msg + '\n');
       return 1;
@@ -106,8 +113,8 @@ function main(): number {
   }
 }
 
-function check(text: string, name: string): number {
-  const fe = frontend(text, name);
+function check(text: string, name: string, segments: Segment[]): number {
+  const fe = frontend(text, name, segments);
   const ds = fe.diagnostics;
   const errors = ds.filter(d => d.severity === 'error').length;
   const warns = ds.length - errors;

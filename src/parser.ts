@@ -156,6 +156,13 @@ class Parser {
 
   statement(): Stmt {
     const t = this.cur;
+    if (t.kind === 'ident' && t.text === 'import' && this.toks[this.pos + 1]?.kind === 'string') {
+      // already resolved by the module bundler
+      this.next();
+      this.next();
+      this.eat(';');
+      return { k: 'block', span: t.span, body: [] };
+    }
     switch (t.kind) {
       case 'fn': return this.fnDecl();
       case 'impl': return this.implDecl();

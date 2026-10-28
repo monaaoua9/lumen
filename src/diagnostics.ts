@@ -13,20 +13,41 @@ export interface Diagnostic {
   hint?: string;
 }
 
+export interface Segment {
+  name: string;
+  start: number;
+  end: number;
+}
+
 export class Source {
   readonly text: string;
   readonly name: string;
+  readonly segments: Segment[];
   private starts: number[] = [0];
 
-  constructor(text: string, name = '<input>') {
+  constructor(text: string, name = '<input>', segments: Segment[] = []) {
     this.text = text;
     this.name = name;
+    this.segments = segments;
     for (let i = 0; i < text.length; i++) {
       if (text[i] === '\n') this.starts.push(i + 1);
     }
   }
 
-  locate(off: number): { line: number; col: number } {
+  // line numbers restart at 1 in every bundled file
+  locate(off: number): { line: number; col: number; file: string } {
+    const seg = this.segments.find(s => off >= s.start && off <= s.end);
+    const g = this.locateGlobal(off);
+    if (!seg) return { ...g, file: this.name };
+    return { line: g.line - this.locateGlobal(seg.start).line + 1, col: g.col, file: seg.name };
+  }
+
+  lineText(line: number, file?: string): string {
+    const seg = file ? this.segments.find(s => s.name === file) : undefined;
+    return this.lineAt(seg ? line + this.locateGlobal(seg.start).line - 1 : line);
+  }
+
+  private locateGlobal(off: number): { line: number; col: number } {
     let lo = 0;
     let hi = this.starts.length - 1;
     while (lo < hi) {
@@ -37,7 +58,7 @@ export class Source {
     return { line: lo + 1, col: off - this.starts[lo] + 1 };
   }
 
-  lineText(line: number): string {
+  private lineAt(line: number): string {
     const s = this.starts[line - 1];
     const e = this.text.indexOf('\n', s);
     return this.text.slice(s, e === -1 ? undefined : e).replace(/\r$/, '');
@@ -68,8 +89,8 @@ const RESET = '\x1b[0m';
 
 export function render(src: Source, d: Diagnostic, color = false): string {
   const c = (code: string, s: string) => (color ? code + s + RESET : s);
-  const { line, col } = src.locate(d.span.start);
-  const text = src.lineText(line);
+  const { line, col, file } = src.locate(d.span.start);
+  const text = src.lineText(line, file);
   const gutter = String(line).length;
   const pad = ' '.repeat(gutter);
 
@@ -80,7 +101,7 @@ export function render(src: Source, d: Diagnostic, color = false): string {
   const tag = d.severity === 'error' ? c(RED, `error[${d.code}]`) : c(YELLOW, `warning[${d.code}]`);
   const out = [
     `${tag}: ${d.message}`,
-    `${pad}${c(CYAN, '-->')} ${src.name}:${line}:${col}`,
+    `${pad}${c(CYAN, '-->')} ${file}:${line}:${col}`,
     `${pad} ${c(CYAN, '|')}`,
     `${c(CYAN, String(line))} ${c(CYAN, '|')} ${text}`,
     `${pad} ${c(CYAN, '|')} ${' '.repeat(col - 1)}${c(d.severity === 'error' ? RED : YELLOW, '^'.repeat(width))}`,

@@ -1,5 +1,5 @@
 import { CompileError, RuntimeError, Source } from './diagnostics.ts';
-import type { Diagnostic } from './diagnostics.ts';
+import type { Diagnostic, Segment } from './diagnostics.ts';
 import type { Program } from './ast.ts';
 import { parse } from './parser.ts';
 import { analyze } from './analyzer.ts';
@@ -20,8 +20,8 @@ export interface Frontend {
 
 // lex -> parse -> analyze. analysis is skipped when the parse already failed,
 // half-built trees only produce noise
-export function frontend(text: string, name = '<input>'): Frontend {
-  const source = new Source(text, name);
+export function frontend(text: string, name = '<input>', segments: Segment[] = []): Frontend {
+  const source = new Source(text, name, segments);
   const { program, diags } = parse(text);
   const parseFailed = diags.some(d => d.severity === 'error');
   const diagnostics = parseFailed ? diags : [...diags, ...analyze(program)];
@@ -29,8 +29,8 @@ export function frontend(text: string, name = '<input>'): Frontend {
 }
 
 // same, but throws on errors so backends never see an untyped tree
-export function checked(text: string, name = '<input>', opt = false): Frontend {
-  const fe = frontend(text, name);
+export function checked(text: string, name = '<input>', opt = false, segments: Segment[] = []): Frontend {
+  const fe = frontend(text, name, segments);
   if (!fe.ok) throw new CompileError(fe.diagnostics);
   if (opt) optimize(fe.program);
   return fe;

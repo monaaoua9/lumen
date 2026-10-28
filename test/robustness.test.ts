@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { frontend } from '../src/pipeline.ts';
 
 const PIECES = [
@@ -61,4 +63,31 @@ test('cli: run, check and exit codes', () => {
   assert.equal(cli('check', 'examples/lints.lum', '--Werror').status, 1);
   assert.equal(cli('run', 'examples/overflow.lum').status, 1);
   assert.equal(cli().status, 0);
+});
+
+test('modules: imports are bundled and errors point at the right file', () => {
+  const ok = cli('run', 'examples/modules/main.lum');
+  assert.equal(ok.status, 0);
+  assert.equal(ok.stdout.trim(), '5.0');
+
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-mod-'));
+  try {
+    writeFileSync(join(dir, 'lib.lum'), 'fn f(): int {\n  return "s";\n}\n');
+    writeFileSync(join(dir, 'main.lum'), 'import "lib.lum";\nprint(f());\n');
+    const bad = cli('check', join(dir, 'main.lum'));
+    assert.equal(bad.status, 1);
+    assert.ok(bad.stdout.includes('lib.lum:2:10'), bad.stdout);
+
+    writeFileSync(join(dir, 'gone.lum'), 'import "nope.lum";\n');
+    const missing = cli('check', join(dir, 'gone.lum'));
+    assert.equal(missing.status, 1);
+    assert.ok(missing.stderr.includes('P004'), missing.stderr);
+
+    // a cycle must not hang
+    writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
+    writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');
+    assert.equal(cli('run', join(dir, 'a.lum')).status, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });
