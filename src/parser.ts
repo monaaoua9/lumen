@@ -132,7 +132,11 @@ class Parser {
 
   type(): Type {
     let out: Elem;
-    if (this.eat('(')) {
+    if (this.cur.kind === 'ident' && this.cur.text === 'dyn' && this.peek().kind === 'ident') {
+      // `dyn Shape` is an enum the analyzer builds from the impls of the trait
+      this.next();
+      out = enumType(`${this.next().text}__dyn`);
+    } else if (this.eat('(')) {
       // parentheses tell `(fn(int): int)[]` apart from `fn(int): int[]`
       out = this.type() as Elem;
       this.expect(')');
@@ -450,8 +454,10 @@ class Parser {
       }
       this.expect(')');
       const ret: Type = this.eat(':') ? this.type() : 'void';
-      this.expect(';');
-      methods.push({ name: m.text, span: this.join(f.span, m.span), hasSelf, params, ret });
+      // a body makes it a default method, impls that do not define it get a copy
+      const body = this.at('{') ? this.block() : undefined;
+      if (!body) this.expect(';');
+      methods.push({ name: m.text, span: this.join(f.span, m.span), hasSelf, params, ret, body });
     }
     const close = this.expect('}');
     this.traits.push({ name: name.text, nameSpan: name.span, methods });

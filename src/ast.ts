@@ -134,7 +134,7 @@ export type Stmt =
 export interface TraitDecl {
   name: string;
   nameSpan: Span;
-  methods: { name: string; span: Span; hasSelf: boolean; params: Param[]; ret: Type }[];
+  methods: { name: string; span: Span; hasSelf: boolean; params: Param[]; ret: Type; body?: Stmt[] }[];
 }
 
 export interface ImplFor {

@@ -371,3 +371,23 @@ test('generic impl blocks', () => {
   assert.deepEqual(errs(S + 'let b = Box.new(1); b.nope();'), ['E019']);
   assert.deepEqual(errs(S + 'let b = Box.new(1); print(b.get(5));'), ['E004']);
 });
+
+test('traits: default methods', () => {
+  const T = 'trait Named { fn name(self): string; fn hello(self): string { return "hi " + self.name(); } } struct A { n: string } struct B { n: string } '
+    + 'impl Named for A { fn name(self): string { return self.n; } } '
+    + 'impl Named for B { fn name(self): string { return self.n; } fn hello(self): string { return "yo"; } } ';
+  assert.deepEqual(errs(T + 'print(A { n: "x" }.hello() + B { n: "y" }.hello());'), []);
+  assert.deepEqual(errs(T + 'struct C { n: string } impl Named for C { }'), ['E026']);
+  assert.deepEqual(errs('trait T { fn f(self): int { return self.nope(); } } struct S { v: int } impl T for S { }'), ['E019']);
+});
+
+test('traits: dyn (dynamic dispatch)', () => {
+  const T = 'trait Area { fn area(self): float; fn scale(self, k: float): float; } struct Sq { s: float } struct Ci { r: float } struct No { v: int } '
+    + 'impl Area for Sq { fn area(self): float { return self.s; } fn scale(self, k: float): float { return self.s * k; } } '
+    + 'impl Area for Ci { fn area(self): float { return self.r; } fn scale(self, k: float): float { return self.r * k; } } ';
+  assert.deepEqual(errs(T + 'let xs: dyn Area[] = [Area.from(Sq { s: 1.0 }), Area.from(Ci { r: 2.0 })]; print(xs[0].area() + xs[1].scale(2.0));'), []);
+  assert.deepEqual(errs(T + 'let x = Area.from(No { v: 1 });'), ['E025']);
+  assert.deepEqual(errs(T + 'let x: dyn Area = Area.from(Sq { s: 1.0 }); print(x.scale(1));'), ['E003']);
+  assert.deepEqual(errs(T + 'fn f<T: Area>(x: T): float { return x.area(); } print(f(Area.from(Sq { s: 1.0 })));'), []);
+  assert.deepEqual(errs('trait E { fn f(self); } let x: dyn E = 1;'), ['E016', 'E003']);
+});

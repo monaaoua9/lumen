@@ -1,6 +1,10 @@
 trait Shape {
     fn area(self): float;
     fn name(self): string;
+
+    fn summary(self): string {
+        return self.name() + ": " + str(self.area());
+    }
 }
 
 struct Circle { r: float }
@@ -38,3 +42,14 @@ print(describe(Circle { r: 2.0 }));
 print(describe(Rect { w: 2.0, h: 5.0 }));
 print(total_area([Rect { w: 1.0, h: 2.0 }, Rect { w: 3.0, h: 4.0 }]));
 print(biggest([Circle { r: 1.0 }, Circle { r: 3.0 }]));
+print(Circle { r: 1.0 }.summary());
+print(Rect { w: 2.0, h: 2.0 }.summary());
+
+// dynamic dispatch: a dyn Shape can hold any implementing type, even in one array
+let mixed: dyn Shape[] = [Shape.from(Circle { r: 1.0 }), Shape.from(Rect { w: 2.0, h: 3.0 })];
+var all = 0.0;
+for s in mixed {
+    all += s.area();
+    print(s.summary());
+}
+print(all);

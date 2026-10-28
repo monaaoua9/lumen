@@ -188,6 +188,7 @@ class Analyzer {
   allVars: VarSym[] = [];
   ninst = 0;
   traits = new Map<string, TraitDecl>();
+  dynTraits = new Map<string, { enumName: string; variants: { variant: string; type: Type; implType: string }[] }>();
   impls = new Set<string>(); // "Trait for <type string>"
   enumTemplates = new Map<string, EnumDecl>();
   keep = new Map<Expr, Type>(); // arguments already typed while inferring a generic's type arguments
@@ -215,6 +216,7 @@ class Analyzer {
     prog.structs = prog.structs.filter(sd => !sd.typeParams);
     for (const ed of prog.enums) if (ed.typeParams) this.enumTemplates.set(ed.name, ed);
     prog.enums = prog.enums.filter(ed => !ed.typeParams);
+    this.synthDyn(prog);
     const templateFns = new Set<unknown>();
     for (const f of prog.fns) {
       if (!f.typeParams) continue;
@@ -245,6 +247,13 @@ class Analyzer {
       const ls: Extract<Expr, { k: 'lambda' }>[] = [];
       lambdasIn(f.body, ls);
       ls.forEach(l => templateLambdas.add(l.fn));
+    }
+    for (const t of prog.traits) {
+      for (const m of t.methods) {
+        const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+        lambdasIn(m.body ?? [], ls);
+        ls.forEach(l => templateLambdas.add(l.fn));
+      }
     }
     for (const f of prog.fns) {
       if (!f.typeParams && !templateLambdas.has(f)) this.declareFn(f);
@@ -717,6 +726,21 @@ class Analyzer {
 
   // Shape.Circle(1.0): a call on `.name` is a constructor when the left side is an enum
   methodCall(e: Extract<Expr, { k: 'mcall' }>, hint?: Type): Type {
+    // Shape.from(x) wraps a value of an implementing type into `dyn Shape`
+    const dynName = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && e.name === 'from' && e.args.length === 1 ? e.obj.name : null;
+    const dt = dynName ? this.dynTraits.get(dynName) : undefined;
+    if (dt) {
+      const at = this.expr(e.args[0]);
+      this.keep.set(e.args[0], at);
+      if (at === 'error') return 'error';
+      const variant = dt.variants.find(x => x.type === at);
+      if (!variant) {
+        this.err('E025', `type ${at} does not implement trait '${dynName}'`, e.args[0].span, `add: impl ${dynName} for ${at.replace(/^[@#]/, '')} { ... }`);
+        return 'error';
+      }
+      (e.obj as Extract<Expr, { k: 'var' }>).name = dt.enumName;
+      e.name = variant.variant;
+    }
     let tm = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) ? this.enumTemplates.get(e.obj.name) : undefined;
     if (tm && this.generics.has(`${tm.name}$${e.name}`)) tm = undefined; // Option.map(...) is an associated function, not a variant
     if (tm) {
@@ -1252,6 +1276,8 @@ class Analyzer {
   }
 
   checkTraits(prog: Program) {
+    const pending: { d: FnDecl; im: object }[] = [];
+    const failed = new Set<object>();
     for (const t of prog.traits) {
       if (this.traits.has(t.name)) this.err('E006', `trait '${t.name}' is already defined`, t.nameSpan);
       else this.traits.set(t.name, t);
@@ -1272,11 +1298,24 @@ class Analyzer {
       }
       if (!ty) {
         this.err('E016', `unknown type '${im.type}'`, im.span);
+        failed.add(im);
         continue;
       }
       let ok = true;
       for (const m of tr.methods) {
-        const fn = this.fns.get(`${im.type}$${m.name}`);
+        let fn = this.fns.get(`${im.type}$${m.name}`);
+        if (!fn && m.body) {
+          const d: FnDecl = structuredClone({
+            k: 'fn' as const, span: m.span, name: `${im.type}$${m.name}`, nameSpan: m.span, ret: m.ret, body: m.body, nlocals: 0,
+            params: [...(m.hasSelf ? [{ name: 'self', span: m.span, ty }] : []), ...m.params],
+          });
+          this.registerLambdas(d);
+          this.prog.fns.push(d);
+          this.declareFn(d);
+          d.sym!.used = true;
+          pending.push({ d, im });
+          fn = d.sym;
+        }
         if (!fn) {
           this.err('E026', `'impl ${im.trait} for ${im.type}' is missing method '${m.name}'`, im.span, `add: fn ${m.name}(${m.hasSelf ? 'self' : ''}...)`);
           ok = false;
@@ -1291,7 +1330,82 @@ class Analyzer {
         }
       }
       if (ok) this.impls.add(`${im.trait} for ${ty}`);
+      else failed.add(im);
     }
+    // default methods are checked once every impl has been declared
+    for (const { d, im } of pending) {
+      if (failed.has(im)) continue;
+      const saved = this.scope;
+      this.scope = this.globals;
+      this.analyzeFn(d);
+      this.scope = saved;
+    }
+    this.dynWrappers(prog, failed);
+  }
+
+  // `dyn Trait` is a closed-world enum: one variant per impl, dispatch is a match over them
+  synthDyn(prog: Program) {
+    const typeStr = (n: string): Type => (['int', 'float', 'bool', 'string'].includes(n) ? n : prog.enums.some(e => e.name === n) ? '#' + n : '@' + n) as Type;
+    for (const t of prog.traits) {
+      const impls = prog.impls.filter(i => i.trait === t.name);
+      if (!impls.length || this.dynTraits.has(t.name)) continue;
+      const enumName = `${t.name}__dyn`;
+      const variants = impls.map(i => ({ variant: `As${i.type}`, type: typeStr(i.type), implType: i.type, span: i.span }));
+      this.dynTraits.set(t.name, { enumName, variants });
+      prog.enums.push({
+        k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan,
+        variants: variants.map(v => ({ name: v.variant, span: v.span, payload: [v.type] })),
+      });
+    }
+  }
+
+  // Shape__dyn$area(self, ...) { match self { AsCircle(x) => return Circle$area(x, ...), ... } }
+  dynWrappers(prog: Program, failed: Set<object>) {
+    for (const t of prog.traits) {
+      const dt = this.dynTraits.get(t.name);
+      if (!dt || prog.impls.some(i => i.trait === t.name && failed.has(i))) continue;
+      const selfTy = ('#' + dt.enumName) as Type;
+      const made: FnDecl[] = [];
+      for (const m of t.methods) {
+        if (!m.hasSelf) continue;
+        const sp = m.span;
+        const v = (name: string): Expr => ({ k: 'var', name, span: sp, ty: 'error' });
+        const arms = dt.variants.map(variant => {
+          const call: Expr = { k: 'call', name: `${variant.implType}$${m.name}`, nameSpan: sp, args: [v('x'), ...m.params.map(p => v(p.name))], span: sp, ty: 'error' };
+          const body: Stmt[] = m.ret === 'void' ? [{ k: 'expr', span: sp, e: call }] : [{ k: 'return', span: sp, value: call }];
+          return {
+            pats: [{ k: 'variant' as const, span: sp, name: variant.variant, idx: -1, binds: [{ name: 'x', span: sp }], tys: [], boxed: false }],
+            body, span: sp,
+          };
+        });
+        const d: FnDecl = {
+          k: 'fn', span: sp, name: `${dt.enumName}$${m.name}`, nameSpan: sp, ret: m.ret, nlocals: 0,
+          params: [{ name: 'self', span: sp, ty: selfTy }, ...m.params.map(p => ({ ...p }))],
+          body: [{ k: 'match', span: sp, scrut: v('self'), arms, tmp: -1 }],
+        };
+        prog.fns.push(d);
+        this.declareFn(d);
+        d.sym!.used = true;
+        made.push(d);
+      }
+      this.impls.add(`${t.name} for ${selfTy}`);
+      for (const d of made) {
+        const saved = this.scope;
+        this.scope = this.globals;
+        this.analyzeFn(d);
+        this.scope = saved;
+      }
+    }
+  }
+
+  registerLambdas(d: FnDecl) {
+    const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+    lambdasIn(d.body, ls);
+    ls.forEach(l => {
+      l.fn.name = `lambda$g${this.ninst++}`;
+      this.prog.fns.push(l.fn);
+      this.declareFn(l.fn);
+    });
   }
 
   genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl): Type {
@@ -1328,13 +1442,7 @@ class Analyzer {
       d.name = `${gen.name}$${this.insts.size}`;
       mapTypes(d, t => replaceVars(t, binds));
       mapTypes(d, (t, o) => this.canon(t, (o.span as Span | undefined) ?? e.span));
-      const ls: Extract<Expr, { k: 'lambda' }>[] = [];
-      lambdasIn(d.body, ls);
-      ls.forEach(l => {
-        l.fn.name = `lambda$g${this.ninst++}`;
-        this.prog.fns.push(l.fn);
-        this.declareFn(l.fn);
-      });
+      this.registerLambdas(d);
       this.prog.fns.push(d);
       this.declareFn(d);
       sym = d.sym!;
