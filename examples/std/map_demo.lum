@@ -1,7 +1,7 @@
 // the same job as wordfreq.lum with std/map.lum doing the bookkeeping
 import "std/map.lum"
 
-let counts: map.Map<int> = map.Map { keys: [], vals: [] };
+let counts: map.Map<int> = map.new();
 for w in split("a rose is a rose is a rose", " ") {
   map.set(counts, w, map.get(counts, w, 0) + 1);
 }

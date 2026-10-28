@@ -106,6 +106,8 @@ Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are 
 
 Trailing commas are accepted in parameter lists, call arguments, array literals and struct literals, and `P { x, y }` is shorthand for `P { x: x, y: y }`.
 
+A generic function whose type parameter no argument mentions takes it from the type the result is expected to have: `let m: map.Map<int> = map.new();`.
+
 Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`).
 
 Generic enums: `enum Option<T> { Some(T), None }`, written `Option<int>`. `Option.Some(7)` infers its argument, `Option.None` takes it from the expected type (`let n: Option<int> = Option.None;`, a return type, a parameter) and is `E024` when nothing says which instance is meant. Matching works as usual with the instance's variants.
@@ -142,14 +144,14 @@ Semantics worth knowing:
 ```
 import "std/map.lum"
 
-let ages: map.Map<int> = map.Map { keys: [], vals: [] };
+let ages: map.Map<int> = map.new();   // V is inferred from the annotation
 map.set(ages, "ada", 36);
 print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 ```
 
 `std/option.lum`: generic `Option<T>` (`Some`/`None`) and `Result<T>` (`Ok`/`Err(string)`) with `unwrap_or`, `is_some`, `ok_or`, `is_ok`. `std/math.lum`: `gcd`, `lcm`, `pow`, `clamp`, `is_prime` on ints.
 
-`std/map.lum`: a string-keyed `Map<V>` with `set`, `get(m, key, fallback)`, `has`, `delete` and `size`. It is two parallel arrays, so lookups are linear.
+`std/map.lum`: a string-keyed `Map<V>` with `new`, `set`, `get(m, key, fallback)`, `has`, `delete` and `size`. It is two parallel arrays, so lookups are linear.
 
 ## Static analysis
 

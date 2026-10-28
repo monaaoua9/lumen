@@ -1254,7 +1254,7 @@ class Analyzer {
         return elemOf(at);
       }
 
-      case 'call': return this.call(e);
+      case 'call': return this.call(e, want);
     }
   }
 
@@ -1640,7 +1640,7 @@ class Analyzer {
     });
   }
 
-  genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl): Type {
+  genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl, want?: Type): Type {
     const tys = e.args.map(a => this.expr(a));
     if (e.args.length !== gen.params.length) {
       this.err('E004', `'${e.name}' takes ${gen.params.length} argument${gen.params.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1651,9 +1651,11 @@ class Analyzer {
     const names = gen.typeParams!;
     const binds = new Map<string, Type>();
     gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds, this.structInst));
+    // whatever the arguments left open can still come from the type the result is expected to have
+    if (want && want !== 'error' && names.some(n => !binds.has(n))) unify(gen.ret, want, new Set(names), binds, this.structInst);
     const missing = names.find(n => !binds.has(n));
     if (missing) {
-      this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it');
+      this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it; annotating the result type (let x: T<int> = ...) is enough');
       return 'error';
     }
 
@@ -1688,11 +1690,11 @@ class Analyzer {
     return this.checkUserCall(e, sym, tys);
   }
 
-  call(e: Extract<Expr, { k: 'call' }>): Type {
+  call(e: Extract<Expr, { k: 'call' }>, want?: Type): Type {
     if (isBuiltin(e.name)) return this.builtin(e, e.name);
 
     const gen = this.generics.get(e.name);
-    if (gen && !this.scope.lookup(e.name)) return this.genericCall(e, gen);
+    if (gen && !this.scope.lookup(e.name)) return this.genericCall(e, gen, want);
 
     // a local of function type wins over a global function with the same name
     const local = e.callee ? undefined : this.scope.lookup(e.name);

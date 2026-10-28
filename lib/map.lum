@@ -38,3 +38,8 @@ pub fn delete<V>(m: Map<V>, key: string): bool {
 pub fn size<V>(m: Map<V>): int {
   return len(m.keys);
 }
+
+// the type comes from the annotation: let m: map.Map<int> = map.new();
+pub fn new<V>(): Map<V> {
+  return Map { keys: [], vals: [] };
+}

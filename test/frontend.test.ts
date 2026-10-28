@@ -431,6 +431,13 @@ test('block expressions', () => {
   assert.deepEqual(errs('print(match 1 { 1 => { let a = 2; a } _ => 0 });'), []);
 });
 
+test('generics: type parameters from the expected result type', () => {
+  const G = 'struct Box<T> { items: T[] } fn empty<T>(): Box<T> { return Box { items: [] }; } ';
+  assert.deepEqual(errs(G + 'let b: Box<int> = empty(); push(b.items, 1); print(b);'), []);
+  assert.deepEqual(errs(G + 'let b = empty(); print(b);'), ['E024']);
+  assert.deepEqual(errs(G + 'let b: Box<int> = empty(); let c: Box<string> = b; print(c);'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
