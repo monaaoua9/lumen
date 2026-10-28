@@ -126,6 +126,13 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.equal(tr.status, 0, tr.stderr);
     assert.deepEqual(tr.stdout.trim().split(/\r?\n/), ['a', 'b']);
 
+    // a trait without pub stays private to its file
+    writeFileSync(join(dir, 'hid.lum'), 'trait Hidden { fn h(self): int; }\npub struct Q { x: int }\nimpl Hidden for Q { fn h(self): int { return 1; } }\n');
+    writeFileSync(join(dir, 'use_hid.lum'), 'import "hid.lum";\nfn go<T: Hidden>(t: T): int { return t.h(); }\nprint(go(hid.Q { x: 1 }));\n');
+    const hid = cli('check', join(dir, 'use_hid.lum'));
+    assert.equal(hid.status, 1);
+    assert.ok(hid.stdout.includes('E027') && hid.stdout.includes("trait 'Hidden'"), hid.stdout);
+
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
     writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');

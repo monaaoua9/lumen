@@ -141,6 +141,7 @@ export type Stmt =
 
 export interface TraitDecl {
   name: string;
+  pub?: boolean;
   nameSpan: Span;
   methods: { name: string; span: Span; hasSelf: boolean; params: Param[]; ret: Type; body?: Stmt[] }[];
 }

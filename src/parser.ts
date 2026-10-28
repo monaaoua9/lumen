@@ -275,7 +275,10 @@ class Parser {
         this.next();
         const isTrait = this.cur.kind === 'trait';
         const d = this.statement();
-        if (isTrait) return d;
+        if (isTrait) {
+          this.traits[this.traits.length - 1].pub = true;
+          return d;
+        }
         if (d.k === 'fn' || d.k === 'struct' || d.k === 'enum') d.pub = true;
         else this.diags.push({ severity: 'error', code: 'P005', message: "'pub' applies to fn, struct and enum declarations", span: t.span });
         return d;

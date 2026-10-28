@@ -1433,6 +1433,7 @@ class Analyzer {
       for (const [param, list] of Object.entries(f.bounds ?? {})) {
         for (const tr of list) {
           if (!this.traits.has(tr)) this.err('E025', `unknown trait '${tr}' (bound of '${param}' in '${f.name}')`, f.nameSpan, closestHint(tr, [...this.traits.keys()]));
+          else this.access('trait', tr, this.traits.get(tr), f.nameSpan);
         }
       }
     }
@@ -1443,6 +1444,7 @@ class Analyzer {
         this.err('E025', `unknown trait '${im.trait}'`, im.span, closestHint(im.trait, [...this.traits.keys()]));
         continue;
       }
+      this.access('trait', im.trait, tr, im.span);
       if (!ty) {
         this.err('E016', `unknown type '${im.type}'`, im.span);
         failed.add(im);
@@ -1501,7 +1503,7 @@ class Analyzer {
       this.dynTraits.set(t.name, { enumName, variants });
       this.dynByEnum.set(enumName, { enumName, variants });
       prog.enums.push({
-        k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan, pub: true, // traits are not access-checked
+        k: 'enum', span: t.nameSpan, name: enumName, nameSpan: t.nameSpan, pub: t.pub,
         variants: variants.map(v => ({ name: v.variant, span: v.span, payload: [v.type] })),
       });
     }
