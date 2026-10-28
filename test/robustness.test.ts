@@ -173,6 +173,8 @@ test('string builtins trap the same way on every engine', () => {
     ['print(split("abc", ""));', 'empty separator'],
     ['print(byte("abc", 3));', 'byte index out of range'],
     ['print(chr(0));', 'chr expects'],
+    ['print(replace("abc", "", "x"));', 'replace of an empty string'],
+    ['print(repeat("a", -1));', 'repeat count is negative'],
   ];
   const dir = mkdtempSync(join(tmpdir(), 'lumen-str-'));
   try {

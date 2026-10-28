@@ -1295,7 +1295,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error', upper: 'string', lower: 'string', replace: 'string', starts_with: 'bool', ends_with: 'bool', repeat: 'string' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1395,6 +1395,18 @@ class Analyzer {
         if (!isNumeric(t0)) { bad('expects int or float'); return 'error'; }
         if (t1 !== t0) { this.mismatch(t0, t1, e.args[1].span, `in argument 2 of '${name}'`); return t0; }
         return t0;
+      case 'upper':
+      case 'lower':
+      case 'replace':
+      case 'starts_with':
+      case 'ends_with':
+      case 'repeat': {
+        const want: Type[] = name === 'repeat' ? ['string', 'int'] : name === 'upper' || name === 'lower' ? ['string'] : name === 'replace' ? ['string', 'string', 'string'] : ['string', 'string'];
+        want.forEach((w, i) => {
+          if (tys[i] !== 'error' && tys[i] !== w) this.mismatch(w, tys[i], e.args[i].span, `in argument ${i + 1} of '${name}'`);
+        });
+        return ret;
+      }
       case 'insert':
         if (t0 === 'error') return ret;
         if (!isArray(t0)) { bad('expects an array'); return ret; }

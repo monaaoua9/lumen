@@ -328,6 +328,47 @@ static lm_arr *lm_slice(lm_arr *a, long long start, long long n) {
   memcpy(r->d, a->d + start, sizeof(lm_val) * (size_t)n);
   return r;
 }
+static const char *lm_upper(const char *s) {
+  size_t n = strlen(s);
+  char *r = (char *)lm_alloc(n + 1, 1);
+  for (size_t i = 0; i <= n; i++) r[i] = (s[i] >= 'a' && s[i] <= 'z') ? (char)(s[i] - 32) : s[i];
+  return r;
+}
+static const char *lm_lower(const char *s) {
+  size_t n = strlen(s);
+  char *r = (char *)lm_alloc(n + 1, 1);
+  for (size_t i = 0; i <= n; i++) r[i] = (s[i] >= 'A' && s[i] <= 'Z') ? (char)(s[i] + 32) : s[i];
+  return r;
+}
+static bool lm_starts(const char *s, const char *p) { return strncmp(s, p, strlen(p)) == 0; }
+static bool lm_ends(const char *s, const char *p) {
+  size_t a = strlen(s), b = strlen(p);
+  return b <= a && memcmp(s + a - b, p, b) == 0;
+}
+static const char *lm_repeat(const char *s, long long n) {
+  if (n < 0) lm_die("repeat count is negative");
+  size_t k = strlen(s);
+  char *r = (char *)lm_alloc(k * (size_t)n + 1, 1);
+  for (long long i = 0; i < n; i++) memcpy(r + k * (size_t)i, s, k);
+  r[k * (size_t)n] = 0;
+  return r;
+}
+static const char *lm_replace(const char *s, const char *from, const char *to) {
+  size_t fl = strlen(from), tl = strlen(to), count = 0;
+  if (fl == 0) lm_die("replace of an empty string");
+  for (const char *p = s; (p = strstr(p, from)); p += fl) count++;
+  char *r = (char *)lm_alloc(strlen(s) + count * tl - count * fl + 1, 1);
+  char *w = r;
+  for (;;) {
+    const char *p = strstr(s, from);
+    if (!p) break;
+    memcpy(w, s, (size_t)(p - s)); w += p - s;
+    memcpy(w, to, tl); w += tl;
+    s = p + fl;
+  }
+  strcpy(w, s);
+  return r;
+}
 static void lm_exit(long long code) {
   if (code < 0 || code > 255) lm_die("exit code must be 0..255");
   fflush(stdout);
@@ -706,6 +747,12 @@ class Gen {
         case 'ceil': text = `ceil(${a})`; break;
         case 'insert': text = `lm_arr_insert(${a}, ${args[1]}, lm_v${slot(elemOf(aty as ArrayType))}(${args[2]}))`; break;
         case 'remove': text = fromSlot(e.ty, `lm_arr_remove(${a}, ${args[1]}).${slot(e.ty)}`); break;
+        case 'upper': text = `lm_upper(${a})`; break;
+        case 'lower': text = `lm_lower(${a})`; break;
+        case 'replace': text = `lm_replace(${a}, ${args[1]}, ${args[2]})`; break;
+        case 'starts_with': text = `lm_starts(${a}, ${args[1]})`; break;
+        case 'ends_with': text = `lm_ends(${a}, ${args[1]})`; break;
+        case 'repeat': text = `lm_repeat(${a}, ${args[1]})`; break;
         case 'exit': text = `lm_exit(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;

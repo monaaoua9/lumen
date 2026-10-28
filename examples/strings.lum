@@ -35,3 +35,10 @@ print("abc" <= "abc");
 // join undoes split, trim drops ascii whitespace at both ends
 print(join(split(" a, b ,c ", ","), "|"));
 print("[" + trim("  padded \n") + "]");
+
+// ascii case, search and rebuild helpers
+print(upper("Lumen é") + lower("ABC") + repeat("ab", 3));
+print(replace("a-b-c", "-", "+") + replace("xx", "x", "yy") + replace("abc", "z", "?"));
+print(starts_with("lumen", "lu"));
+print(ends_with("lumen", "men") && !ends_with("n", "men"));
+print(starts_with("a", "") && repeat("z", 0) == "");

@@ -21,7 +21,7 @@ fn fold<T, R>(xs: T[], init: R, f: fn(R, T): R): R {
     return acc;
 }
 
-fn repeat<T>(x: T, n: int): T[] {
+fn replicate<T>(x: T, n: int): T[] {
     let out: T[] = [];
     for _i in 0..n { push(out, x); }
     return out;
@@ -44,7 +44,7 @@ let k = 5;
 print(map([1, 2, 3], fn(x: int): int { return x + k; }));
 print(fold([1, 2, 3, 4], 0, fn(acc: int, x: int): int { return acc + x; }));
 print(fold(["a", "b", "c"], "", fn(acc: string, x: string): string { return acc + x; }));
-print(repeat("ab", 3));
-print(repeat(1.5, 2));
+print(replicate("ab", 3));
+print(replicate(1.5, 2));
 print(largest([3, 9, 4], fn(a: int, b: int): bool { return a > b; }));
 print(largest([2.5, 0.5], fn(a: float, b: float): bool { return a > b; }));

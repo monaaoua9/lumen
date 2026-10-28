@@ -125,6 +125,12 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'abs': return Math.abs(a as number);
     case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
     case 'max': return (args[1] as number) > (a as number) ? args[1] : a;
+    case 'upper': return upperOf(a as string);
+    case 'lower': return lowerOf(a as string);
+    case 'replace': return replaceOf(a as string, args[1] as string, args[2] as string, span);
+    case 'starts_with': return (a as string).startsWith(args[1] as string);
+    case 'ends_with': return (a as string).endsWith(args[1] as string);
+    case 'repeat': return repeatOf(a as string, args[1] as number, span);
     case 'insert': {
       const arr = a as Value[];
       const at = args[1] as number;
@@ -166,6 +172,20 @@ function stdinLines(): string[] {
     pending = pending.map(l => l.replace(/\r$/, '')).reverse();
   }
   return pending;
+}
+
+// ascii only, other letters pass through untouched
+export const upperOf = (s: string) => s.replace(/[a-z]+/g, m => m.toUpperCase());
+export const lowerOf = (s: string) => s.replace(/[A-Z]+/g, m => m.toLowerCase());
+
+export function replaceOf(s: string, from: string, to: string, span?: Span): string {
+  if (from === '') throw new RuntimeError('replace of an empty string', span);
+  return s.split(from).join(to);
+}
+
+export function repeatOf(s: string, n: number, span?: Span): string {
+  if (n < 0) throw new RuntimeError('repeat count is negative', span);
+  return s.repeat(n);
 }
 
 export function sortArr(a: Value[]) {

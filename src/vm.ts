@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, byteAt, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
+import { MAX_DEPTH, byteAt, lowerOf, repeatOf, replaceOf, upperOf, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -155,6 +155,12 @@ export function run(m: Module, io: IO) {
           break;
         }
         case Op.REMOVE: sp--; stack[sp - 1] = (stack[sp - 1] as Value[]).splice(checkIndex(stack[sp - 1] as Value[], num(sp)), 1)[0]; break;
+        case Op.UPPER: stack[sp - 1] = upperOf(stack[sp - 1] as string); break;
+        case Op.LOWER: stack[sp - 1] = lowerOf(stack[sp - 1] as string); break;
+        case Op.REPLACE: sp -= 2; stack[sp - 1] = replaceOf(stack[sp - 1] as string, stack[sp] as string, stack[sp + 1] as string); break;
+        case Op.STARTS: sp--; stack[sp - 1] = (stack[sp - 1] as string).startsWith(stack[sp] as string); break;
+        case Op.ENDS: sp--; stack[sp - 1] = (stack[sp - 1] as string).endsWith(stack[sp] as string); break;
+        case Op.REPEAT: sp--; stack[sp - 1] = repeatOf(stack[sp - 1] as string, num(sp)); break;
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;
