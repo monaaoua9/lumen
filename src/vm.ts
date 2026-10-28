@@ -37,6 +37,18 @@ export function run(m: Module, io: IO) {
         case Op.LOADL: stack[sp++] = stack[bp + code[pc++]]; break;
         case Op.STOREL: stack[bp + code[pc++]] = stack[--sp]; break;
         case Op.ADDLI: { const r = num(bp + code[pc]) + code[pc + 1]; pc += 2; if (!Number.isSafeInteger(r)) checkInt(r); stack[sp++] = r; break; }
+        case Op.JFLTLI: if (!(num(bp + code[pc]) < code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFLELI: if (!(num(bp + code[pc]) <= code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFGTLI: if (!(num(bp + code[pc]) > code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFGELI: if (!(num(bp + code[pc]) >= code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFEQLI: if (!(num(bp + code[pc]) === code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFNELI: if (!(num(bp + code[pc]) !== code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFLTGI: if (!((globals[code[pc]] as number) < code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFLEGI: if (!((globals[code[pc]] as number) <= code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFGTGI: if (!((globals[code[pc]] as number) > code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFGEGI: if (!((globals[code[pc]] as number) >= code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFEQGI: if (!((globals[code[pc]] as number) === code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
+        case Op.JFNEGI: if (!((globals[code[pc]] as number) !== code[pc + 1])) pc = code[pc + 2]; else pc += 3; break;
         case Op.INCL: { const r = num(bp + code[pc]) + code[pc + 1]; if (!Number.isSafeInteger(r)) checkInt(r); stack[bp + code[pc]] = r; pc += 2; break; }
         case Op.INCG: { const r = (globals[code[pc]] as number) + code[pc + 1]; if (!Number.isSafeInteger(r)) checkInt(r); globals[code[pc]] = r; pc += 2; break; }
         case Op.ADDGI: { const r = (globals[code[pc]] as number) + code[pc + 1]; pc += 2; if (!Number.isSafeInteger(r)) checkInt(r); stack[sp++] = r; break; }

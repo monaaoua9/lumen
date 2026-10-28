@@ -42,6 +42,14 @@ class FnCompiler {
 
   // evaluates a condition, returns the jump to patch for "condition is false"
   condJump(e: Expr): number {
+    // int variable against a literal: one instruction, no operand pushes
+    if (e.k === 'binary' && FUSED[e.op] !== undefined && e.l.k === 'var' && e.l.ty === 'int' && e.l.sym && e.r.k === 'int') {
+      this.span = e.span;
+      const sc = e.l.sym.where === 'global' ? 'G' : 'L';
+      const op = ({ '<': 'LT', '<=': 'LE', '>': 'GT', '>=': 'GE', '==': 'EQ', '!=': 'NE' } as Record<string, string>)[e.op];
+      this.emit((Op as unknown as Record<string, number>)[`JF${op}${sc}I`], e.l.sym.slot, e.r.value, -1);
+      return this.code.length - 1;
+    }
     if (e.k === 'binary' && FUSED[e.op] !== undefined && !strOrder(e)) {
       this.expr(e.l);
       this.expr(e.r);
