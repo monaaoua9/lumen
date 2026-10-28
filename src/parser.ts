@@ -1,4 +1,4 @@
-import type { Diagnostic, Span } from './diagnostics.ts';
+import type { Diagnostic, Segment, Span } from './diagnostics.ts';
 import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
@@ -51,9 +51,16 @@ class Parser {
   noStruct = false; // `if x {` must not parse as a struct literal
   depth = 0; // block nesting, fn is only legal at 0
 
-  constructor(toks: Token[], diags: Diagnostic[]) {
+  // top-level names per file, only filled when several files are bundled
+  segments: Segment[];
+  declared = new Map<string, Map<string, string>>(); // file -> name -> fn | struct | enum
+  clash = new Set<string>(); // names declared in more than one file
+
+  constructor(toks: Token[], diags: Diagnostic[], segments: Segment[] = []) {
     this.toks = toks;
     this.diags = diags;
+    this.segments = segments;
+    if (segments.length > 1) this.scanDecls();
     // enums may be used before they are declared, so find their names up front
     for (let i = 0; i < toks.length - 1; i++) {
       if (toks[i].kind === 'enum' && toks[i + 1].kind === 'ident') this.enumNames.add(toks[i + 1].text);
@@ -61,6 +68,46 @@ class Parser {
         this.modules.add(String(toks[i + 1].value).replace(/^.*[\\/]/, '').replace(/\.lum$/, ''));
       }
     }
+  }
+
+  scanDecls() {
+    const owners = new Map<string, number>();
+    let depth = 0;
+    for (let i = 0; i < this.toks.length - 1; i++) {
+      const t = this.toks[i];
+      if (t.kind === '{') depth++;
+      else if (t.kind === '}') depth--;
+      else if (depth === 0 && (t.kind === 'fn' || t.kind === 'struct' || t.kind === 'enum') && this.toks[i + 1].kind === 'ident') {
+        const file = this.fileOf(t);
+        const name = this.toks[i + 1].text;
+        if (!this.declared.has(file)) this.declared.set(file, new Map());
+        if (!this.declared.get(file)!.has(name)) owners.set(name, (owners.get(name) ?? 0) + 1);
+        this.declared.get(file)!.set(name, t.kind);
+      }
+    }
+    for (const [name, n] of owners) if (n > 1) this.clash.add(name);
+  }
+
+  fileOf(t: Token): string {
+    return this.segments.find(s => t.span.start >= s.start && t.span.start <= s.end)?.name ?? '';
+  }
+
+  // two files may declare the same top-level name: the internal name then carries the module, `geometry$dist`
+  modName(file: string): string {
+    return file.replace(/\.lum$/, '').replace(/[^A-Za-z0-9_]/g, '_');
+  }
+
+  // the name a reference or declaration in the current file means
+  rn(t: Token): Token {
+    if (!this.clash.has(t.text)) return t;
+    const file = this.fileOf(t);
+    if (this.declared.get(file)?.has(t.text)) return { ...t, text: `${this.modName(file)}$${t.text}` };
+    this.diags.push({ severity: 'error', code: 'P006', message: `'${t.text}' is declared in several modules, write module.${t.text}`, span: t.span });
+    return t;
+  }
+
+  qualify(module: string, item: Token): Token {
+    return this.clash.has(item.text) ? { ...item, text: `${this.modName(module + '.lum')}$${item.text}` } : item;
   }
 
   get cur() { return this.toks[this.pos]; }
@@ -158,8 +205,11 @@ class Parser {
       if (this.modules.has(t.text) && this.at('.')) {
         this.next();
         const item = this.expect('ident', 'a type name');
-        this.qualified.push({ module: t.text, name: item.text, span: this.join(t.span, item.span) });
-        t = item;
+        const q = this.qualify(t.text, item);
+        this.qualified.push({ module: t.text, name: q.text, span: this.join(t.span, item.span) });
+        t = q;
+      } else {
+        t = this.rn(t);
       }
       // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
       out = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
@@ -299,7 +349,7 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'enums can only be declared at the top level', span: kw.span });
     }
-    const name = this.expect('ident', 'an enum name');
+    const name = this.rn(this.expect('ident', 'an enum name'));
     let typeParams: string[] | undefined;
     if (this.eat('<')) {
       typeParams = [];
@@ -421,7 +471,7 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'structs can only be declared at the top level', span: kw.span });
     }
-    const name = this.expect('ident', 'a struct name');
+    const name = this.rn(this.expect('ident', 'a struct name'));
     let typeParams: string[] | undefined;
     if (this.eat('<')) {
       typeParams = [];
@@ -440,7 +490,7 @@ class Parser {
     if (fields.length === 0) {
       this.diags.push({ severity: 'error', code: 'P003', message: `struct '${name.text}' needs at least one field`, span: name.span });
     }
-    const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields, typeParams };
+    const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields, typeParams, shown: name.text.includes('$') ? name.text.split('$').pop() : undefined };
     this.structs.push(decl);
     return decl;
   }
@@ -512,6 +562,7 @@ class Parser {
       trait = name;
       name = this.expect('ident', 'a type name');
     }
+    name = this.rn(name);
     let owner = name.text;
     let ownerTy: Type | undefined;
     if (this.eat('<')) {
@@ -538,7 +589,7 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
     }
-    const name = this.expect('ident', 'a function name');
+    const name = owner ? this.expect('ident', 'a function name') : this.rn(this.expect('ident', 'a function name'));
     let typeParams: string[] | undefined;
     let bounds: Record<string, string[]> | undefined;
     if (!owner && this.eat('<')) {
@@ -748,8 +799,9 @@ class Parser {
           // module.item: the qualifier is dropped here and checked by the analyzer
           this.next();
           const item = this.next();
-          this.qualified.push({ module: t.text, name: item.text, span: this.join(t.span, item.span) });
-          return this.identExpr(item);
+          const q = this.qualify(t.text, item);
+          this.qualified.push({ module: t.text, name: q.text, span: this.join(t.span, item.span) });
+          return this.identExpr(q, true);
         }
         return this.identExpr(t);
       }
@@ -759,7 +811,12 @@ class Parser {
     this.fail(`expected an expression, found ${found}`, t.span);
   }
 
-  identExpr(t: Token): Expr {
+  identExpr(t: Token, qualified = false): Expr {
+    if (!qualified && this.clash.has(t.text)) {
+      const kind = this.declared.get(this.fileOf(t))?.get(t.text);
+      const typePath = this.at('.') && (kind === 'enum' || kind === 'struct');
+      if (this.at('(') || (this.at('{') && !this.noStruct) || typePath) t = this.rn(t);
+    }
     if (this.at('{') && !this.noStruct) return this.structLit(t);
     if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
     this.next();
@@ -772,9 +829,9 @@ class Parser {
   }
 }
 
-export function parse(src: string): { program: Program; diags: Diagnostic[] } {
+export function parse(src: string, segments: Segment[] = []): { program: Program; diags: Diagnostic[] } {
   const { tokens, diags } = lex(src);
-  const p = new Parser(tokens, diags);
+  const p = new Parser(tokens, diags, segments);
   const program = p.program();
   return { program, diags };
 }

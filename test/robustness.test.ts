@@ -97,6 +97,18 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.ok(q.stdout.includes("'shown' is declared in priv.lum, not in module 'lib'"), q.stdout);
     assert.ok(q.stdout.includes("module 'priv' has no item 'nope'"), q.stdout);
 
+    // the same name in two modules is fine as long as uses are qualified or local
+    writeFileSync(join(dir, 'm1.lum'), 'pub fn f(): int { return 1; }\nfn g(): int { return f(); }\npub fn h(): int { return g(); }\n');
+    writeFileSync(join(dir, 'm2.lum'), 'pub fn f(): int { return 2; }\nfn g(): int { return f(); }\npub fn h(): int { return g(); }\n');
+    writeFileSync(join(dir, 'ns_ok.lum'), 'import "m1.lum";\nimport "m2.lum";\nprint(m1.f() * 10 + m2.f());\nprint(m1.h() * 10 + m2.h());\n');
+    const ns = cli('run', join(dir, 'ns_ok.lum'));
+    assert.equal(ns.status, 0, ns.stderr);
+    assert.deepEqual(ns.stdout.trim().split(/\r?\n/), ['12', '12']);
+    writeFileSync(join(dir, 'ns_bad.lum'), 'import "m1.lum";\nimport "m2.lum";\nprint(f());\n');
+    const amb = cli('check', join(dir, 'ns_bad.lum'));
+    assert.equal(amb.status, 1);
+    assert.ok(amb.stdout.includes('P006') || amb.stderr.includes('P006'), amb.stdout + amb.stderr);
+
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
     writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');

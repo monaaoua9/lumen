@@ -22,7 +22,7 @@ export interface Frontend {
 // half-built trees only produce noise
 export function frontend(text: string, name = '<input>', segments: Segment[] = []): Frontend {
   const source = new Source(text, name, segments);
-  const { program, diags } = parse(text);
+  const { program, diags } = parse(text, segments);
   const parseFailed = diags.some(d => d.severity === 'error');
   const diagnostics = parseFailed ? diags : [...diags, ...analyze(program, segments)];
   return { source, program, diagnostics, ok: !diagnostics.some(d => d.severity === 'error') };

@@ -376,7 +376,7 @@ class Analyzer {
     this.structInst.set(inst, { tmpl: name, args });
     const map = new Map<string, Type>(tmpl.typeParams!.map((p, i) => [p, args[i]]));
     const decl: StructDecl = {
-      k: 'struct', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, shown: name, pub: tmpl.pub,
+      k: 'struct', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, shown: name.split('$').pop(), pub: tmpl.pub,
       fields: tmpl.fields.map(f => ({ name: f.name, span: f.span, ty: this.canon(replaceVars(f.ty, map), f.span) as Type })),
     };
     this.structs.set(inst, decl);

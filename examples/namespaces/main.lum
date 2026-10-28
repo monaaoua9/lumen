@@ -1,0 +1,10 @@
+import "cats.lum";
+import "birds.lum";
+
+let c = cats.make("tom");
+let b = birds.make("tweety");
+print(cats.describe(c));
+print(birds.describe(b));
+print(cats.first() + birds.first());
+let items: cats.Item[] = [c];
+print(items);

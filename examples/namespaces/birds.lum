@@ -1,0 +1,12 @@
+pub struct Item { name: string, wings: int }
+
+pub fn make(name: string): Item {
+    return Item { name: name, wings: 2 };
+}
+
+pub fn describe(i: Item): string {
+    return i.name + " has " + str(i.wings) + " wings";
+}
+
+fn helper(): int { return 2; }
+pub fn first(): int { return helper(); }
