@@ -1,6 +1,6 @@
 import { RuntimeError } from './diagnostics.ts';
 import type { Expr, FnDecl, Program, Stmt } from './ast.ts';
-import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod } from './runtime.ts';
+import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, intDiv, intMod, registerStructs } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const NORMAL = 0;
@@ -24,6 +24,7 @@ export class Interpreter {
   }
 
   run(prog: Program) {
+    registerStructs(prog.structs.map(s => ({ name: s.name, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })));
     const main: Frame = { locals: new Array(prog.nlocals).fill(null), ret: null };
     try {
       this.exec(prog.body, main);
@@ -43,7 +44,9 @@ export class Interpreter {
 
   stmt(s: Stmt, f: Frame): number {
     switch (s.k) {
-      case 'fn': return NORMAL;
+      case 'fn':
+      case 'struct':
+        return NORMAL;
 
       case 'let':
       case 'assign': {
@@ -51,6 +54,12 @@ export class Interpreter {
         const sym = s.sym!;
         if (sym.where === 'global') this.globals[sym.slot] = v;
         else f.locals[sym.slot] = v;
+        return NORMAL;
+      }
+
+      case 'setfield': {
+        const obj = this.eval(s.obj, f) as Value[];
+        obj[s.idx] = this.eval(s.value, f);
         return NORMAL;
       }
 
@@ -129,6 +138,15 @@ export class Interpreter {
       }
 
       case 'array': return e.elems.map(x => this.eval(x, f));
+
+      case 'field': return (this.eval(e.obj, f) as Value[])[e.idx];
+
+      case 'structlit': {
+        // fields run in the order written, but live in declaration order
+        const out: Value[] = new Array(e.fields.length);
+        for (const fi of e.fields) out[fi.idx] = this.eval(fi.value, f);
+        return out;
+      }
 
       case 'index': {
         const arr = this.eval(e.arr, f) as Value[];

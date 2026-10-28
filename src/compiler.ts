@@ -1,7 +1,8 @@
 import type { Span } from './diagnostics.ts';
 import type { Expr, Program, Stmt } from './ast.ts';
-import { Op, TYPE_TAGS } from './bytecode.ts';
+import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
+import type { Type } from './types.ts';
 import type { Value } from './runtime.ts';
 
 class FnCompiler {
@@ -11,10 +12,19 @@ class FnCompiler {
   span: Span | undefined;
   consts: Value[];
   pool: Map<string, number>;
+  types: Type[];
 
-  constructor(consts: Value[], pool: Map<string, number>) {
+  constructor(consts: Value[], pool: Map<string, number>, types: Type[]) {
     this.consts = consts;
     this.pool = pool;
+    this.types = types;
+  }
+
+  typeIdx(t: Type): number {
+    const i = this.types.indexOf(t);
+    if (i >= 0) return i;
+    this.types.push(t);
+    return this.types.length - 1;
   }
 
   emit(op: number, ...args: number[]) {
@@ -31,7 +41,7 @@ class FnCompiler {
     this.code[at] = this.code.length;
   }
 
-  konst(v: Value) {
+  poolIdx(v: Value): number {
     const key = typeof v + ':' + String(v);
     let idx = this.pool.get(key);
     if (idx === undefined) {
@@ -39,7 +49,11 @@ class FnCompiler {
       this.consts.push(v);
       this.pool.set(key, idx);
     }
-    this.emit(Op.CONST, idx);
+    return idx;
+  }
+
+  konst(v: Value) {
+    this.emit(Op.CONST, this.poolIdx(v));
   }
 
   block(body: Stmt[]) {
@@ -49,7 +63,9 @@ class FnCompiler {
   stmt(s: Stmt) {
     this.span = s.span;
     switch (s.k) {
-      case 'fn': return;
+      case 'fn':
+      case 'struct':
+        return;
 
       case 'let':
       case 'assign': {
@@ -59,6 +75,13 @@ class FnCompiler {
         this.emit(sym.where === 'global' ? Op.STOREG : Op.STOREL, sym.slot);
         return;
       }
+
+      case 'setfield':
+        this.expr(s.obj);
+        this.expr(s.value);
+        this.span = s.span;
+        this.emit(Op.SETF, s.idx);
+        return;
 
       case 'setindex':
         this.expr(s.arr);
@@ -169,6 +192,24 @@ class FnCompiler {
         this.emit(Op.NEWARR, e.elems.length);
         return;
 
+      case 'field':
+        this.expr(e.obj);
+        this.span = e.span;
+        this.emit(Op.GETF, e.idx);
+        return;
+
+      case 'structlit': {
+        e.fields.forEach(f => this.expr(f.value));
+        this.span = e.span;
+        this.emit(Op.NEWARR, e.fields.length);
+        // values were pushed in source order, put them in declaration order
+        if (e.fields.some((f, i) => f.idx !== i)) {
+          const perm = e.fields.map(f => f.idx);
+          this.emit(Op.REORDER, this.poolIdx(perm));
+        }
+        return;
+      }
+
       case 'index':
         this.expr(e.arr);
         this.expr(e.idx);
@@ -185,8 +226,8 @@ class FnCompiler {
         }
         const argTy = e.args[0].ty;
         switch (e.builtin) {
-          case 'print': this.emit(Op.PRINT, TYPE_TAGS.indexOf(argTy)); break;
-          case 'str': this.emit(Op.STR, TYPE_TAGS.indexOf(argTy)); break;
+          case 'print': this.emit(Op.PRINT, this.typeIdx(argTy)); break;
+          case 'str': this.emit(Op.STR, this.typeIdx(argTy)); break;
           case 'int': if (argTy === 'float') this.emit(Op.F2I); break;
           case 'len': this.emit(Op.LEN); break;
           case 'push': this.emit(Op.PUSHA); break;
@@ -219,10 +260,11 @@ class FnCompiler {
 export function compile(prog: Program): Module {
   const consts: Value[] = [];
   const pool = new Map<string, number>();
+  const types: Type[] = [];
   const fns: Proto[] = [];
 
   const build = (name: string, arity: number, nlocals: number, returns: boolean, body: Stmt[], tail: number): Proto => {
-    const c = new FnCompiler(consts, pool);
+    const c = new FnCompiler(consts, pool, types);
     c.block(body);
     c.span = undefined;
     c.emit(tail);
@@ -235,5 +277,6 @@ export function compile(prog: Program): Module {
   }
 
   const main = build('<main>', 0, prog.nlocals, false, prog.body, Op.HALT);
-  return { consts, fns, main, nglobals: prog.nglobals };
+  const structs = prog.structs.map(d => ({ name: d.name, fields: d.fields.map(f => ({ name: f.name, ty: f.ty })) }));
+  return { consts, types, structs, fns, main, nglobals: prog.nglobals };
 }

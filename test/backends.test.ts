@@ -160,3 +160,34 @@ test('arrays: evaluation order with side effects', () => {
   `;
   assert.equal(allEngines(src), '1\n2\n3\n0\n7\n1\n2\n5\n');
 });
+
+test('structs: semantics agree across engines', () => {
+  const src = `
+    struct P { x: int, y: int }
+    struct L { a: P, tag: string }
+    let p = P { x: 1, y: 2 };
+    let q = p;
+    q.x = 10;
+    print(p.x);
+    let l = L { a: p, tag: "t" };
+    l.a.y += 5;
+    print(p);
+    print(l);
+    let ps = [P { x: 1, y: 1 }, P { x: 2, y: 2 }];
+    ps[1].x *= 7;
+    push(ps, p);
+    print(ps);
+    print(pop(ps).x + len(ps));
+  `;
+  assert.equal(allEngines(src), '10\nP { x: 10, y: 7 }\nL { a: P { x: 10, y: 7 }, tag: "t" }\n[P { x: 1, y: 1 }, P { x: 14, y: 2 }, P { x: 10, y: 7 }]\n12\n');
+});
+
+test('structs: literal fields run in written order', () => {
+  const src = `
+    struct P { x: int, y: int }
+    fn t(n: int): int { print(n); return n; }
+    let p = P { y: t(1), x: t(2) };
+    print(p);
+  `;
+  assert.equal(allEngines(src), '1\n2\nP { x: 2, y: 1 }\n');
+});

@@ -40,7 +40,30 @@ export type Expr =
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
+  | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
+  | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[] })
   | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName });
+
+export interface FieldInit {
+  name: string;
+  nameSpan: Span;
+  value: Expr;
+  idx: number; // position in the declaration, filled by the analyzer
+}
+
+export interface StructField {
+  name: string;
+  ty: Type;
+  span: Span;
+}
+
+export interface StructDecl {
+  k: 'struct';
+  span: Span;
+  name: string;
+  nameSpan: Span;
+  fields: StructField[];
+}
 
 export interface Param {
   name: string;
@@ -64,6 +87,7 @@ export interface FnDecl {
 export type Stmt =
   | { k: 'let'; span: Span; name: string; nameSpan: Span; mutable: boolean; annot?: Type; annotSpan?: Span; init: Expr; sym?: VarSym }
   | { k: 'assign'; span: Span; name: string; nameSpan: Span; value: Expr; sym?: VarSym }
+  | { k: 'setfield'; span: Span; obj: Expr; name: string; nameSpan: Span; idx: number; value: Expr }
   | { k: 'setindex'; span: Span; arr: Expr; idx: Expr; value: Expr }
   | { k: 'expr'; span: Span; e: Expr }
   | { k: 'if'; span: Span; cond: Expr; then: Stmt[]; els: Stmt[] | null }
@@ -72,11 +96,13 @@ export type Stmt =
   | { k: 'break'; span: Span }
   | { k: 'continue'; span: Span }
   | { k: 'block'; span: Span; body: Stmt[] }
+  | StructDecl
   | FnDecl;
 
 export interface Program {
   body: Stmt[];
   fns: FnDecl[];
+  structs: StructDecl[];
   nlocals: number;
   nglobals: number;
 }

@@ -1,10 +1,17 @@
 export type Scalar = 'int' | 'float' | 'bool' | 'string';
-export type ArrayType = 'int[]' | 'float[]' | 'bool[]' | 'string[]';
-export type Type = Scalar | ArrayType | 'void' | 'error';
+export type StructType = `@${string}`; // user types carry their name after '@'
+export type Elem = Scalar | StructType;
+export type ArrayType = `${Elem}[]`;
+export type Type = Elem | ArrayType | 'void' | 'error';
 
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
-export const elemOf = (t: ArrayType): Scalar => t.slice(0, -2) as Scalar;
-export const arrayOf = (t: Scalar): ArrayType => `${t}[]` as ArrayType;
+export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
+export const elemOf = (t: ArrayType): Elem => t.slice(0, -2) as Elem;
+export const arrayOf = (t: Elem): ArrayType => `${t}[]` as ArrayType;
+export const structType = (name: string): StructType => `@${name}`;
+export const structName = (t: StructType): string => t.slice(1);
+// arrays and structs are shared references
+export const isRef = (t: Type) => isArray(t) || isStruct(t);
 
 const NAMED: Record<string, Type> = { int: 'int', float: 'float', bool: 'bool', string: 'string' };
 

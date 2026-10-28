@@ -16,19 +16,38 @@ export function formatFloat(v: number): string {
   return s + '.0';
 }
 
+export interface StructInfo {
+  name: string;
+  fields: { name: string; ty: Type }[];
+}
+
+// struct layouts, needed to print a struct from a bare value array. set once per run
+const layouts = new Map<string, StructInfo>();
+
+export function registerStructs(list: StructInfo[]) {
+  layouts.clear();
+  for (const s of list) layouts.set(s.name, s);
+}
+
+// inside containers strings are quoted so ["a", "b"] differs from [a, b]
+function formatInner(v: Value, ty: Type): string {
+  return ty === 'string' ? `"${v}"` : format(v, ty);
+}
+
 export function format(v: Value, ty: Type): string {
   switch (ty) {
     case 'float': return formatFloat(v as number);
     case 'int': return String(v);
     case 'bool': return v ? 'true' : 'false';
     case 'string': return v as string;
-    default: {
-      // arrays; strings are quoted inside so ["a", "b"] is distinguishable from [a, b]
-      const et = ty.slice(0, -2) as Type;
-      const items = (v as Value[]).map(x => (et === 'string' ? `"${x}"` : format(x, et)));
-      return '[' + items.join(', ') + ']';
-    }
   }
+  if (ty.endsWith('[]')) {
+    const et = ty.slice(0, -2) as Type;
+    return '[' + (v as Value[]).map(x => formatInner(x, et)).join(', ') + ']';
+  }
+  const info = layouts.get(ty.slice(1))!;
+  const vals = v as Value[];
+  return `${info.name} { ${info.fields.map((f, i) => `${f.name}: ${formatInner(vals[i], f.ty)}`).join(', ')} }`;
 }
 
 // ints are plain JS numbers but trap as soon as they leave the safe range,

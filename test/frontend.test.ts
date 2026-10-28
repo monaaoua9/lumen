@@ -139,3 +139,34 @@ test('arrays: constant negative index is an error', () => {
   assert.ok(diagCodes('let a = [1]; print(a[-1]);').includes('E014'));
   assert.ok(diagCodes('let a = [1]; a[-2] = 0;').includes('E014'));
 });
+
+const P = 'struct P { x: int, y: float } ';
+
+test('structs: type checking', () => {
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1, y: 2.0 }; print(p.x); print(p.y);'), []);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1 }; print(p);'), ['E018']);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1, y: 2.0, z: 3 }; print(p);'), ['E018']);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1, x: 2, y: 2.0 }; print(p);'), ['E018']);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1.5, y: 2.0 }; print(p);'), ['E003']);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1, y: 2.0 }; print(p.z);'), ['E019']);
+  assert.deepEqual(diagCodes('let a = 1; print(a.x);'), ['E019']);
+  assert.deepEqual(diagCodes(P + 'let p = P { x: 1, y: 2.0 }; p.x = 2.5;'), ['E003']);
+  assert.deepEqual(diagCodes('let p = Q { x: 1 }; print(p);'), ['E016']);
+  assert.deepEqual(diagCodes('fn f(a: Nope) {} f(1);').slice(0, 1), ['E016']);
+  assert.deepEqual(diagCodes(P + 'let a = P { x: 1, y: 1.0 }; let b = P { x: 1, y: 1.0 }; print(a == b);'), ['E003']);
+});
+
+test('structs: declarations', () => {
+  assert.ok(diagCodes('struct A { a: A }').includes('E017'));
+  assert.ok(diagCodes('struct A { b: B } struct B { a: A }').includes('E017'));
+  assert.ok(!diagCodes('struct N { kids: N[] } let n = N { kids: [] }; print(n);').includes('E017'));
+  assert.ok(diagCodes('struct A { x: int } struct A { y: int }').includes('E006'));
+  assert.ok(diagCodes('struct A { x: int, x: int }').includes('E006'));
+  assert.ok(parse('struct A { }').diags.some(d => d.code === 'P003'));
+});
+
+test('structs: literal vs block ambiguity', () => {
+  // `if ok {` is a condition followed by a block, not a struct literal
+  assert.deepEqual(diagCodes('let ok = true; if ok { print(1); } while ok { break; }'), []);
+  assert.deepEqual(diagCodes(P + 'if (P { x: 1, y: 1.0 }).x == 1 { print(1); }'), []);
+});

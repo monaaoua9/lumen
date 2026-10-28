@@ -68,6 +68,14 @@ function foldExpr(e: Expr): Expr {
       e.idx = foldExpr(e.idx);
       return e;
 
+    case 'field':
+      e.obj = foldExpr(e.obj);
+      return e;
+
+    case 'structlit':
+      e.fields.forEach(f => { f.value = foldExpr(f.value); });
+      return e;
+
     default:
       return e;
   }
@@ -95,6 +103,10 @@ function foldStmt(s: Stmt): Stmt | null {
       return s;
     case 'expr':
       s.e = foldExpr(s.e);
+      return s;
+    case 'setfield':
+      s.obj = foldExpr(s.obj);
+      s.value = foldExpr(s.value);
       return s;
     case 'setindex':
       s.arr = foldExpr(s.arr);

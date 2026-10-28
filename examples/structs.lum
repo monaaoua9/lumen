@@ -1,0 +1,42 @@
+// structs: value construction, field access, nesting, arrays of structs
+struct Point { x: float, y: float }
+struct Segment { a: Point, b: Point, label: string }
+struct Account { id: int, owner: string, balance: int, history: int[] }
+
+fn dist2(p: Point, q: Point): float {
+  let dx = p.x - q.x;
+  let dy = p.y - q.y;
+  return dx * dx + dy * dy;
+}
+
+fn deposit(acc: Account, amount: int) {
+  acc.balance += amount;
+  push(acc.history, amount);
+}
+
+fn make(id: int, owner: string): Account {
+  return Account { owner: owner, id: id, balance: 0, history: [] };
+}
+
+let s = Segment { a: Point { x: 0.0, y: 0.0 }, b: Point { x: 3.0, y: 4.0 }, label: "diag" };
+print(dist2(s.a, s.b));
+s.b.x = 6.0;
+s.label = s.label + "!";
+print(s);
+
+let acc = make(7, "ada");
+deposit(acc, 100);
+deposit(acc, 50);
+print(acc.balance);
+print(acc);
+
+let pts: Point[] = [];
+var i = 0;
+while i < 3 {
+  push(pts, Point { x: float(i), y: float(i * i) });
+  i += 1;
+}
+pts[1].y += 0.5;
+print(pts);
+print(pts[2].y);
+print(str(pts[0]) + "?");

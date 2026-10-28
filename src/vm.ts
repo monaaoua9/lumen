@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
-import { Op, TYPE_TAGS } from './bytecode.ts';
+import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod } from './runtime.ts';
+import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerStructs } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 interface CallFrame {
@@ -13,6 +13,7 @@ interface CallFrame {
 const STACK_SIZE = 1 << 16;
 
 export function run(m: Module, io: IO) {
+  registerStructs(m.structs);
   const stack: Value[] = new Array(STACK_SIZE).fill(null);
   const globals: Value[] = new Array(m.nglobals).fill(null);
   const frames: CallFrame[] = [];
@@ -93,8 +94,8 @@ export function run(m: Module, io: IO) {
           break;
         }
 
-        case Op.PRINT: io.out(format(stack[--sp], TYPE_TAGS[code[pc++]]) + '\n'); break;
-        case Op.STR: stack[sp - 1] = format(stack[sp - 1], TYPE_TAGS[code[pc++]]); break;
+        case Op.PRINT: io.out(format(stack[--sp], m.types[code[pc++]]) + '\n'); break;
+        case Op.STR: stack[sp - 1] = format(stack[sp - 1], m.types[code[pc++]]); break;
         case Op.F2I: stack[sp - 1] = floatToInt(num(sp - 1)); break;
         case Op.LEN: {
           const v = stack[sp - 1];
@@ -109,6 +110,16 @@ export function run(m: Module, io: IO) {
           sp++;
           break;
         }
+        case Op.REORDER: {
+          const perm = m.consts[code[pc++]] as number[];
+          const src = stack[sp - 1] as Value[];
+          const out: Value[] = new Array(src.length);
+          perm.forEach((dst, i) => { out[dst] = src[i]; });
+          stack[sp - 1] = out;
+          break;
+        }
+        case Op.GETF: stack[sp - 1] = (stack[sp - 1] as Value[])[code[pc++]]; break;
+        case Op.SETF: sp -= 2; (stack[sp] as Value[])[code[pc++]] = stack[sp + 1]; break;
         case Op.INDEX: {
           sp--;
           const arr = stack[sp - 1] as Value[];

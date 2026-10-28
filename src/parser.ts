@@ -1,9 +1,9 @@
 import type { Diagnostic, Span } from './diagnostics.ts';
-import type { BinOp, Expr, FnDecl, Param, Program, Stmt } from './ast.ts';
+import type { BinOp, Expr, FieldInit, FnDecl, Param, Program, Stmt, StructDecl, StructField } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
-import { arrayOf, typeFromName } from './types.ts';
-import type { Scalar, Type } from './types.ts';
+import { arrayOf, structType, typeFromName } from './types.ts';
+import type { Elem, Type } from './types.ts';
 
 class Bail extends Error {}
 
@@ -14,6 +14,8 @@ function hasCall(e: Expr): boolean {
     case 'binary': return hasCall(e.l) || hasCall(e.r);
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
+    case 'field': return hasCall(e.obj);
+    case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
   }
 }
@@ -35,6 +37,8 @@ class Parser {
   pos = 0;
   diags: Diagnostic[];
   fns: FnDecl[] = [];
+  structs: StructDecl[] = [];
+  noStruct = false; // `if x {` must not parse as a struct literal
   depth = 0; // block nesting, fn is only legal at 0
 
   constructor(toks: Token[], diags: Diagnostic[]) {
@@ -78,7 +82,7 @@ class Parser {
       if (s) body.push(s);
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
-    return { body, fns: this.fns, nlocals: 0, nglobals: 0 };
+    return { body, fns: this.fns, structs: this.structs, nlocals: 0, nglobals: 0 };
   }
 
   statementRecovering(): Stmt | null {
@@ -92,7 +96,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'struct', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -116,11 +120,11 @@ class Parser {
 
   type(): Type {
     const t = this.expect('ident', 'a type name');
-    const ty = typeFromName(t.text);
-    if (!ty) this.fail(`unknown type '${t.text}'`, t.span, 'valid types: int, float, bool, string');
+    // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
+    const ty = (typeFromName(t.text) ?? structType(t.text)) as Elem;
     if (this.eat('[')) {
       this.expect(']');
-      return arrayOf(ty as Scalar);
+      return arrayOf(ty);
     }
     return ty;
   }
@@ -129,12 +133,13 @@ class Parser {
     const t = this.cur;
     switch (t.kind) {
       case 'fn': return this.fnDecl();
+      case 'struct': return this.structDecl();
       case 'let':
       case 'var': return this.letStmt();
       case 'if': return this.ifStmt();
       case 'while': {
         this.next();
-        const cond = this.expr();
+        const cond = this.condExpr();
         const body = this.block();
         return { k: 'while', span: this.join(t.span, this.prevSpan()), cond, body };
       }
@@ -172,6 +177,17 @@ class Parser {
     }
 
     const e = this.expr();
+    if (e.k === 'field' && (this.at('=') || this.cur.kind in COMPOUND)) {
+      const opTok = this.next();
+      const rhs = this.expr();
+      this.expect(';');
+      let value = rhs;
+      if (opTok.kind !== '=') {
+        if (hasCall(e)) this.fail('compound assignment needs a target without function calls', e.span, 'write it out: p.x = p.x + ...');
+        value = { k: 'binary', op: COMPOUND[opTok.kind], l: e, r: rhs, span: this.join(e.span, rhs.span), ty: 'error' };
+      }
+      return { k: 'setfield', span: this.join(e.span, this.prevSpan()), obj: e.obj, name: e.name, nameSpan: e.nameSpan, idx: -1, value };
+    }
     if (e.k === 'index' && (this.at('=') || this.cur.kind in COMPOUND)) {
       const opTok = this.next();
       const rhs = this.expr();
@@ -186,6 +202,50 @@ class Parser {
     }
     this.expect(';');
     return { k: 'expr', span: this.join(e.span, this.prevSpan()), e };
+  }
+
+  condExpr(): Expr {
+    const saved = this.noStruct;
+    this.noStruct = true;
+    try {
+      return this.expr();
+    } finally {
+      this.noStruct = saved;
+    }
+  }
+
+  // struct literals are fine again inside brackets even while a condition is being parsed
+  allowStruct<T>(fn: () => T): T {
+    const saved = this.noStruct;
+    this.noStruct = false;
+    try {
+      return fn();
+    } finally {
+      this.noStruct = saved;
+    }
+  }
+
+  structDecl(): StructDecl {
+    const kw = this.next();
+    if (this.depth > 0) {
+      this.diags.push({ severity: 'error', code: 'P002', message: 'structs can only be declared at the top level', span: kw.span });
+    }
+    const name = this.expect('ident', 'a struct name');
+    this.expect('{');
+    const fields: StructField[] = [];
+    while (!this.at('}') && !this.at('eof')) {
+      const f = this.expect('ident', 'a field name');
+      this.expect(':');
+      fields.push({ name: f.text, span: f.span, ty: this.type() });
+      if (!this.eat(',')) break;
+    }
+    this.expect('}');
+    if (fields.length === 0) {
+      this.diags.push({ severity: 'error', code: 'P003', message: `struct '${name.text}' needs at least one field`, span: name.span });
+    }
+    const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields };
+    this.structs.push(decl);
+    return decl;
   }
 
   fnDecl(): FnDecl {
@@ -231,7 +291,7 @@ class Parser {
 
   ifStmt(): Stmt {
     const kw = this.next();
-    const cond = this.expr();
+    const cond = this.condExpr();
     const then = this.block();
     let els: Stmt[] | null = null;
     if (this.eat('else')) {
@@ -270,15 +330,37 @@ class Parser {
     return this.postfix();
   }
 
+  structLit(nameTok: Token): Expr {
+    this.expect('{');
+    const fields: FieldInit[] = [];
+    this.allowStruct(() => {
+      while (!this.at('}') && !this.at('eof')) {
+        const f = this.expect('ident', 'a field name');
+        this.expect(':');
+        fields.push({ name: f.text, nameSpan: f.span, value: this.expr(), idx: -1 });
+        if (!this.eat(',')) break;
+      }
+    });
+    const close = this.expect('}');
+    return { k: 'structlit', name: nameTok.text, nameSpan: nameTok.span, fields, span: this.join(nameTok.span, close.span), ty: 'error' };
+  }
+
   postfix(): Expr {
     let e = this.primary();
-    while (this.at('[')) {
-      this.next();
-      const idx = this.expr();
-      const close = this.expect(']');
-      e = { k: 'index', arr: e, idx, span: this.join(e.span, close.span), ty: 'error' };
+    for (;;) {
+      if (this.at('[')) {
+        this.next();
+        const idx = this.allowStruct(() => this.expr());
+        const close = this.expect(']');
+        e = { k: 'index', arr: e, idx, span: this.join(e.span, close.span), ty: 'error' };
+      } else if (this.at('.')) {
+        this.next();
+        const f = this.expect('ident', 'a field name');
+        e = { k: 'field', obj: e, name: f.text, nameSpan: f.span, idx: -1, span: this.join(e.span, f.span), ty: 'error' };
+      } else {
+        return e;
+      }
     }
-    return e;
   }
 
   primary(): Expr {
@@ -290,24 +372,25 @@ class Parser {
       case 'true':
       case 'false': return { k: 'bool', value: t.kind === 'true', span: t.span, ty: 'error' };
       case '(': {
-        const e = this.expr();
+        const e = this.allowStruct(() => this.expr());
         this.expect(')');
         return e;
       }
       case '[': {
         const elems: Expr[] = [];
         if (!this.at(']')) {
-          do elems.push(this.expr()); while (this.eat(','));
+          do elems.push(this.allowStruct(() => this.expr())); while (this.eat(','));
         }
         const close = this.expect(']');
         return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
       }
       case 'ident': {
+        if (this.at('{') && !this.noStruct) return this.structLit(t);
         if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
         this.next();
         const args: Expr[] = [];
         if (!this.at(')')) {
-          do args.push(this.expr()); while (this.eat(','));
+          do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
         }
         const close = this.expect(')');
         return { k: 'call', name: t.text, nameSpan: t.span, args, span: this.join(t.span, close.span), ty: 'error' };

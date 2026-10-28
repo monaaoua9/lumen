@@ -59,9 +59,10 @@ while i < 10 {
 }
 ```
 
-Types `int float bool string` and one-dimensional arrays `int[] float[] bool[] string[]`; `let` (immutable) / `var`; `fn`, `if/else`, `while`,
+Types `int float bool string`, one-dimensional arrays (`int[]`, `Point[]`, ...) and user `struct`s; `let` (immutable) / `var`; `fn`, `if/else`, `while`,
 `break/continue/return`; operators `+ - * / % == != < <= > >= && || !` plus `+= -= ...`.
 Builtins: `print(x)`, `str(x)`, `int(f)`, `float(i)`, `len(s | arr)`, `push(arr, x)`, `pop(arr)`.
+Structs: `struct Point { x: float, y: float }`, `Point { x: 1.0, y: 2.0 }`, `p.x`, `p.x = 3.0`, `p.x += 1.0`; they can nest and be stored in arrays.
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
 
 Semantics worth knowing:
@@ -73,14 +74,16 @@ Semantics worth knowing:
 - Operands evaluate left to right; `&&` / `||` short-circuit.
 - Functions see globals declared *before* them. Recursion works, call depth is capped at 1000.
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
-- Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. Nested arrays and `==` on arrays are rejected.
+- Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. Nested arrays and `==` on arrays/structs are rejected.
+- Structs are references too (`let q = p;` aliases) and print as `Point { x: 1.0, y: 2.0 }`. Literal fields run in the order written. A struct cannot contain itself by value; use an array field (`kids: Node[]`).
+- `Name {` after `if` / `while` is a block, wrap a struct literal in parentheses there.
 
 ## Static analysis
 
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index.
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access.
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
@@ -121,7 +124,7 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No nested arrays, structs or closures yet.
+- No nested arrays, methods/impl blocks, enums or closures yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

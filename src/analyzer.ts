@@ -1,7 +1,7 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
-import type { Expr, FnDecl, FnSym, Program, Stmt, VarSym } from './ast.ts';
-import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric } from './types.ts';
-import type { Scalar, Type } from './types.ts';
+import type { Expr, FnDecl, FnSym, Program, Stmt, StructDecl, VarSym } from './ast.ts';
+import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric, isRef, isStruct, structName } from './types.ts';
+import type { Type } from './types.ts';
 
 class Scope {
   vars = new Map<string, VarSym>();
@@ -43,6 +43,11 @@ function editDistance(a: string, b: string): number {
   return dp[a.length][b.length];
 }
 
+function closestHint(name: string, cands: string[]): string | undefined {
+  const c = closest(name, cands);
+  return c ? `did you mean '${c}'?` : `available: ${cands.join(', ')}`;
+}
+
 function closest(name: string, cands: Iterable<string>): string | undefined {
   let best: string | undefined;
   let bd = Math.max(1, Math.floor(name.length / 3)) + 1;
@@ -56,6 +61,7 @@ function closest(name: string, cands: Iterable<string>): string | undefined {
 class Analyzer {
   diags: Diagnostic[] = [];
   fns = new Map<string, FnSym>();
+  structs = new Map<string, StructDecl>();
   globals = new Scope(null);
   scope = this.globals;
   ctx: FnCtx = { ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
@@ -64,12 +70,13 @@ class Analyzer {
   allVars: VarSym[] = [];
 
   report(severity: Severity, code: string, message: string, span: Span, hint?: string) {
-    this.diags.push({ severity, code, message, span, hint });
+    this.diags.push({ severity, code, message: message.replaceAll('@', ''), span, hint });
   }
   err(code: string, message: string, span: Span, hint?: string) { this.report('error', code, message, span, hint); }
   warn(code: string, message: string, span: Span, hint?: string) { this.report('warning', code, message, span, hint); }
 
   run(prog: Program) {
+    this.declareStructs(prog.structs);
     for (const f of prog.fns) this.declareFn(f);
 
     this.analyzeBlockBody(prog.body);
@@ -84,7 +91,49 @@ class Analyzer {
     this.diags.sort((a, b) => a.span.start - b.span.start);
   }
 
+  declareStructs(list: StructDecl[]) {
+    for (const s of list) {
+      if (this.structs.has(s.name)) this.err('E006', `struct '${s.name}' is already defined`, s.nameSpan);
+      else this.structs.set(s.name, s);
+    }
+    for (const s of this.structs.values()) {
+      const seen = new Set<string>();
+      for (const f of s.fields) {
+        if (seen.has(f.name)) this.err('E006', `field '${f.name}' is declared twice in struct '${s.name}'`, f.span);
+        seen.add(f.name);
+        this.checkType(f.ty, f.span);
+      }
+    }
+    // a struct that contains itself by value could never be constructed
+    for (const s of this.structs.values()) {
+      const path = new Set<string>();
+      const walk = (d: StructDecl): boolean => {
+        if (path.has(d.name)) return d.name === s.name;
+        path.add(d.name);
+        for (const f of d.fields) {
+          if (!isStruct(f.ty)) continue;
+          const next = this.structs.get(structName(f.ty));
+          if (next && walk(next)) return true;
+        }
+        path.delete(d.name);
+        return false;
+      };
+      if (walk(s)) this.err('E017', `struct '${s.name}' contains itself`, s.nameSpan, 'use an array field (e.g. children: Node[]) to break the cycle');
+    }
+  }
+
+  // struct names are only known after parsing, so every written type goes through here
+  checkType(t: Type, span: Span) {
+    const base = isArray(t) ? elemOf(t) : t;
+    if (isStruct(base) && !this.structs.has(structName(base))) {
+      const sug = closest(structName(base), this.structs.keys());
+      this.err('E016', `unknown type '${structName(base)}'`, span, sug ? `did you mean '${sug}'?` : 'valid types: int, float, bool, string, or a declared struct');
+    }
+  }
+
   declareFn(f: FnDecl) {
+    for (const p of f.params) this.checkType(p.ty, p.span);
+    this.checkType(f.ret, f.nameSpan);
     if (isBuiltin(f.name)) {
       this.err('E006', `'${f.name}' is a built-in function and cannot be redefined`, f.nameSpan);
       return;
@@ -194,7 +243,20 @@ class Analyzer {
         this.analyzeFn(s);
         return NEXT;
 
+      case 'struct':
+        return NEXT;
+
+      case 'setfield': {
+        const ot = this.expr(s.obj);
+        const fld = this.fieldOf(ot, s.name, s.nameSpan, s.obj.span);
+        if (fld) s.idx = fld.idx;
+        const vt = this.expr(s.value, fld?.ty);
+        if (fld && vt !== 'error' && vt !== fld.ty) this.mismatch(fld.ty, vt, s.value.span, `in assignment to field '${s.name}'`);
+        return NEXT;
+      }
+
       case 'let': {
+        if (s.annot) this.checkType(s.annot, s.annotSpan ?? s.nameSpan);
         const t = this.expr(s.init, s.annot);
         let ty: Type = s.annot ?? t;
         if (t === 'void') {
@@ -293,6 +355,21 @@ class Analyzer {
     }
   }
 
+  fieldOf(ot: Type, name: string, nameSpan: Span, objSpan: Span): { ty: Type; idx: number } | null {
+    if (ot === 'error') return null;
+    if (!isStruct(ot)) {
+      this.err('E019', `cannot access field '${name}' on a value of type ${ot}`, objSpan);
+      return null;
+    }
+    const decl = this.structs.get(structName(ot))!;
+    const idx = decl.fields.findIndex(f => f.name === name);
+    if (idx < 0) {
+      this.err('E019', `struct '${decl.name}' has no field '${name}'`, nameSpan, closestHint(name, decl.fields.map(f => f.name)));
+      return null;
+    }
+    return { ty: decl.fields[idx].ty, idx };
+  }
+
   negativeIndex(idx: Expr) {
     if (idx.k === 'unary' && idx.op === '-' && idx.arg.k === 'int' && idx.arg.value > 0) {
       this.err('E014', 'array index is negative, this always fails at runtime', idx.span);
@@ -387,6 +464,43 @@ class Analyzer {
         return ok ? ((first + '[]') as Type) : 'error';
       }
 
+      case 'field': {
+        const ot = this.expr(e.obj);
+        const fld = this.fieldOf(ot, e.name, e.nameSpan, e.obj.span);
+        if (!fld) return 'error';
+        e.idx = fld.idx;
+        return fld.ty;
+      }
+
+      case 'structlit': {
+        const decl = this.structs.get(e.name);
+        if (!decl) {
+          const sug = closest(e.name, this.structs.keys());
+          this.err('E016', `unknown struct '${e.name}'`, e.nameSpan, sug ? `did you mean '${sug}'?` : undefined);
+          e.fields.forEach(f => this.expr(f.value));
+          return 'error';
+        }
+        const seen = new Set<string>();
+        for (const f of e.fields) {
+          const idx = decl.fields.findIndex(d => d.name === f.name);
+          if (idx < 0) {
+            this.err('E018', `struct '${e.name}' has no field '${f.name}'`, f.nameSpan, closestHint(f.name, decl.fields.map(d => d.name)));
+            this.expr(f.value);
+            continue;
+          }
+          f.idx = idx;
+          if (seen.has(f.name)) this.err('E018', `field '${f.name}' is given twice`, f.nameSpan);
+          seen.add(f.name);
+          const want = decl.fields[idx].ty;
+          const t = this.expr(f.value, want);
+          if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', f.value.span);
+          else if (t !== 'error' && t !== want) this.mismatch(want, t, f.value.span, `in field '${f.name}' of '${e.name}'`);
+        }
+        const missing = decl.fields.filter(d => !seen.has(d.name)).map(d => d.name);
+        if (missing.length) this.err('E018', `missing field${missing.length > 1 ? 's' : ''} ${missing.map(m => `'${m}'`).join(', ')} in '${e.name}'`, e.span);
+        return ('@' + e.name) as Type;
+      }
+
       case 'index': {
         const at = this.expr(e.arr);
         const it = this.expr(e.idx);
@@ -445,8 +559,8 @@ class Analyzer {
         if (isNumeric(a) && a === b) return 'bool';
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);
       case '==': case '!=':
-        if (a === b && a !== 'void' && !isArray(a)) return 'bool';
-        if (a === b && isArray(a)) return opErr('arrays cannot be compared with == or !=', 'compare the elements in a loop');
+        if (a === b && a !== 'void' && !isRef(a)) return 'bool';
+        if (a === b && isRef(a)) return opErr('arrays and structs cannot be compared with == or !=', 'compare the elements or fields one by one');
         return opErr(`cannot compare ${a} with ${b}`, sameHint);
       case '&&': case '||':
         if (a === 'bool' && b === 'bool') return 'bool';
