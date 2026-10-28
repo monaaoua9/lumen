@@ -36,6 +36,7 @@ export type Expr =
   | (Base & { k: 'str'; value: string })
   | (Base & { k: 'bool'; value: boolean })
   | (Base & { k: 'var'; name: string; sym?: VarSym })
+  | (Base & { k: 'fnref'; name: string; fn?: FnSym })
   | (Base & { k: 'unary'; op: '-' | '!'; arg: Expr })
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
@@ -46,7 +47,7 @@ export type Expr =
   | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[] })
   | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
   | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[] })
-  | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName });
+  | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; fn?: FnSym; builtin?: BuiltinName; via?: VarSym });
 
 export interface FieldInit {
   name: string;

@@ -264,3 +264,18 @@ test('nested arrays: checking', () => {
   assert.deepEqual(diagCodes('let g: int[][] = [[1]]; push(g, [2]); push(g, 3);'), ['E003']);
   assert.deepEqual(diagCodes('fn f(m: Nope[][]) { } f([]);').slice(0, 1), ['E016']);
 });
+
+test('function values: checking', () => {
+  const F = 'fn inc(x: int): int { return x + 1; } fn ap(f: fn(int): int, x: int): int { return f(x); } ';
+  assert.deepEqual(errs(F + 'print(ap(inc, 1)); let g = inc; print(g(2));'), []);
+  assert.deepEqual(errs(F + 'print(ap(fn(x: int): int { return x * 2; }, 1));'), []);
+  assert.deepEqual(errs(F + 'print(ap(1, 1));'), ['E003']);
+  assert.deepEqual(errs(F + 'fn two(a: int, b: int): int { return a; } print(ap(two, 1));'), ['E003']);
+  assert.deepEqual(errs(F + 'let g = inc; print(g(1, 2));'), ['E004']);
+  assert.deepEqual(errs(F + 'let g = inc; print(g("s"));'), ['E003']);
+  assert.deepEqual(errs(F + 'print(inc);'), ['E003']);
+  assert.deepEqual(errs(F + 'print(inc == inc);'), ['E003']);
+  assert.deepEqual(errs('fn f(g: fn(Nope): int) { } '), ['E016']);
+  // lambdas are hoisted, so locals of the enclosing function are not visible
+  assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { return x + k; }; }'), ['E001']);
+});

@@ -230,6 +230,10 @@ class FnCompiler {
         this.emit(e.sym!.where === 'global' ? Op.LOADG : Op.LOADL, e.sym!.slot);
         return;
 
+      case 'fnref':
+        this.emit(Op.CONST, this.poolIdx(e.fn!.index));
+        return;
+
       case 'unary':
         this.expr(e.arg);
         this.span = e.span;
@@ -316,6 +320,11 @@ class FnCompiler {
       case 'call': {
         e.args.forEach(a => this.expr(a));
         this.span = e.span;
+        if (e.via) {
+          this.emit(e.via.where === 'global' ? Op.LOADG : Op.LOADL, e.via.slot);
+          this.emit(Op.CALLI);
+          return;
+        }
         if (!e.builtin) {
           this.emit(Op.CALL, e.fn!.index);
           return;

@@ -94,6 +94,7 @@ Methods: `impl Counter { fn new(step: int): Counter { ... } fn tick(self) { self
 `Counter.new(5)` and `c.tick()`. Works for structs and enums. `self` is the receiver (a reference), methods are
 resolved statically and compile down to plain functions named `Counter$tick` (shown as `Counter.tick` in messages).
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
+Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. They are plain code pointers: a lambda cannot see the locals of the function around it (the name simply does not resolve), and function values cannot be compared or printed. Calling goes through a variable or parameter (`f(x)`), not an arbitrary expression.
 
 Semantics worth knowing:
 
@@ -164,6 +165,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No closures or function values, traits/interfaces, generics or modules yet.
+- No capturing closures, traits/interfaces, generics or modules yet. Function values are code pointers only.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

@@ -1,6 +1,6 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
 import type { EnumDecl, Expr, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
-import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
+import { BUILTINS, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Type } from './types.ts';
 
 class Scope {
@@ -85,6 +85,10 @@ class Analyzer {
     for (const f of prog.fns) this.declareFn(f);
 
     this.analyzeBlockBody(prog.body);
+    // lambdas never appear as statements, so nothing above reached them
+    for (const f of prog.fns) {
+      if (f.name.startsWith('lambda$')) this.analyzeFn(f);
+    }
 
     for (const v of this.allVars) this.lintVar(v);
     for (const f of this.fns.values()) {
@@ -152,7 +156,11 @@ class Analyzer {
   checkType(t: Type, span: Span) {
     let base: Type = t;
     while (isArray(base)) base = elemOf(base);
-    if (isEnum(base) && !this.enums.has(base.slice(1))) {
+    if (isFn(base)) {
+      const sig = fnSig(base);
+      for (const p of sig.params) this.checkType(p, span);
+      this.checkType(sig.ret, span);
+    } else if (isEnum(base) && !this.enums.has(base.slice(1))) {
       this.err('E016', `unknown type '${base.slice(1)}'`, span);
     } else if (isStruct(base) && !this.structs.has(structName(base))) {
       const sug = closest(structName(base), this.structs.keys());
@@ -624,6 +632,7 @@ class Analyzer {
       case 'str': return 'string';
       case 'bool': return 'bool';
       case 'enumval': return ('#' + e.enumName) as Type;
+      case 'fnref': return e.ty; // only produced by the 'var' case below
       case 'matchx': return this.matchExpr(e, want);
       case 'mcall': return this.methodCall(e);
       case 'enumctor': return ('#' + e.enumName) as Type;
@@ -631,6 +640,12 @@ class Analyzer {
       case 'var': {
         const sym = this.scope.lookup(e.name);
         if (!sym) {
+          const fn = this.fns.get(e.name);
+          if (fn) {
+            fn.used = true;
+            Object.assign(e, { k: 'fnref', fn });
+            return fnType(fn.params, fn.ret);
+          }
           this.undefinedVar(e.name, e.span);
           return 'error';
         }
@@ -782,6 +797,7 @@ class Analyzer {
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);
       case '==': case '!=':
         if (a === b && isEnum(a) && this.isBoxed(a)) return opErr('enums with data cannot be compared with == or !=', 'use match');
+        if (isFn(a) && a === b) return opErr('functions cannot be compared');
         if (a === b && a !== 'void' && !isRef(a)) return 'bool';
         if (a === b && isRef(a)) return opErr('arrays and structs cannot be compared with == or !=', 'compare the elements or fields one by one');
         return opErr(`cannot compare ${a} with ${b}`, sameHint);
@@ -807,6 +823,10 @@ class Analyzer {
       return ret;
     }
     const bad = (what: string) => this.err('E003', `'${name}' ${what}, found ${t0}`, e.args[0].span);
+    if ((name === 'print' || name === 'str') && hasFn(t0)) {
+      this.err('E003', `functions cannot be turned into text, found ${t0}`, e.args[0].span);
+      return ret;
+    }
 
     switch (name) {
       case 'print':
@@ -833,6 +853,17 @@ class Analyzer {
 
   call(e: Extract<Expr, { k: 'call' }>): Type {
     if (isBuiltin(e.name)) return this.builtin(e, e.name);
+
+    // a local of function type wins over a global function with the same name
+    const local = this.scope.lookup(e.name);
+    if (local && isFn(local.ty)) {
+      const sig = fnSig(local.ty);
+      local.used = true;
+      e.via = local;
+      const tys = e.args.map((a, i) => this.expr(a, sig.params[i]));
+      const sym: FnSym = { name: e.name, params: sig.params, ret: sig.ret, index: -1, span: e.nameSpan, used: true, decl: null as unknown as FnDecl };
+      return this.checkUserCall(e, sym, tys);
+    }
 
     const fn = this.fns.get(e.name);
     const argTys = e.args.map((a, i) => this.expr(a, fn?.params[i]));

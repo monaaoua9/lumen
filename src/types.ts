@@ -2,12 +2,41 @@ export type Scalar = 'int' | 'float' | 'bool' | 'string';
 export type StructType = `@${string}`; // user types carry their name after '@'
 export type EnumType = `#${string}`; // enum values are ordinals at runtime
 export type ArrayType = `${string}[]`;
-export type Elem = Scalar | StructType | EnumType | ArrayType;
+export type FnType = `<${string}>`; // <fn(int,int):int>, the angle brackets keep it apart from arrays
+export type Elem = Scalar | StructType | EnumType | ArrayType | FnType;
 export type Type = Elem | 'void' | 'error';
 
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
 export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
 export const isEnum = (t: Type): t is EnumType => t.startsWith('#') && !t.endsWith('[]');
+export const isFn = (t: Type): t is FnType => t.startsWith('<');
+export const fnType = (params: Type[], ret: Type): FnType => `<fn(${params.join(',')}):${ret}>`;
+export const hasFn = (t: Type) => {
+  while (isArray(t)) t = elemOf(t);
+  return isFn(t);
+};
+export function fnSig(t: FnType): { params: Type[]; ret: Type } {
+  const body = t.slice(4, -1); // "int,fn..):int"
+  let depth = 1;
+  let close = 0;
+  for (; close < body.length; close++) {
+    if (body[close] === '(') depth++;
+    else if (body[close] === ')' && --depth === 0) break;
+  }
+  const params: Type[] = [];
+  let from = 0;
+  depth = 0;
+  for (let i = 0; i < close; i++) {
+    if (body[i] === '(') depth++;
+    else if (body[i] === ')') depth--;
+    else if (body[i] === ',' && depth === 0) {
+      params.push(body.slice(from, i) as Type);
+      from = i + 1;
+    }
+  }
+  if (close > from) params.push(body.slice(from, close) as Type);
+  return { params, ret: body.slice(close + 2) as Type };
+}
 export const elemOf = (t: ArrayType): Elem => t.slice(0, -2) as Elem;
 export const arrayOf = (t: Elem): ArrayType => `${t}[]` as ArrayType;
 export const structType = (name: string): StructType => `@${name}`;

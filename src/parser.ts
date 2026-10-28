@@ -2,7 +2,7 @@ import type { Diagnostic, Span } from './diagnostics.ts';
 import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, MatchArm, Param, Pat, Program, Stmt, StructDecl, StructField } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
-import { arrayOf, enumType, structType, typeFromName } from './types.ts';
+import { arrayOf, enumType, fnType, structType, typeFromName } from './types.ts';
 import type { Elem, Type } from './types.ts';
 
 class Bail extends Error {}
@@ -39,6 +39,7 @@ class Parser {
   pos = 0;
   diags: Diagnostic[];
   fns: FnDecl[] = [];
+  lambdas = 0;
   structs: StructDecl[] = [];
   enums: EnumDecl[] = [];
   enumNames = new Set<string>();
@@ -128,10 +129,20 @@ class Parser {
   }
 
   type(): Type {
-    const t = this.expect('ident', 'a type name');
-    // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
-    const ty = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
-    let out: Elem = ty;
+    let out: Elem;
+    if (this.eat('fn')) {
+      this.expect('(');
+      const ps: Type[] = [];
+      if (!this.at(')')) {
+        do ps.push(this.type()); while (this.eat(','));
+      }
+      this.expect(')');
+      out = fnType(ps, this.eat(':') ? this.type() : 'void');
+    } else {
+      const t = this.expect('ident', 'a type name');
+      // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
+      out = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
+    }
     while (this.eat('[')) {
       this.expect(']');
       out = arrayOf(out);
@@ -563,6 +574,24 @@ class Parser {
         }
         const close = this.expect(']');
         return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
+      }
+      case 'fn': {
+        // anonymous functions are hoisted to the top level under a made-up name, so they cannot capture locals
+        this.expect('(');
+        const params: Param[] = [];
+        if (!this.at(')')) {
+          do {
+            const p = this.expect('ident', 'a parameter name');
+            this.expect(':');
+            params.push({ name: p.text, span: p.span, ty: this.type() });
+          } while (this.eat(','));
+        }
+        this.expect(')');
+        const ret: Type = this.eat(':') ? this.type() : 'void';
+        const body = this.allowStruct(() => this.block());
+        const name = `lambda$${this.lambdas++}`;
+        this.fns.push({ k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 });
+        return { k: 'var', name, span: this.join(t.span, this.prevSpan()), ty: 'error' };
       }
       case 'ident': {
         if (this.at('{') && !this.noStruct) return this.structLit(t);

@@ -70,8 +70,9 @@ export function run(m: Module, io: IO) {
         case Op.JFEQ: sp -= 2; if (stack[sp] !== stack[sp + 1]) pc = code[pc]; else pc++; break;
         case Op.JFNE: sp -= 2; if (stack[sp] === stack[sp + 1]) pc = code[pc]; else pc++; break;
 
-        case Op.CALL: {
-          const callee = fns[code[pc++]];
+        case Op.CALL:
+        case Op.CALLI: {
+          const callee = op === Op.CALL ? fns[code[pc++]] : fns[stack[--sp] as number];
           if (depth >= MAX_DEPTH || sp + callee.nlocals >= STACK_SIZE) {
             throw new RuntimeError('stack overflow');
           }

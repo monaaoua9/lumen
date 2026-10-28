@@ -122,6 +122,8 @@ export class Interpreter {
         return sym.where === 'global' ? this.globals[sym.slot] : f.locals[sym.slot];
       }
 
+      case 'fnref': return e.fn!.decl as unknown as Value;
+
       case 'unary': {
         const v = this.eval(e.arg, f);
         return e.op === '!' ? !v : -(v as number);
@@ -182,7 +184,13 @@ export class Interpreter {
 
       case 'call': {
         if (e.builtin) return callBuiltin(e.builtin, e.args.map(a => this.eval(a, f)), e.args.map(a => a.ty), this.io, e.span);
-        return this.callFn(e.fn!.decl, e.args.map(a => this.eval(a, f)), e.span);
+        const args = e.args.map(a => this.eval(a, f));
+        if (e.via) {
+          const v = e.via;
+          const callee = (v.where === 'global' ? this.globals[v.slot] : f.locals[v.slot]) as unknown as FnDecl;
+          return this.callFn(callee, args, e.span);
+        }
+        return this.callFn(e.fn!.decl, args, e.span);
       }
     }
   }
