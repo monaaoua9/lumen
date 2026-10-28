@@ -39,6 +39,24 @@ pub fn size<V>(m: Map<V>): int {
   return len(m.keys);
 }
 
+// copies, so changing the result does not touch the map
+pub fn keys<V>(m: Map<V>): string[] {
+  let out: string[] = [];
+  for k in m.keys { push(out, k); }
+  return out;
+}
+
+pub fn values<V>(m: Map<V>): V[] {
+  let out: V[] = [];
+  for v in m.vals { push(out, v); }
+  return out;
+}
+
+// missing keys start from `start`
+pub fn update<V>(m: Map<V>, key: string, start: V, f: fn(V): V) {
+  set(m, key, f(get(m, key, start)));
+}
+
 // the type comes from the annotation: let m: map.Map<int> = map.new();
 pub fn new<V>(): Map<V> {
   return Map { keys: [], vals: [] };

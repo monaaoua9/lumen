@@ -157,7 +157,7 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/text.lum`: `pad_left`, `pad_right`, `is_digits`, `is_alpha`, `reversed`, `count(s, needle)`, `words(s)`, `lines(s)`, `chars(s)`, `is_blank`, `capitalize` and `center` (ASCII, byte based). A function in a module cannot take a builtin's name (`E006`), which is why it is `reversed`.
 
-`std/map.lum`: a string-keyed `Map<V>` with `new`, `set`, `get(m, key, fallback)`, `has`, `delete` and `size`. It is two parallel arrays, so lookups are linear.
+`std/map.lum`: a string-keyed `Map<V>` with `new`, `set`, `get(m, key, fallback)`, `has`, `delete`, `size`, `keys`, `values` and `update(m, key, start, f)`. It is two parallel arrays, so lookups are linear.
 
 ## Static analysis
 

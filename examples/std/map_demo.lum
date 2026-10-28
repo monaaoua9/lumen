@@ -13,3 +13,9 @@ print(map.has(counts, "rose"));
 print(map.delete(counts, "rose"));
 print(map.delete(counts, "rose"));
 print(map.size(counts));
+let seen: map.Map<int> = map.new();
+for w in ["a", "b", "a", "c", "a"] {
+  map.update(seen, w, 0, fn(n) => n + 1);
+}
+print(map.keys(seen));
+print(map.values(seen));

@@ -308,7 +308,7 @@ test('std/map.lum: same output on every engine, library warnings stay quiet', ()
   assert.equal(outs[1], outs[0]);
   assert.equal(outs[2], outs[0]);
   for (const line of expected) assert.ok(outs[0].includes(line), line);
-  assert.deepEqual(outs[0].trim().split('\n').slice(-5), ['3', 'true', 'true', 'false', '2']);
+  assert.deepEqual(outs[0].trim().split('\n').slice(-7, -2), ['3', 'true', 'true', 'false', '2']);
 });
 
 test('std/option.lum and std/math.lum run the same on every engine', () => {
