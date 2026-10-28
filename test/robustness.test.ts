@@ -10,6 +10,7 @@ const PIECES = [
   'fn', 'struct', 'enum', 'match', 'let', 'var', 'if', 'else', 'while', 'return', 'break', 'continue',
   'x', 'y', 'P', 'Color', 'int', 'float', 'string', 'bool', '1', '2.5', '"s"', 'true', 'false', '_',
   '(', ')', '{', '}', '[', ']', ',', ';', ':', '=', '==', '=>', '|', '||', '&&', '.', '+', '-', '*', '/', '%', '<', '!', '+=',
+  'trait', 'impl', 'pub', 'dyn', 'import', 'T', 'Box', '>', 'self', 'Shape', 'from', '"m.lum"',
 ];
 
 // tiny deterministic PRNG so failures are reproducible
@@ -20,7 +21,7 @@ function rng(seed: number) {
 
 test('frontend never crashes or hangs on token soup', () => {
   const rand = rng(42);
-  for (let n = 0; n < 3000; n++) {
+  for (let n = 0; n < 12000; n++) {
     const len = 1 + Math.floor(rand() * 30);
     const src = Array.from({ length: len }, () => PIECES[Math.floor(rand() * PIECES.length)]).join(' ');
     try {
@@ -115,5 +116,28 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.equal(cli('run', join(dir, 'a.lum')).status, 0);
   } finally {
     rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('frontend survives token-level mutations of real programs', () => {
+  const dir = new URL('../examples/', import.meta.url);
+  const rand = rng(7);
+  for (const f of readdirSync(dir).filter(f => f.endsWith('.lum'))) {
+    const words = readFileSync(new URL(f, dir), 'utf8').split(/(\s+)/);
+    for (let n = 0; n < 60; n++) {
+      const copy = [...words];
+      for (let k = 0; k < 3; k++) {
+        const at = Math.floor(rand() * copy.length);
+        const r = rand();
+        if (r < 0.4) copy[at] = '';
+        else if (r < 0.8) copy[at] = PIECES[Math.floor(rand() * PIECES.length)];
+        else copy.splice(at, 0, copy[Math.floor(rand() * copy.length)]);
+      }
+      try {
+        frontend(copy.join(''));
+      } catch (e) {
+        assert.fail(`crashed on a mutation of ${f}\n${copy.join('')}\n${e}`);
+      }
+    }
   }
 });
