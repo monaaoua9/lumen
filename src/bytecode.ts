@@ -14,7 +14,7 @@ const TABLE = [
   ['JFLT', 1], ['JFLE', 1], ['JFGT', 1], ['JFGE', 1], ['JFEQ', 1], ['JFNE', 1],
   ['CALL', 1], ['CALLI', 0], ['MKCLO', 2], ['ADDLI', 2], ['ADDGI', 2], ['RET', 0], ['RETV', 0],
   ['PRINT', 1], ['STR', 1], ['F2I', 0], ['LEN', 0],
-  ['NEWARR', 1], ['REORDER', 1], ['GETF', 1], ['SETF', 1], ['INDEX', 0], ['SETINDEX', 0], ['PUSHA', 0], ['POPA', 0], ['SQRT', 0], ['SUBSTR', 0], ['FIND', 0], ['SPLIT', 0], ['BYTE', 0], ['SCMP', 0], ['CHR', 0], ['ABS', 0], ['MIN', 0], ['MAX', 0],
+  ['NEWARR', 1], ['REORDER', 1], ['GETF', 1], ['SETF', 1], ['INDEX', 0], ['SETINDEX', 0], ['PUSHA', 0], ['POPA', 0], ['SQRT', 0], ['SUBSTR', 0], ['FIND', 0], ['SPLIT', 0], ['BYTE', 0], ['SCMP', 0], ['JOIN', 0], ['TRIM', 0], ['CHR', 0], ['ABS', 0], ['MIN', 0], ['MAX', 0],
   ['HALT', 0],
 ] as const;
 

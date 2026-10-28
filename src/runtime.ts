@@ -107,6 +107,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'substr': return substrOf(a as string, args[1] as number, args[2] as number, span);
     case 'find': return Buffer.from(a as string).indexOf(Buffer.from(args[1] as string));
     case 'byte': return byteAt(a as string, args[1] as number, span);
+    case 'join': return (a as unknown as string[]).join(args[1] as string);
+    case 'trim': return trimOf(a as string);
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
@@ -132,6 +134,11 @@ export function substrOf(s: string, start: number, n: number, span?: Span): stri
 // utf-8 byte order, same as strcmp on the C side (js `<` would compare utf-16 units)
 export function cmpStr(a: string, b: string): number {
   return a === b ? 0 : Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
+// ascii whitespace only, like the C side
+export function trimOf(s: string): string {
+  return s.replace(/^[ \t\n\r]+|[ \t\n\r]+$/g, '');
 }
 
 export function byteAt(s: string, i: number, span?: Span): number {

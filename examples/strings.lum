@@ -31,3 +31,7 @@ for _ in 0..len(names) {
 print(names);
 print("Z" < "a");
 print("abc" <= "abc");
+
+// join undoes split, trim drops ascii whitespace at both ends
+print(join(split(" a, b ,c ", ","), "|"));
+print("[" + trim("  padded \n") + "]");

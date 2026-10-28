@@ -274,6 +274,28 @@ static long long lm_min_int(long long a, long long b) { return b < a ? b : a; }
 static long long lm_max_int(long long a, long long b) { return b > a ? b : a; }
 static double lm_min_float(double a, double b) { return b < a ? b : a; }
 static double lm_max_float(double a, double b) { return b > a ? b : a; }
+static const char *lm_join(lm_arr *a, const char *sep) {
+  size_t k = strlen(sep), total = 1;
+  for (long long i = 0; i < a->len; i++) total += strlen(a->d[i].s) + (i ? k : 0);
+  char *r = (char *)lm_alloc(total, 1);
+  char *w = r;
+  for (long long i = 0; i < a->len; i++) {
+    if (i) { memcpy(w, sep, k); w += k; }
+    size_t n = strlen(a->d[i].s);
+    memcpy(w, a->d[i].s, n);
+    w += n;
+  }
+  *w = 0;
+  return r;
+}
+static const char *lm_trim(const char *s) {
+  const char *e = s + strlen(s);
+  while (*s == ' ' || *s == '\t' || *s == '\n' || *s == '\r') s++;
+  while (e > s && (e[-1] == ' ' || e[-1] == '\t' || e[-1] == '\n' || e[-1] == '\r')) e--;
+  char *r = (char *)lm_alloc((size_t)(e - s) + 1, 1);
+  memcpy(r, s, (size_t)(e - s));
+  return r;
+}
 static long long lm_byte(const char *s, long long i) {
   if (i < 0 || i >= (long long)strlen(s)) lm_die("byte index out of range");
   return (unsigned char)s[i];
@@ -601,6 +623,8 @@ class Gen {
         case 'substr': text = `lm_substr(${a}, ${args[1]}, ${args[2]})`; break;
         case 'find': text = `lm_find_str(${a}, ${args[1]})`; break;
         case 'byte': text = `lm_byte(${a}, ${args[1]})`; break;
+        case 'join': text = `lm_join(${a}, ${args[1]})`; break;
+        case 'trim': text = `lm_trim(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;

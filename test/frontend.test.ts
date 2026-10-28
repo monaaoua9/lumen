@@ -304,6 +304,9 @@ test('string builtins: checking', () => {
   assert.deepEqual(errs('print(split("abc"));'), ['E004']);
   assert.deepEqual(errs('print(chr(byte("a", 0)));'), []);
   assert.deepEqual(errs('print(chr("a"));'), ['E003']);
+  assert.deepEqual(errs('print(join(split("a b", " "), "-") + trim(" x "));'), []);
+  assert.deepEqual(errs('print(join([1, 2], ","));'), ['E003']);
+  assert.deepEqual(errs('print(trim(1));'), ['E003']);
   assert.deepEqual(errs('print(byte("a", "0"));'), ['E003']);
 });
 

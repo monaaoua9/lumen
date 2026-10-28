@@ -1272,7 +1272,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1313,6 +1313,13 @@ class Analyzer {
       case 'byte':
         if (t0 !== 'error' && t0 !== 'string') bad('expects a string as its first argument');
         if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'byte'`);
+        return ret;
+      case 'join':
+        if (t0 !== 'error' && t0 !== 'string[]') bad('expects a string[] as its first argument');
+        if (t1 !== 'error' && t1 !== 'string') this.mismatch('string', t1, e.args[1].span, `in argument 2 of 'join'`);
+        return ret;
+      case 'trim':
+        if (t0 !== 'error' && t0 !== 'string') bad('expects a string');
         return ret;
       case 'chr':
         if (t0 !== 'error' && t0 !== 'int') bad('expects an int');
