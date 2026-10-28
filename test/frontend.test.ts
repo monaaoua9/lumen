@@ -366,6 +366,12 @@ test('lint: unused builtin results', () => {
   assert.deepEqual(diagCodes('let a = [2, 1]; sort(a); push(a, 3); print(a);'), []);
 });
 
+test('for ... step', () => {
+  assert.deepEqual(errs('for i in 0..10 step 3 { print(i); }'), []);
+  assert.deepEqual(diagCodes('for i in 0..10 step 0 { print(i); }'), ['P001']);
+  assert.deepEqual(diagCodes('for i in 0..10 step -1 { print(i); }').includes('P001'), true);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

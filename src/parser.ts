@@ -429,13 +429,20 @@ class Parser {
     const decl = (n: string, init: Expr, mutable: boolean, nameSpan = sp): Stmt =>
       ({ k: 'let', span: sp, name: n, nameSpan, mutable, init });
     const counter = `_$i${id}`;
-    const bump: Stmt = { k: 'assign', span: sp, name: counter, nameSpan: sp, value: bin('+', v(counter), int(1)) };
+    let stride = 1;
 
     let setup: Stmt[];
     let cond: Expr;
     let elem: Expr;
     if (this.eat('..')) {
       const end = this.condExpr();
+      if (this.cur.kind === 'ident' && this.cur.text === 'step') {
+        this.next();
+        const n = this.cur;
+        if (n.kind === 'int' && (n.value as number) > 0) stride = n.value as number;
+        else this.diags.push({ severity: 'error', code: 'P001', message: "'step' takes a positive integer literal", span: n.span });
+        if (n.kind === 'int') this.next();
+      }
       setup = [decl(`_$e${id}`, end, false), decl(counter, first, true)];
       cond = bin('<', v(counter), v(`_$e${id}`));
       elem = v(counter);
@@ -445,6 +452,7 @@ class Parser {
       cond = bin('<', v(counter), { k: 'call', name: 'len', nameSpan: sp, args: [v(arr)], span: sp, ty: 'error' });
       elem = { k: 'index', arr: v(arr), idx: v(counter), span: first.span, ty: 'error' };
     }
+    const bump: Stmt = { k: 'assign', span: sp, name: counter, nameSpan: sp, value: bin('+', v(counter), int(stride)) };
     const body = this.block();
     const loop: Stmt = {
       k: 'while', span: this.join(kw.span, this.prevSpan()), cond,

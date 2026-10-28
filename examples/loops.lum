@@ -24,3 +24,6 @@ for r in 0..3 {
     print(str(r) + "," + str(c));
   }
 }
+
+// step walks a range in bigger strides
+for i in 0..20 step 7 { print(i); }
