@@ -32,7 +32,7 @@ src/
   parser.ts        recursive descent + precedence climbing, error recovery
   ast.ts types.ts  node types, symbols, builtin signatures
   analyzer.ts      scopes, type check, flow analysis, lints
-  optimizer.ts     constant folding, dead branch removal
+  optimizer.ts     constant folding (also pure builtins on literals), dead branch removal
   interpreter.ts   AST evaluator
   bytecode.ts      opcodes, module layout, disassembler
   compiler.ts      AST -> bytecode

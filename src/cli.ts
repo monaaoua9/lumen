@@ -27,7 +27,7 @@ commands
   explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
 options
-  -O          constant folding / dead branch removal before codegen
+  -O          constant folding (arithmetic and pure builtins on literals) / dead branch removal before codegen
   --json      (check) machine readable diagnostics
   --Werror    (check) treat warnings as errors
 `;

@@ -17,6 +17,22 @@ function lit(e: Expr, value: number | string | boolean): Expr {
     : { ...base, k: 'float', value, ty: 'float' };
 }
 
+function foldBuiltin(e: Extract<Expr, { k: 'call' }>, args: Lit[]): Expr {
+  const v = args.map(a => a.value);
+  switch (e.builtin) {
+    case 'len': return typeof v[0] === 'string' ? lit(e, Buffer.byteLength(v[0])) : e;
+    case 'abs': return lit(e, Math.abs(v[0] as number));
+    case 'min': return lit(e, Math.min(v[0] as number, v[1] as number));
+    case 'max': return lit(e, Math.max(v[0] as number, v[1] as number));
+    case 'floor': return lit(e, Math.floor(v[0] as number));
+    case 'ceil': return lit(e, Math.ceil(v[0] as number));
+    case 'sqrt': return (v[0] as number) >= 0 ? lit(e, Math.sqrt(v[0] as number)) : e;
+    case 'float': return args[0].ty === 'int' ? lit(e, v[0] as number) : e;
+    case 'int': return args[0].ty === 'float' && Number.isSafeInteger(Math.trunc(v[0] as number)) ? lit(e, Math.trunc(v[0] as number)) : e;
+    default: return e;
+  }
+}
+
 function foldExpr(e: Expr): Expr {
   switch (e.k) {
     case 'unary': {
@@ -58,7 +74,7 @@ function foldExpr(e: Expr): Expr {
 
     case 'call':
       e.args = e.args.map(foldExpr);
-      return e;
+      return e.builtin && e.args.every(isLit) ? foldBuiltin(e, e.args as Lit[]) : e;
 
     case 'array':
       e.elems = e.elems.map(foldExpr);
