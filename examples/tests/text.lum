@@ -1,0 +1,15 @@
+import "std/test.lum"
+import "std/text.lum"
+
+fn test_reversed() {
+  test.eq_str(text.reversed("lumen"), "nemul");
+}
+
+fn test_capitalize() {
+  test.eq_str(text.capitalize("arabic"), "Arabic");
+  test.eq_int(len(text.words(" a  b ")), 2);
+}
+
+fn test_float() {
+  test.eq_float(sqrt(2.0) * sqrt(2.0), 2.0, 0.0001);
+}

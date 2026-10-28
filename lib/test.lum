@@ -1,0 +1,16 @@
+// assertion helpers for `lumen test`, the message says what was expected
+pub fn eq_int(got: int, want: int) {
+  assert(got == want, "expected " + str(want) + ", got " + str(got));
+}
+
+pub fn eq_str(got: string, want: string) {
+  assert(got == want, "expected \"" + want + "\", got \"" + got + "\"");
+}
+
+pub fn eq_float(got: float, want: float, eps: float) {
+  assert(abs(got - want) <= eps, "expected " + str(want) + ", got " + str(got));
+}
+
+pub fn is_true(cond: bool, what: string) {
+  assert(cond, what);
+}
