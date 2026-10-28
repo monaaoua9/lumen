@@ -80,7 +80,7 @@ Semantics worth knowing:
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested).
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index.
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
@@ -122,6 +122,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 ## Known limits / next steps
 
 - No nested arrays, structs or closures yet.
-- The VM is a straightforward switch loop; a register VM or computed dispatch would be the next speed step.
+- The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

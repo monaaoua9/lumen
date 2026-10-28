@@ -134,3 +134,8 @@ test('arrays: parser', () => {
   assert.ok(parse('fn f() { let a = [1]; a[f()] += 1; }').diags.length > 0);
   assert.equal(parse('let a = [1, 2]; a[0] += 3;').diags.length, 0);
 });
+
+test('arrays: constant negative index is an error', () => {
+  assert.ok(diagCodes('let a = [1]; print(a[-1]);').includes('E014'));
+  assert.ok(diagCodes('let a = [1]; a[-2] = 0;').includes('E014'));
+});

@@ -25,10 +25,11 @@ export function run(m: Module, io: IO) {
 
   const num = (i: number) => stack[i] as number;
 
-  for (;;) {
-    const at = pc;
-    const op = code[pc++];
-    try {
+  let at = 0;
+  try {
+    for (;;) {
+      at = pc;
+      const op = code[pc++];
       switch (op) {
         case Op.CONST: stack[sp++] = m.consts[code[pc++]]; break;
         case Op.POP: sp--; break;
@@ -133,9 +134,9 @@ export function run(m: Module, io: IO) {
         default:
           throw new Error(`bad opcode ${op} at ${at}`);
       }
-    } catch (e) {
-      if (e instanceof RuntimeError && !e.span) e.span = proto.spans[at];
-      throw e;
     }
+  } catch (e) {
+    if (e instanceof RuntimeError && !e.span) e.span = proto.spans[at];
+    throw e;
   }
 }

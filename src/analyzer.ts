@@ -234,6 +234,7 @@ class Analyzer {
         const vt = this.expr(s.value, elem);
         if (at !== 'error' && !elem) this.err('E003', `cannot index a value of type ${at}`, s.arr.span);
         if (it !== 'error' && it !== 'int') this.err('E003', `array index must be int, found ${it}`, s.idx.span);
+        this.negativeIndex(s.idx);
         if (elem && vt !== 'error' && vt !== elem) this.mismatch(elem, vt, s.value.span, 'in array element assignment');
         return NEXT;
       }
@@ -289,6 +290,12 @@ class Analyzer {
       case 'block': {
         return this.withScope(() => this.block(s.body));
       }
+    }
+  }
+
+  negativeIndex(idx: Expr) {
+    if (idx.k === 'unary' && idx.op === '-' && idx.arg.k === 'int' && idx.arg.value > 0) {
+      this.err('E014', 'array index is negative, this always fails at runtime', idx.span);
     }
   }
 
@@ -384,6 +391,7 @@ class Analyzer {
         const at = this.expr(e.arr);
         const it = this.expr(e.idx);
         if (it !== 'error' && it !== 'int') this.err('E003', `array index must be int, found ${it}`, e.idx.span);
+        this.negativeIndex(e.idx);
         if (at === 'error') return 'error';
         if (!isArray(at)) {
           this.err('E003', `cannot index a value of type ${at}`, e.arr.span);
