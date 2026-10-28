@@ -150,7 +150,8 @@ class Analyzer {
 
   // struct names are only known after parsing, so every written type goes through here
   checkType(t: Type, span: Span) {
-    const base = isArray(t) ? elemOf(t) : t;
+    let base: Type = t;
+    while (isArray(base)) base = elemOf(base);
     if (isEnum(base) && !this.enums.has(base.slice(1))) {
       this.err('E016', `unknown type '${base.slice(1)}'`, span);
     } else if (isStruct(base) && !this.structs.has(structName(base))) {
@@ -660,11 +661,18 @@ class Analyzer {
           return 'error';
         }
         const wantElem = want && isArray(want) ? elemOf(want) : undefined;
-        const tys = e.elems.map(x => this.expr(x, wantElem));
+        // later elements are checked against the first typed one, so [[1], []] works
+        let w = wantElem;
+        const tys: Type[] = [];
+        for (const x of e.elems) {
+          const t = this.expr(x, w);
+          tys.push(t);
+          if (!w && t !== 'error' && t !== 'void') w = t;
+        }
         const first = tys.find(t => t !== 'error');
         if (!first) return 'error';
-        if (isArray(first) || first === 'void') {
-          this.err('E013', first === 'void' ? 'a function that returns nothing cannot be used as a value' : 'nested arrays are not supported', e.elems[tys.indexOf(first)].span);
+        if (first === 'void') {
+          this.err('E010', 'a function that returns nothing cannot be used as a value', e.elems[tys.indexOf(first)].span);
           return 'error';
         }
         let ok = true;

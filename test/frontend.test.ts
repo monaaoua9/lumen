@@ -124,7 +124,7 @@ test('arrays: type checking', () => {
   assert.deepEqual(diagCodes('let a = 5; print(a[0]);'), ['E003']);
   assert.deepEqual(diagCodes('let a = [1]; a[0] = "s";'), ['E003']);
   assert.deepEqual(diagCodes('let a = [1]; let b = [1]; print(a == b);'), ['E003']);
-  assert.deepEqual(diagCodes('let a = [[1]]; print(a);'), ['E013']);
+  assert.deepEqual(diagCodes('let a = [[1]]; print(a);'), []);
   assert.deepEqual(diagCodes('let a = [1]; push(a, 2.0);'), ['E003']);
   assert.deepEqual(diagCodes('let a = [1]; push(a);'), ['E004']);
   assert.deepEqual(diagCodes('fn f(xs: int[]): int { return xs[0]; } print(f([1]));'), []);
@@ -251,4 +251,16 @@ test('methods: checking', () => {
   assert.deepEqual(errs(M + 'let v = V.new(1); print(v.new(2));'), ['E019']); // `new` has no self
   assert.deepEqual(errs('impl Nope { fn f(self) { } }').includes('E016'), true);
   assert.deepEqual(errs('struct A { x: int } impl A { fn f(self) { } fn f(self) { } }').includes('E006'), true);
+});
+
+test('nested arrays: checking', () => {
+  assert.deepEqual(diagCodes('let g: int[][] = [[1], []]; print(g[0][0]);'), []);
+  assert.deepEqual(diagCodes('let g = [[1], []]; print(g);'), []);
+  assert.deepEqual(diagCodes('let g = [[], [1]]; print(g);'), ['E013']);
+  assert.deepEqual(diagCodes('let g = [[1], [2.5]]; print(g);'), ['E003']);
+  assert.deepEqual(diagCodes('let g = [[1]]; print(g[0][0] + g[0]);'), ['E003']);
+  assert.deepEqual(diagCodes('let g = [[1]]; g[0][0] = "s";'), ['E003']);
+  assert.deepEqual(diagCodes('let g = [[1]]; g[0] = 5;'), ['E003']);
+  assert.deepEqual(diagCodes('let g: int[][] = [[1]]; push(g, [2]); push(g, 3);'), ['E003']);
+  assert.deepEqual(diagCodes('fn f(m: Nope[][]) { } f([]);').slice(0, 1), ['E016']);
 });

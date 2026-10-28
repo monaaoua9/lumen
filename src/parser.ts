@@ -131,11 +131,12 @@ class Parser {
     const t = this.expect('ident', 'a type name');
     // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
     const ty = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
-    if (this.eat('[')) {
+    let out: Elem = ty;
+    while (this.eat('[')) {
       this.expect(']');
-      return arrayOf(ty);
+      out = arrayOf(out);
     }
-    return ty;
+    return out;
   }
 
   statement(): Stmt {

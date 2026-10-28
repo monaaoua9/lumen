@@ -105,7 +105,7 @@ Semantics worth knowing:
 - Operands evaluate left to right; `&&` / `||` short-circuit.
 - Functions see globals declared *before* them. Recursion works, call depth is capped at 1000.
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
-- Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. Nested arrays and `==` on arrays/structs are rejected.
+- Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. `==` on arrays/structs is rejected. Arrays can nest (`int[][]`, rows may have different lengths).
 - Structs are references too (`let q = p;` aliases) and print as `Point { x: 1.0, y: 2.0 }`. Literal fields run in the order written. A struct cannot contain itself by value; use an array field (`kids: Node[]`).
 - `Name {` after `if` / `while` is a block, wrap a struct literal in parentheses there.
 
@@ -114,7 +114,7 @@ Semantics worth knowing:
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access / unknown method, `E020` non-exhaustive match, `E021` unknown enum variant, `E022` wrong number of values for a variant (constructor or pattern).
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access / unknown method, `E020` non-exhaustive match, `E021` unknown enum variant, `E022` wrong number of values for a variant (constructor or pattern).
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,
@@ -164,6 +164,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No nested arrays, methods or closures yet.
+- No closures or function values, traits/interfaces, generics or modules yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

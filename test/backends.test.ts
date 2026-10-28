@@ -286,3 +286,18 @@ test('C backend: garbage is collected', { skip: cc ? false : 'no C compiler on P
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('nested arrays: aliasing and bounds', () => {
+  const ok = `
+    let row = [1, 2];
+    let g = [row, row];
+    g[0][1] = 9;
+    print(g);
+    let h: int[][] = [];
+    push(h, [7]);
+    print(h[0][0] + len(h));
+  `;
+  assert.equal(allEngines(ok), '[[1, 9], [1, 9]]\n8\n');
+  assert.equal(allEngines('let g = [[1]]; print(g[0][1]);'), 'ERR:index out of bounds');
+  assert.equal(allEngines('let g = [[1]]; print(g[1][0]);'), 'ERR:index out of bounds');
+});

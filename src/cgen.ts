@@ -273,7 +273,7 @@ function slot(t: Type): 'i' | 'f' | 'b' | 's' | 'p' {
 
 // reading a pointer back out of lm_val needs the cast
 function fromSlot(t: Type, e: string): string {
-  return isStruct(t) || (isEnum(t) && BOXED.has(enumName(t))) ? `((${ctype(t)})${e})` : e;
+  return isArray(t) || isStruct(t) || (isEnum(t) && BOXED.has(enumName(t))) ? `((${ctype(t)})${e})` : e;
 }
 
 // C expression that turns `e` (of type t) into a string; strings are quoted inside containers
@@ -289,7 +289,18 @@ function strOf(t: Type, e: string): string {
   return t === 'string' ? e : `lm_str_${t}(${e})`;
 }
 
+// arrays inside arrays need their own formatter function, generated on demand
+const NESTED = new Map<string, string>();
+
 function elemFn(t: Type): string {
+  if (isArray(t)) {
+    let name = NESTED.get(t);
+    if (!name) {
+      name = `lm_sea_${NESTED.size}`;
+      NESTED.set(t, name);
+    }
+    return name;
+  }
   if (isEnum(t)) return `lm_se_E_${enumName(t)}`;
   return isStruct(t) ? `lm_se_S_${structName(t)}` : `lm_se_${slot(t)}`;
 }
@@ -695,6 +706,7 @@ export function emitC(prog: Program): string {
   const out: string[] = [PRELUDE];
 
   BOXED.clear();
+  NESTED.clear();
   for (const d of prog.enums) if (d.variants.some(v => v.payload.length > 0)) BOXED.add(d.name);
   for (const d of prog.enums) {
     if (BOXED.has(d.name)) continue;
@@ -743,6 +755,7 @@ export function emitC(prog: Program): string {
   }
   if (prog.structs.length || boxed.length) out.push('');
 
+  const defsAt = out.length;
   // pre-name params and globals so prototypes and bodies agree
   for (const f of fns) out.push(g.fnSig(f) + ';');
   out.push('');
@@ -765,6 +778,21 @@ export function emitC(prog: Program): string {
   g.ind = 1;
   g.block(prog.body);
   const roots = [...globals].map(v => `  lm_root(&${g.name(v)}, sizeof ${g.name(v)});`);
+  const protos: string[] = [];
+  const defs: string[] = [];
+  const queued = new Set<string>();
+  for (let more = true; more; ) {
+    more = false;
+    for (const [type, name] of [...NESTED]) {
+      if (queued.has(name)) continue;
+      queued.add(name);
+      more = true;
+      protos.push(`static const char *${name}(lm_val v);`);
+      defs.push(`static const char *${name}(lm_val v) { return lm_str_arr((lm_arr *)v.p, ${elemFn(type.slice(0, -2) as Type)}); }`);
+    }
+  }
+  out.splice(defsAt, 0, ...defs);
+  out.splice(1, 0, ...protos);
   out.push('int main(void) {', '  lm_gc_init(__builtin_frame_address(0));', ...roots, ...g.lines, '  return 0;', '}', '');
   return out.join('\n');
 }

@@ -1,9 +1,9 @@
 export type Scalar = 'int' | 'float' | 'bool' | 'string';
 export type StructType = `@${string}`; // user types carry their name after '@'
 export type EnumType = `#${string}`; // enum values are ordinals at runtime
-export type Elem = Scalar | StructType | EnumType;
-export type ArrayType = `${Elem}[]`;
-export type Type = Elem | ArrayType | 'void' | 'error';
+export type ArrayType = `${string}[]`;
+export type Elem = Scalar | StructType | EnumType | ArrayType;
+export type Type = Elem | 'void' | 'error';
 
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
 export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
