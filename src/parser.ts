@@ -473,9 +473,18 @@ class Parser {
     }
     // impl<T> Box<T> { ... }: every method becomes a generic function over the impl's type parameters
     let implParams: string[] | undefined;
+    let implBounds: Record<string, string[]> | undefined;
     if (this.eat('<')) {
       implParams = [];
-      do implParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      do {
+        const tp = this.expect('ident', 'a type parameter name').text;
+        implParams.push(tp);
+        if (this.eat(':')) {
+          implBounds ??= {};
+          implBounds[tp] = [];
+          do implBounds[tp].push(this.expect('ident', 'a trait name').text); while (this.eat('+'));
+        }
+      } while (this.eat(','));
       this.expect('>');
     }
     let name = this.expect('ident', 'a type name');
@@ -496,13 +505,13 @@ class Parser {
     const body: Stmt[] = [];
     while (!this.at('}') && !this.at('eof')) {
       if (!this.at('fn')) this.fail(`expected 'fn' inside impl, found '${this.cur.text}'`);
-      body.push(this.fnDecl(name.text, ownerTy, implParams));
+      body.push(this.fnDecl(name.text, ownerTy, implParams, implBounds));
     }
     const close = this.expect('}');
     return { k: 'block', span: this.join(kw.span, close.span), body };
   }
 
-  fnDecl(owner?: string, ownerTy?: Type, implParams?: string[]): FnDecl {
+  fnDecl(owner?: string, ownerTy?: Type, implParams?: string[], implBounds?: Record<string, string[]>): FnDecl {
     const kw = this.next();
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
@@ -540,7 +549,7 @@ class Parser {
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
     const body = this.block();
-    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams: typeParams ?? implParams, bounds };
+    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams: typeParams ?? implParams, bounds: bounds ?? implBounds };
     if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
     return decl;

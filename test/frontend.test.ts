@@ -397,3 +397,10 @@ test('traits: implicit coercion to dyn', () => {
   assert.deepEqual(errs(T + 'fn g(a: dyn A): int { return a.f(); } print(g(X { v: 1 })); let a: dyn A = X { v: 2 }; fn h(): dyn A { return X { v: 3 }; }'), []);
   assert.deepEqual(errs(T + 'fn g(a: dyn A): int { return a.f(); } print(g(Y { v: 1 }));'), ['E003']);
 });
+
+test('generic impl blocks: trait bounds', () => {
+  const S = 'trait Area { fn area(self): float; } struct Sq { s: float } struct No { v: int } impl Area for Sq { fn area(self): float { return self.s; } } '
+    + 'struct Holder<T> { item: T } impl<T: Area> Holder<T> { fn total(self): float { return self.item.area(); } } ';
+  assert.deepEqual(errs(S + 'let h = Holder { item: Sq { s: 2.0 } }; print(h.total());'), []);
+  assert.deepEqual(errs(S + 'let h = Holder { item: No { v: 1 } }; print(h.total());'), ['E025']);
+});
