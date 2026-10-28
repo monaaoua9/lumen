@@ -83,3 +83,36 @@ pub fn zip_with<A, B, C>(xs: A[], ys: B[], f: fn(A, B): C): C[] {
   for i in 0..n { push(out, f(xs[i], ys[i])); }
   return out;
 }
+
+// stable merge sort, `before(a, b)` true when a must come first
+pub fn sort_by<T>(xs: T[], before: fn(T, T): bool): T[] {
+  var cur: T[] = [];
+  for x in xs { push(cur, x); }
+  let n = len(cur);
+  var width = 1;
+  while width < n {
+    let next: T[] = [];
+    var lo = 0;
+    while lo < n {
+      let mid = if lo + width < n { lo + width } else { n };
+      let hi = if lo + 2 * width < n { lo + 2 * width } else { n };
+      var i = lo;
+      var j = mid;
+      while i < mid && j < hi {
+        if before(cur[j], cur[i]) {
+          push(next, cur[j]);
+          j += 1;
+        } else {
+          push(next, cur[i]);
+          i += 1;
+        }
+      }
+      while i < mid { push(next, cur[i]); i += 1; }
+      while j < hi { push(next, cur[j]); j += 1; }
+      lo += 2 * width;
+    }
+    cur = next;
+    width *= 2;
+  }
+  return cur;
+}
