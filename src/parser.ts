@@ -16,6 +16,7 @@ function hasCall(e: Expr): boolean {
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
     case 'mcall': return true;
+    case 'blockx': return true;
     case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value) || (a.guard !== undefined && hasCall(a.guard)));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
@@ -487,10 +488,41 @@ class Parser {
   }
 
   braced(): Expr {
-    this.expect('{');
-    const e = this.allowStruct(() => this.expr());
-    this.expect('}');
-    return e;
+    return this.blockExpr(this.expect('{'));
+  }
+
+  // `{ stmts; value }`, the open brace is already consumed. each item is first tried as the final
+  // expression (it must be followed by the closing brace), otherwise it is parsed as a statement
+  blockExpr(open: Token): Expr {
+    const body: Stmt[] = [];
+    let value: Expr | undefined;
+    this.depth++;
+    const startsStmt = new Set(['let', 'var', 'while', 'for', 'return', 'break', 'continue', 'fn', 'struct', 'enum', 'impl', 'trait', 'pub']);
+    while (!this.at('}') && !this.at('eof')) {
+      if (!startsStmt.has(this.cur.kind)) {
+        const snap = [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId];
+        try {
+          const e = this.allowStruct(() => this.expr());
+          if (this.at('}')) {
+            value = e;
+            break;
+          }
+        } catch (err) {
+          if (!(err instanceof Bail)) throw err;
+        }
+        [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId] = snap;
+      }
+      const s = this.statementRecovering();
+      if (s) body.push(s);
+    }
+    this.depth--;
+    const close = this.expect('}');
+    const span = this.join(open.span, close.span);
+    if (!value) {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'a block expression must end with a value', span: close.span });
+      value = { k: 'int', value: 0, span: close.span, ty: 'error' };
+    }
+    return body.length === 0 ? value : { k: 'blockx', body, value, span, ty: 'error' };
   }
 
   matchStmt(): Stmt {
@@ -853,6 +885,7 @@ class Parser {
         return e;
       }
       case 'if': return this.ifExpr(t);
+      case '{': return this.blockExpr(t);
       case 'match': {
         const scrut = this.condExpr();
         this.expect('{');
@@ -863,9 +896,10 @@ class Parser {
           while (this.eat('|')) pats.push(this.pattern());
           const guard = this.eat('if') ? this.allowStruct(() => this.expr()) : undefined;
           this.expect('=>');
-          const value = this.allowStruct(() => this.expr());
+          const braces = this.at('{');
+          const value = braces ? this.blockExpr(this.next()) : this.allowStruct(() => this.expr());
           arms.push({ pats, guard, value, span: this.join(first, value.span) });
-          if (!this.eat(',')) break;
+          if (!this.eat(',') && !braces) break;
         }
         const close = this.expect('}');
         return { k: 'matchx', scrut, arms, tmp: -1, span: this.join(t.span, close.span), ty: 'error' };

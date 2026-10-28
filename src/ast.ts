@@ -45,6 +45,7 @@ export type Expr =
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
+  | (Base & { k: 'blockx'; body: Stmt[]; value: Expr })
   | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span }[]; tmp: number })
   | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number; boxed: boolean })
   | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })

@@ -1,0 +1,43 @@
+// { statements; value } is an expression: the last item is the result
+let a = {
+  let x = 20;
+  let y = x * 2;
+  y + 2
+};
+print(a);
+
+fn grade(score: int): string {
+  return if score >= 90 { "A" } else if score >= 50 {
+    let low = score < 70;
+    if low { "C" } else { "B" }
+  } else { "F" };
+}
+print(grade(95) + grade(60) + grade(75) + grade(10));
+
+enum Cmd { Add(int), Reset, Show }
+var total = 0;
+for c in [Cmd.Add(5), Cmd.Add(7), Cmd.Show, Cmd.Reset, Cmd.Show] {
+  let line = match c {
+    Add(n) => {
+      total += n;
+      "added {n}"
+    }
+    Reset => {
+      total = 0;
+      "reset"
+    }
+    Show => "total is {total}",
+  };
+  print(line);
+}
+
+// loops with break live inside the block
+let first_big = {
+  var i = 1;
+  while true {
+    if i * i > 50 { break; }
+    i += 1;
+  }
+  i
+};
+print(first_big);

@@ -35,6 +35,7 @@ function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
       case 'mcall': ex(e.obj); e.args.forEach(ex); return;
       case 'enumctor': e.args.forEach(ex); return;
       case 'structlit': e.fields.forEach(f => ex(f.value)); return;
+      case 'blockx': e.body.forEach(st); ex(e.value); return;
       case 'matchx': ex(e.scrut); e.arms.forEach(a => { a.pats.forEach(pat); if (a.guard) ex(a.guard); ex(a.value); }); return;
       case 'lambda': e.fn.params.forEach(p => declared.add(p.name)); namesIn(e.fn.body, used, declared); return;
     }
@@ -167,6 +168,7 @@ function showTypes(msg: string): string {
 }
 
 interface FnCtx {
+  exprBlocks: number; // how many block expressions enclose the code being analyzed
   boxNames: Set<string>; // vars some closure in this function captures
   ret: Type;
   nlocals: number;
@@ -214,7 +216,7 @@ class Analyzer {
   enums = new Map<string, EnumDecl>();
   globals = new Scope(null);
   scope = this.globals;
-  ctx: FnCtx = { boxNames: new Set(), ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
+  ctx: FnCtx = { exprBlocks: 0, boxNames: new Set(), ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
   nglobals = 0;
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
@@ -602,7 +604,7 @@ class Analyzer {
     if (!f.sym) return; // duplicate declaration, already reported
     const savedCtx = this.ctx;
     const savedLoops = this.loops;
-    this.ctx = { boxNames: boxNamesOf(f.body), ret: f.ret, nlocals: 0, isMain: false, name: f.name };
+    this.ctx = { exprBlocks: 0, boxNames: boxNamesOf(f.body), ret: f.ret, nlocals: 0, isMain: false, name: f.name };
     this.loops = [];
 
     this.withScope(() => {
@@ -756,6 +758,10 @@ class Analyzer {
       }
 
       case 'return': {
+        if (this.ctx.exprBlocks > 0) {
+          this.err('E029', "'return' cannot leave a block expression", s.span, 'compute the value in the block and return it after');
+          return { diverges: true, returns: false };
+        }
         if (this.ctx.isMain) {
           this.err('E009', "'return' outside of a function", s.span);
           return { diverges: true, returns: true };
@@ -1083,6 +1089,19 @@ class Analyzer {
       case 'fnref': return e.ty; // only produced by the 'var' case below
       case 'lambda': return this.lambda(e);
       case 'matchx': return this.matchExpr(e, want);
+      case 'blockx': {
+        // break and continue may only target loops inside the block
+        const savedLoops = this.loops;
+        this.loops = [];
+        this.ctx.exprBlocks++;
+        const t = this.withScope(() => {
+          this.block(e.body);
+          return this.expr(e.value, want);
+        });
+        this.ctx.exprBlocks--;
+        this.loops = savedLoops;
+        return t;
+      }
       case 'mcall': return this.methodCall(e, want);
       case 'enumctor': return ('#' + e.enumName) as Type;
 

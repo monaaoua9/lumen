@@ -299,6 +299,11 @@ class FnCompiler {
         this.emit(Op.NEWARR, e.args.length + 1);
         return;
 
+      case 'blockx':
+        this.block(e.body);
+        this.expr(e.value);
+        return;
+
       case 'matchx': {
         this.expr(e.scrut);
         this.span = e.span;

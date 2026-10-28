@@ -93,6 +93,11 @@ function foldExpr(e: Expr): Expr {
       e.args = e.args.map(foldExpr);
       return e;
 
+    case 'blockx':
+      e.body = foldBlock(e.body);
+      e.value = foldExpr(e.value);
+      return e;
+
     case 'matchx':
       e.scrut = foldExpr(e.scrut);
       e.arms.forEach(a => { if (a.guard) a.guard = foldExpr(a.guard); a.value = foldExpr(a.value); });

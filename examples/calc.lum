@@ -1,0 +1,94 @@
+// a tiny calculator: tokenize, parse with recursive descent into an enum tree, evaluate it
+enum Tok { Num(int), Op(string), Open, Close }
+enum Expr { Lit(int), Bin(string, Expr, Expr), Neg(Expr) }
+
+struct Parser { toks: Tok[], at: int }
+
+fn tokenize(src: string): Tok[] {
+  let out: Tok[] = [];
+  var i = 0;
+  while i < len(src) {
+    let c = byte(src, i);
+    if c == 32 {
+      i += 1;
+    } else if c >= 48 && c <= 57 {
+      var n = 0;
+      while i < len(src) && byte(src, i) >= 48 && byte(src, i) <= 57 {
+        n = n * 10 + byte(src, i) - 48;
+        i += 1;
+      }
+      push(out, Tok.Num(n));
+    } else if c == 40 {
+      push(out, Tok.Open);
+      i += 1;
+    } else if c == 41 {
+      push(out, Tok.Close);
+      i += 1;
+    } else {
+      push(out, Tok.Op(substr(src, i, 1)));
+      i += 1;
+    }
+  }
+  return out;
+}
+
+fn peek_op(p: Parser): string {
+  if p.at >= len(p.toks) { return ""; }
+  return match p.toks[p.at] {
+    Op(s) => s,
+    _ => "",
+  };
+}
+
+fn group(p: Parser): Expr {
+  let inner = sum(p);
+  p.at += 1;
+  return inner;
+}
+
+fn atom(p: Parser): Expr {
+  let t = p.toks[p.at];
+  p.at += 1;
+  return match t {
+    Num(n) => Expr.Lit(n),
+    Op(s) if s == "-" => Expr.Neg(atom(p)),
+    Open => group(p),
+    _ => Expr.Lit(0),
+  };
+}
+
+fn product(p: Parser): Expr {
+  var left = atom(p);
+  while peek_op(p) == "*" || peek_op(p) == "/" {
+    let op = peek_op(p);
+    p.at += 1;
+    left = Expr.Bin(op, left, atom(p));
+  }
+  return left;
+}
+
+fn sum(p: Parser): Expr {
+  var left = product(p);
+  while peek_op(p) == "+" || peek_op(p) == "-" {
+    let op = peek_op(p);
+    p.at += 1;
+    left = Expr.Bin(op, left, product(p));
+  }
+  return left;
+}
+
+fn eval(e: Expr): int {
+  return match e {
+    Lit(n) => n,
+    Neg(x) => 0 - eval(x),
+    Bin(op, l, r) => if op == "+" { eval(l) + eval(r) } else if op == "-" { eval(l) - eval(r) } else if op == "*" { eval(l) * eval(r) } else { eval(l) / eval(r) },
+  };
+}
+
+fn calc(src: string): int {
+  return eval(sum(Parser { toks: tokenize(src), at: 0 }));
+}
+
+for src in ["1 + 2 * 3", "(1 + 2) * 3", "10 / 3 - 4", "-(2 + 3) * 2", "2 * (3 + (4 - 1)) * 5"] {
+  print("{src} = {calc(src)}");
+}

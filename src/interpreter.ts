@@ -161,6 +161,10 @@ export class Interpreter {
 
       case 'array': return e.elems.map(x => this.eval(x, f));
 
+      case 'blockx':
+        this.exec(e.body, f);
+        return this.eval(e.value, f);
+
       case 'matchx': {
         const v = this.eval(e.scrut, f);
         for (const arm of e.arms) {

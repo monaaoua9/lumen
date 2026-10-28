@@ -504,6 +504,7 @@ function hasCall(e: Expr): boolean {
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
+    case 'blockx': return true;
     case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value) || (a.guard !== undefined && hasCall(a.guard)));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
@@ -644,6 +645,10 @@ class Gen {
         const i = this.expr(e.idx);
         return fromSlot(e.ty, `(lm_arr_at(${a}, ${i})->${slot(e.ty)})`);
       }
+
+      case 'blockx':
+        this.block(e.body);
+        return this.expr(e.value);
 
       case 'matchx': {
         const v = this.newTmp(e.scrut.ty, this.expr(e.scrut));

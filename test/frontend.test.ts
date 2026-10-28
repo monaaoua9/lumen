@@ -417,6 +417,17 @@ test('match guards', () => {
   assert.deepEqual(diagCodes('let n = 1; match n { 1 if n > 0 => { print(1); } 1 => { print(2); } _ => { } }'), []);
 });
 
+test('block expressions', () => {
+  assert.deepEqual(errs('let a = { let x = 1; x + 1 }; print(a);'), []);
+  assert.deepEqual(errs('let a: int = { 1 }; print(a);'), []);
+  assert.deepEqual(errs('let a = { let x = 1; x }; print(x);'), ['E001']);
+  assert.deepEqual(errs('fn f(): int { let a = { return 1; 2 }; return a; } print(f());'), ['E029']);
+  assert.deepEqual(errs('while true { let a = { break; 1 }; print(a); }'), ['E008']);
+  assert.deepEqual(errs('let a = { let x = 1; x }; let b: string = a; print(b);'), ['E003']);
+  assert.deepEqual(diagCodes('let a = { let x = 1; };'), ['P001']);
+  assert.deepEqual(errs('print(match 1 { 1 => { let a = 2; a } _ => 0 });'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

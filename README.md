@@ -75,7 +75,7 @@ match light {
 
 `match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs). `if` works as an expression too, `let s = if n < 0 { "neg" } else { "pos" };`: both branches are required, `else if` chains, and it is sugar for a match on the condition.
 
-An arm may carry a guard, `Circle(r) if r > 1.0 => ...`; the guard runs after the pattern bound its names, and if it is false the next arm is tried. A guarded arm does not count towards exhaustiveness (`E020`) or reachability (`W010`).
+A block can be a value: `let n = { let a = 20; a + 22 };`, as a `match` arm (`Add(n) => { total += n; "added" }`) or an `if` branch. The last item is the result; `return` cannot leave it (`E029`) and `break`/`continue` only reach loops inside the block. An arm may carry a guard, `Circle(r) if r > 1.0 => ...`; the guard runs after the pattern bound its names, and if it is false the next arm is tried. A guarded arm does not count towards exhaustiveness (`E020`) or reachability (`W010`).
 
 Variants can carry data, which `match` takes apart (recursive types work):
 
