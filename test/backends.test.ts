@@ -131,6 +131,9 @@ test('C backend matches the interpreter', { skip: cc ? false : 'no C compiler on
         assert.ok(r.stderr.includes(expected.slice(4)), `${f}: ${r.stderr}`);
       } else {
         assert.equal(r.stdout.replace(/\r\n/g, '\n'), expected, f);
+        // collecting on every allocation flushes out any root the GC would miss
+        const stress = spawnSync(exe, [], { encoding: 'utf8', env: { ...process.env, LM_GC_STRESS: '1' } });
+        assert.equal(stress.stdout.replace(/\r\n/g, '\n'), expected, `${f} under GC stress`);
       }
     }
   } finally {
@@ -264,4 +267,22 @@ test('methods: receiver is a reference, args run left to right', () => {
     print(c.n);
   `;
   assert.equal(allEngines(src), '2\n3\n7\n5\n');
+});
+
+test('C backend: garbage is collected', { skip: cc ? false : 'no C compiler on PATH' }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-gc-'));
+  try {
+    const src = readFileSync(new URL('alloc.lum', EXAMPLES), 'utf8');
+    const cfile = join(dir, 'alloc.c');
+    const exe = join(dir, 'alloc.exe');
+    writeFileSync(cfile, toC(checked(src, 'alloc.lum')));
+    assert.equal(spawnSync(cc!, ['-O2', '-o', exe, cfile, '-lm']).status, 0);
+    const r = spawnSync(exe, [], { encoding: 'utf8', env: { ...process.env, LM_GC_STATS: '1' } });
+    const m = /(\d+) collections, peak (\d+) bytes/.exec(r.stderr);
+    assert.ok(m, r.stderr);
+    assert.ok(Number(m[1]) > 0, 'expected at least one collection');
+    assert.ok(Number(m[2]) < 32 * 1024 * 1024, `peak ${m[2]} bytes is too high`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

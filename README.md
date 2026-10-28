@@ -146,6 +146,15 @@ npm run typecheck
 
 MIT, see `LICENSE`.
 
+## Memory in the C backend
+
+Generated C carries a small conservative mark-and-sweep collector (about 120 lines, in the prelude of every
+emitted file). Strings, arrays, structs and enums-with-data are allocated through `lm_alloc`; roots are the C stack
+(registers are spilled with `setjmp`) and the registered globals. A collection runs once 4 MB (or as much as survived
+the last collection) has been allocated. `LM_GC_STATS=1 ./prog` prints a summary at exit and `LM_GC_STRESS=1`
+collects on every allocation, which the test suite uses to catch missed roots. It assumes a downward-growing stack and
+GCC/Clang builtins, like the rest of the backend.
+
 ## Testing
 
 `test/backends.test.ts` runs every example through interpreter, VM, and both with `-O`, and asserts
@@ -157,5 +166,4 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 - No nested arrays, methods or closures yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
-- Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

@@ -1,0 +1,16 @@
+// allocation heavy: millions of short-lived strings, arrays and structs
+struct Box { id: int, tag: string, items: int[] }
+
+fn make(i: int): Box {
+  return Box { id: i, tag: "box" + str(i), items: [i, i + 1, i + 2] };
+}
+
+var keep = make(0);
+var total = 0;
+for i in 0..300000 {
+  let b = make(i);
+  total += b.items[2] + len(b.tag);
+  if i % 100000 == 0 { keep = b; }
+}
+print(total);
+print(keep);
