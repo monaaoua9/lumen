@@ -440,6 +440,7 @@ test('generics: type parameters from the expected result type', () => {
 
 test('lambda parameter inference', () => {
   assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) => v + 1, 2));'), []);
+  assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) { return v * 2; }, 2));'), []);
   assert.deepEqual(errs('let f = fn(x) => x + 1;'), ['E030']);
   assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) => "s", 2));'), ['E003']);
 });

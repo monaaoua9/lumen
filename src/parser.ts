@@ -714,6 +714,8 @@ class Parser {
           body = [{ k: 'return', span: value.span, value }];
         } else {
           body = this.allowStruct(() => this.block());
+          // untyped params and no annotation: the block's return decides, like an => body
+          if (ret === 'void' && params.some(p => p.ty === '?') && body.some(st => st.k === 'return' && st.value)) ret = '?' as Type;
         }
         const name = `lambda$${this.lambdas++}`;
         const fn: FnDecl = { k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 };

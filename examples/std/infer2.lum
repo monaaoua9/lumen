@@ -1,0 +1,6 @@
+import "std/list.lum"
+
+let words = ["kiwi", "fig", "banana"];
+print(list.map(words, fn(w) { return len(w); }));
+let f = fn(x: int) => x + 1;
+print(f(1));
