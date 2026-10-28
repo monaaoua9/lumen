@@ -11,6 +11,8 @@ export interface VarSym {
   isParam: boolean;
   used: boolean;
   assigned: boolean;
+  origin?: VarSym; // for a closure's copy of a captured var, the one it was captured from
+  box?: Type; // set when a closure captures this var: it lives in a one-element array and `box` is the value type
 }
 
 export interface FnSym {
@@ -35,7 +37,7 @@ export type Expr =
   | (Base & { k: 'float'; value: number })
   | (Base & { k: 'str'; value: string })
   | (Base & { k: 'bool'; value: boolean })
-  | (Base & { k: 'var'; name: string; sym?: VarSym })
+  | (Base & { k: 'var'; name: string; sym?: VarSym; raw?: boolean })
   | (Base & { k: 'lambda'; fn: FnDecl; caps: Expr[] })
   | (Base & { k: 'fnref'; name: string; fn?: FnSym })
   | (Base & { k: 'unary'; op: '-' | '!'; arg: Expr })
@@ -98,6 +100,9 @@ export interface Param {
   ty: Type;
   span: Span;
   sym?: VarSym;
+  box?: Type; // closure capture of a boxed var
+  from?: VarSym;
+  mutable?: boolean;
 }
 
 export interface FnDecl {

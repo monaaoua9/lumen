@@ -1,7 +1,7 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
 import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
-import { BUILTINS, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
-import type { FnType, Type } from './types.ts';
+import { BUILTINS, arrayOf, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
+import type { Elem, FnType, Type } from './types.ts';
 
 class Scope {
   vars = new Map<string, VarSym>();
@@ -119,7 +119,25 @@ function lambdasIn(node: unknown, out: Extract<Expr, { k: 'lambda' }>[]) {
   if (!node || typeof node !== 'object') return;
   const o = node as Record<string, unknown>;
   if (o.k === 'lambda') out.push(o as unknown as Extract<Expr, { k: 'lambda' }>);
-  for (const k of Object.keys(o)) lambdasIn(o[k], out);
+  for (const k of Object.keys(o)) {
+    // symbols and resolved callees point back into the tree, only a lambda's own fn is part of it
+    if (k === 'sym' || k === 'decl' || (k === 'fn' && o.k !== 'lambda')) continue;
+    lambdasIn(o[k], out);
+  }
+}
+
+// names a closure in this body mentions without declaring them itself: if one is a local `var` it has to be shared
+function boxNamesOf(body: Stmt[]): Set<string> {
+  const out = new Set<string>();
+  const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+  lambdasIn(body, ls);
+  for (const l of ls) {
+    const used = new Set<string>();
+    const declared = new Set<string>(l.fn.params.map(p => p.name));
+    namesIn(l.fn.body, used, declared);
+    for (const n of used) if (!declared.has(n)) out.add(n);
+  }
+  return out;
 }
 
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
@@ -136,6 +154,7 @@ function showTypes(msg: string): string {
 }
 
 interface FnCtx {
+  boxNames: Set<string>; // vars some closure in this function captures
   ret: Type;
   nlocals: number;
   isMain: boolean;
@@ -182,7 +201,7 @@ class Analyzer {
   enums = new Map<string, EnumDecl>();
   globals = new Scope(null);
   scope = this.globals;
-  ctx: FnCtx = { ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
+  ctx: FnCtx = { boxNames: new Set(), ret: 'void', nlocals: 0, isMain: true, name: '<main>' };
   nglobals = 0;
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
@@ -269,6 +288,7 @@ class Analyzer {
 
     this.checkTraits(prog);
 
+    this.ctx.boxNames = boxNamesOf(prog.body);
     this.analyzeBlockBody(prog.body);
 
     for (const v of this.allVars) this.lintVar(v);
@@ -544,11 +564,15 @@ class Analyzer {
     if (!f.sym) return; // duplicate declaration, already reported
     const savedCtx = this.ctx;
     const savedLoops = this.loops;
-    this.ctx = { ret: f.ret, nlocals: 0, isMain: false, name: f.name };
+    this.ctx = { boxNames: boxNamesOf(f.body), ret: f.ret, nlocals: 0, isMain: false, name: f.name };
     this.loops = [];
 
     this.withScope(() => {
-      for (const p of f.params) p.sym = this.declareVar(p.name, p.ty, false, p.span, true);
+      for (const p of f.params) {
+        p.sym = this.declareVar(p.name, p.ty, p.mutable ?? false, p.span, true);
+        if (p.box) p.sym.box = p.box;
+        p.sym.origin = p.from;
+      }
       const flow = this.withScope(() => this.block(f.body));
       if (f.ret !== 'void' && !flow.returns) {
         this.err('E007', `function '${f.name}' does not return a value on every path`, f.nameSpan, `add a 'return' at the end or in the missing branch`);
@@ -620,13 +644,21 @@ class Analyzer {
           this.mismatch(s.annot, t, s.init.span);
         }
         // declared after the initializer so `let x = x + 1` sees the outer x
+        if (s.mutable && ty !== 'error' && this.scope !== this.globals && this.ctx.boxNames.has(s.name)) {
+          // a closure captures this var: keep it in a one-element array so every holder sees the same cell
+          s.init = { k: 'array', elems: [s.init], span: s.init.span, ty: arrayOf(ty as Elem) };
+          s.sym = this.declareVar(s.name, arrayOf(ty as Elem), true, s.nameSpan);
+          s.sym.box = ty;
+          return NEXT;
+        }
         s.sym = this.declareVar(s.name, ty, s.mutable, s.nameSpan);
         return NEXT;
       }
 
       case 'assign': {
         const sym = this.scope.lookup(s.name);
-        const t = this.expr(s.value, sym?.ty);
+        const vty = sym ? (sym.box ?? sym.ty) : undefined;
+        const t = this.expr(s.value, vty);
         if (!sym) {
           this.undefinedVar(s.name, s.nameSpan);
           return NEXT;
@@ -636,10 +668,15 @@ class Analyzer {
           this.err('E005', `cannot assign to '${s.name}' because it is not declared with 'var'`, s.nameSpan,
             sym.isParam ? 'parameters are immutable; copy it into a local var first' : `declare it with 'var ${s.name} = ...'`);
         }
-        sym.assigned = true;
+        for (let o: VarSym | undefined = sym; o; o = o.origin) o.assigned = true;
         if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', s.value.span);
-        else if (t !== 'error' && sym.ty !== 'error' && t !== sym.ty) this.mismatch(sym.ty, t, s.value.span);
+        else if (t !== 'error' && vty !== 'error' && t !== vty) this.mismatch(vty!, t, s.value.span);
         if (s.value.k === 'var' && s.value.name === s.name) this.warn('W009', `'${s.name}' is assigned to itself`, s.span);
+        if (sym.box) {
+          const cell: Expr = { k: 'var', name: s.name, span: s.nameSpan, ty: sym.ty, sym, raw: true };
+          const zero: Expr = { k: 'int', value: 0, span: s.nameSpan, ty: 'int' };
+          Object.assign(s, { k: 'setindex', arr: cell, idx: zero });
+        }
         return NEXT;
       }
 
@@ -1018,6 +1055,12 @@ class Analyzer {
         }
         e.sym = sym;
         sym.used = true;
+        if (sym.box && !e.raw) {
+          // reads of a shared var go through its cell
+          const cell: Expr = { k: 'var', name: e.name, span: e.span, ty: sym.ty, sym, raw: true };
+          Object.assign(e, { k: 'index', arr: cell, idx: { k: 'int', value: 0, span: e.span, ty: 'int' } });
+          return sym.box;
+        }
         return sym.ty;
       }
 
@@ -1268,13 +1311,13 @@ class Analyzer {
       if (declared.has(name)) continue;
       const outer = this.scope.lookup(name);
       if (!outer || outer.where === 'global') continue;
-      if (outer.mutable) {
+      if (outer.mutable && !outer.box) {
         this.err('E023', `a function value cannot capture '${name}' because it is declared with 'var'`, f.nameSpan, `copy it first: let ${name}_copy = ${name};`);
       }
-      const ref: Expr = { k: 'var', name, span: f.nameSpan, ty: 'error' };
+      const ref: Expr = { k: 'var', name, span: f.nameSpan, ty: 'error', raw: outer.box !== undefined };
       this.expr(ref);
       e.caps.push(ref);
-      f.params.push({ name, span: outer.span, ty: outer.ty });
+      f.params.push({ name, span: outer.span, ty: outer.ty, box: outer.box, mutable: outer.mutable, from: outer });
     }
 
     const saved = this.scope;

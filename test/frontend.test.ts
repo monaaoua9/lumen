@@ -299,7 +299,9 @@ test('math builtins: checking', () => {
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
-  assert.deepEqual(errs('fn f() { var k = 1; let g = fn(x: int): int { return x + k; }; print(g(1)); k = 2; } f();'), ['E023']);
+  assert.deepEqual(errs('fn f() { var k = 1; let g = fn(x: int): int { k += x; return k; }; print(g(1)); k = 2; print(k); } f();'), []);
+  assert.deepEqual(errs('fn f() { var k = 1; let g = fn(): int { k = "s"; return 1; }; print(g()); } f();'), ['E003']);
+  assert.deepEqual(errs('fn f() { var k = 1; let g = fn(): fn(): int { return fn(): int { k += 1; return k; }; }; print(g()()); } f();'), []);
   assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { k = 2; return x; }; print(g(1)); } f();'), ['E005']);
   assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { let k = 5; return x + k; }; print(g(1)); } f();').filter(c => c !== 'W003'), []);
   assert.deepEqual(errs('fn f(a: int) { let g = fn(): fn(): int { return fn(): int { return a; }; }; print(g()()); } f(1);'), []);

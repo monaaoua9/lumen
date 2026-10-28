@@ -94,7 +94,7 @@ Methods: `impl Counter { fn new(step: int): Counter { ... } fn tick(self) { self
 `Counter.new(5)` and `c.tick()`. Works for structs and enums. `self` is the receiver (a reference), methods are
 resolved statically and compile down to plain functions named `Counter$tick` (shown as `Counter.tick` in messages).
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
-Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. Any expression of function type can be called: `f(x)`, `pick("double")(8)`, `table[1](9)`, and struct fields (`op.run(3, 4)`). Anonymous functions capture the locals they mention **by value, at the moment they are created**, so only `let` bindings and parameters can be captured (`E023` for `var`); copy a `var` into a `let` first. Function values cannot be compared or printed. An array of functions is written `(fn(int): int)[]`.
+Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. Any expression of function type can be called: `f(x)`, `pick("double")(8)`, `table[1](9)`, and struct fields (`op.run(3, 4)`). Anonymous functions capture the locals they mention. A `let` or parameter is copied in when the closure is created; a `var` is *shared*: the analyzer keeps it in a one-element array that the enclosing function and every closure read and write, so `make_counter()` style state works and each call gets its own cell. Function values cannot be compared or printed. An array of functions is written `(fn(int): int)[]`.
 
 Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are always inferred from the call (`E024` when a parameter is not mentioned by any argument), and every distinct set of type arguments is checked and compiled as its own copy of the function (monomorphization), so the three backends need no special support. A generic function is only checked when it is called, and it cannot be used as a value. Functions only for now, no generic structs or methods.
 
@@ -182,6 +182,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- A generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- A generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility).
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).
