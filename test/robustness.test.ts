@@ -166,3 +166,13 @@ test('string builtins trap the same way on every engine', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('stdin builtins agree on every engine', () => {
+  const input = 'abc\n\nxy\r\nlast';
+  for (const engine of ['interp', 'vm']) {
+    const r = spawnSync(process.execPath, ['src/cli.ts', 'run', 'examples/io/stdin.lum', '--engine', engine], { encoding: 'utf8', input });
+    assert.equal(r.stdout, '3\n9\n', engine);
+  }
+  const none = spawnSync(process.execPath, ['src/cli.ts', 'run', 'examples/io/stdin.lum'], { encoding: 'utf8', input: '' });
+  assert.equal(none.stdout, '0\n0\n');
+});

@@ -302,6 +302,26 @@ static void lm_assert(int ok, const char *msg) {
   fprintf(stderr, "runtime error: assertion failed: %s\n", msg);
   exit(1);
 }
+static int lm_at_eof(void) {
+  int c = getchar();
+  if (c == EOF) return 1;
+  ungetc(c, stdin);
+  return 0;
+}
+static const char *lm_read_line(void) {
+  size_t cap = 64, n = 0;
+  char *buf = (char *)malloc(cap);
+  int c;
+  while ((c = getchar()) != EOF && c != '\n') {
+    if (n + 2 > cap) buf = (char *)realloc(buf, cap *= 2);
+    buf[n++] = (char)c;
+  }
+  if (n && buf[n - 1] == '\r') n--;
+  char *r = (char *)lm_alloc(n + 1, 1);
+  memcpy(r, buf, n);
+  free(buf);
+  return r;
+}
 static long long lm_byte(const char *s, long long i) {
   if (i < 0 || i >= (long long)strlen(s)) lm_die("byte index out of range");
   return (unsigned char)s[i];
@@ -617,7 +637,7 @@ class Gen {
 
     let text: string;
     if (e.builtin) {
-      const aty = e.args[0].ty;
+      const aty = e.args[0]?.ty;
       const a = args[0];
       switch (e.builtin) {
         case 'print': text = isArray(aty) ? `lm_print_arr(${a}, ${elemFn(elemOf(aty))})` : isStruct(aty) || isEnum(aty) ? `puts(${strOf(aty, a)})` : `lm_print_${aty}(${a})`; break;
@@ -632,6 +652,8 @@ class Gen {
         case 'join': text = `lm_join(${a}, ${args[1]})`; break;
         case 'trim': text = `lm_trim(${a})`; break;
         case 'assert': text = `lm_assert(${a}, ${args[1]})`; break;
+        case 'read_line': text = 'lm_read_line()'; break;
+        case 'at_eof': text = 'lm_at_eof()'; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;

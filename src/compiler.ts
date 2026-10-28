@@ -351,7 +351,7 @@ class FnCompiler {
           this.emit(Op.CALL, e.fn!.index);
           return;
         }
-        const argTy = e.args[0].ty;
+        const argTy = e.args[0]?.ty;
         switch (e.builtin) {
           case 'print': this.emit(Op.PRINT, this.typeIdx(argTy)); break;
           case 'str': this.emit(Op.STR, this.typeIdx(argTy)); break;
@@ -367,6 +367,8 @@ class FnCompiler {
           case 'byte': this.emit(Op.BYTE); break;
           case 'chr': this.emit(Op.CHR); break;
           case 'assert': this.emit(Op.ASSERT); break;
+          case 'read_line': this.emit(Op.READLN); break;
+          case 'at_eof': this.emit(Op.ATEOF); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;

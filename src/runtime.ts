@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
 import type { BuiltinName, Type } from './types.ts';
@@ -110,6 +111,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'join': return (a as unknown as string[]).join(args[1] as string);
     case 'trim': return trimOf(a as string);
     case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
+    case 'read_line': return readLine();
+    case 'at_eof': return atEof();
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
@@ -135,6 +138,27 @@ export function substrOf(s: string, start: number, n: number, span?: Span): stri
 // utf-8 byte order, same as strcmp on the C side (js `<` would compare utf-16 units)
 export function cmpStr(a: string, b: string): number {
   return a === b ? 0 : Buffer.compare(Buffer.from(a), Buffer.from(b));
+}
+
+// stdin is read once, on first use, and handed out a line at a time
+let pending: string[] | null = null;
+function stdinLines(): string[] {
+  if (!pending) {
+    let text = '';
+    try { text = readFileSync(0, 'utf8'); } catch { /* no stdin attached */ }
+    pending = text.split('\n');
+    if (pending[pending.length - 1] === '') pending.pop();
+    pending = pending.map(l => l.replace(/\r$/, '')).reverse();
+  }
+  return pending;
+}
+
+export function atEof(): boolean {
+  return stdinLines().length === 0;
+}
+
+export function readLine(): string {
+  return stdinLines().pop() ?? '';
 }
 
 // ascii whitespace only, like the C side

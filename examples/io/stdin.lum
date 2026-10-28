@@ -1,0 +1,12 @@
+// counts non-blank lines and their characters. needs stdin, so it sits outside the parity-tested examples
+var total = 0;
+var lines = 0;
+while !at_eof() {
+  let l = trim(read_line());
+  if l != "" {
+    total += int(float(len(l)));
+    lines += 1;
+  }
+}
+print(lines);
+print(total);

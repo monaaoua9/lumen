@@ -330,6 +330,12 @@ test('assert builtin', () => {
   assert.deepEqual(errs('print(assert(true, "x"));'), ['E010']);
 });
 
+test('stdin builtins: checking', () => {
+  assert.deepEqual(errs('while !at_eof() { print(read_line() + "!"); }'), []);
+  assert.deepEqual(errs('print(read_line(1));'), ['E004']);
+  assert.deepEqual(errs('let n: int = read_line();'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
