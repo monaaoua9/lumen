@@ -55,6 +55,8 @@ class Parser {
   segments: Segment[];
   declared = new Map<string, Map<string, string>>(); // file -> name -> fn | struct | enum
   clash = new Set<string>(); // names declared in more than one file
+  lets = new Map<string, Set<string>>(); // file -> top-level let/var names
+  letClash = new Set<string>(); // top-level let/var names declared in more than one file
 
   constructor(toks: Token[], diags: Diagnostic[], segments: Segment[] = []) {
     this.toks = toks;
@@ -72,12 +74,20 @@ class Parser {
 
   scanDecls() {
     const owners = new Map<string, number>();
+    const letOwners = new Map<string, number>();
     let depth = 0;
     for (let i = 0; i < this.toks.length - 1; i++) {
       const t = this.toks[i];
       if (t.kind === '{') depth++;
       else if (t.kind === '}') depth--;
-      else if (depth === 0 && (t.kind === 'fn' || t.kind === 'struct' || t.kind === 'enum') && this.toks[i + 1].kind === 'ident') {
+      else if (depth === 0 && (t.kind === 'let' || t.kind === 'var') && this.toks[i + 1].kind === 'ident') {
+        const file = this.fileOf(t);
+        if (!this.lets.has(file)) this.lets.set(file, new Set());
+        const names = this.lets.get(file)!;
+        const name = this.toks[i + 1].text;
+        if (!names.has(name)) letOwners.set(name, (letOwners.get(name) ?? 0) + 1);
+        names.add(name);
+      } else if (depth === 0 && (t.kind === 'fn' || t.kind === 'struct' || t.kind === 'enum') && this.toks[i + 1].kind === 'ident') {
         const file = this.fileOf(t);
         const name = this.toks[i + 1].text;
         if (!this.declared.has(file)) this.declared.set(file, new Map());
@@ -86,6 +96,7 @@ class Parser {
       }
     }
     for (const [name, n] of owners) if (n > 1) this.clash.add(name);
+    for (const [name, n] of letOwners) if (n > 1) this.letClash.add(name);
   }
 
   fileOf(t: Token): string {
@@ -104,6 +115,13 @@ class Parser {
     if (this.declared.get(file)?.has(t.text)) return { ...t, text: `${this.modName(file)}$${t.text}` };
     this.diags.push({ severity: 'error', code: 'P006', message: `'${t.text}' is declared in several modules, write module.${t.text}`, span: t.span });
     return t;
+  }
+
+  // a global let that two files both declare: every use of the name inside the declaring file carries the module
+  vn(t: Token): Token {
+    if (!this.letClash.has(t.text)) return t;
+    const file = this.fileOf(t);
+    return this.lets.get(file)?.has(t.text) ? { ...t, text: `${this.modName(file)}$${t.text}` } : t;
   }
 
   qualify(module: string, item: Token): Token {
@@ -288,10 +306,11 @@ class Parser {
         const rhs = this.expr();
         this.expect(';');
         // x += e  ==>  x = x + e
+        const vt = this.vn(t);
         const value: Expr = nx === '='
           ? rhs
-          : { k: 'binary', op: COMPOUND[nx], l: { k: 'var', name: t.text, span: t.span, ty: 'error' }, r: rhs, span: this.join(t.span, rhs.span), ty: 'error' };
-        return { k: 'assign', span: this.join(t.span, this.prevSpan()), name: t.text, nameSpan: t.span, value };
+          : { k: 'binary', op: COMPOUND[nx], l: { k: 'var', name: vt.text, span: t.span, ty: 'error' }, r: rhs, span: this.join(t.span, rhs.span), ty: 'error' };
+        return { k: 'assign', span: this.join(t.span, this.prevSpan()), name: vt.text, nameSpan: t.span, value };
       }
     }
 
@@ -381,7 +400,7 @@ class Parser {
   // `continue` can't skip it, and the hidden names start with '_$' (not typable, never linted)
   forStmt(): Stmt {
     const kw = this.next();
-    const name = this.expect('ident', 'a loop variable');
+    const name = this.vn(this.expect('ident', 'a loop variable'));
     this.expect('in');
     const first = this.condExpr();
     const id = this.forId++;
@@ -468,7 +487,7 @@ class Parser {
           binds = [];
           if (!this.at(')')) {
             do {
-              const b = this.expect('ident', 'a binding name');
+              const b = this.vn(this.expect('ident', 'a binding name'));
               binds.push(b.text === '_' ? null : { name: b.text, span: b.span });
             } while (this.eat(','));
           }
@@ -534,7 +553,7 @@ class Parser {
       const params: Param[] = [];
       if (!this.at(')')) {
         do {
-          const p = this.expect('ident', 'a parameter name');
+          const p = this.vn(this.expect('ident', 'a parameter name'));
           if (params.length === 0 && !hasSelf && p.text === 'self' && !this.at(':')) {
             hasSelf = true;
             continue;
@@ -632,7 +651,7 @@ class Parser {
     const params: Param[] = [];
     if (!this.at(')')) {
       do {
-        const p = this.expect('ident', 'a parameter name');
+        const p = this.vn(this.expect('ident', 'a parameter name'));
         if (owner && p.text === 'self' && params.length === 0 && !this.at(':')) {
           const ty = (ownerTy ?? typeFromName(owner) ?? (this.enumNames.has(owner) ? enumType(owner) : structType(owner))) as Elem;
           params.push({ name: 'self', span: p.span, ty });
@@ -653,7 +672,7 @@ class Parser {
 
   letStmt(): Stmt {
     const kw = this.next();
-    const name = this.expect('ident', 'a variable name');
+    const name = this.vn(this.expect('ident', 'a variable name'));
     let annot: Type | undefined;
     let annotSpan: Span | undefined;
     if (this.eat(':')) {
@@ -805,7 +824,7 @@ class Parser {
         const params: Param[] = [];
         if (!this.at(')')) {
           do {
-            const p = this.expect('ident', 'a parameter name');
+            const p = this.vn(this.expect('ident', 'a parameter name'));
             this.expect(':');
             params.push({ name: p.text, span: p.span, ty: this.type() });
           } while (this.eat(','));
@@ -841,6 +860,7 @@ class Parser {
       const typePath = this.at('.') && (kind === 'enum' || kind === 'struct');
       if (this.at('(') || (this.at('{') && !this.noStruct) || typePath) t = this.rn(t);
     }
+    t = this.vn(t);
     if (this.at('{') && !this.noStruct) return this.structLit(t);
     if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
     this.next();

@@ -110,6 +110,14 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.equal(amb.status, 1);
     assert.ok(amb.stdout.includes('P006') || amb.stderr.includes('P006'), amb.stdout + amb.stderr);
 
+    // two modules may each keep a global of the same name, even with a local of that name inside
+    writeFileSync(join(dir, 'g1.lum'), 'var base = 10;\npub fn a(): int { let base = 1; return base + 1; }\npub fn c(): int { base += 5; return base; }\n');
+    writeFileSync(join(dir, 'g2.lum'), 'let base = 20;\npub fn b(): int { return base + 2; }\n');
+    writeFileSync(join(dir, 'g_main.lum'), 'import "g1.lum";\nimport "g2.lum";\nprint(g1.a() + g2.b());\nprint(g1.c() + g1.c());\n');
+    const gl = cli('run', join(dir, 'g_main.lum'));
+    assert.equal(gl.status, 0, gl.stderr);
+    assert.deepEqual(gl.stdout.trim().split(/\r?\n/), ['24', '35']);
+
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
     writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');
