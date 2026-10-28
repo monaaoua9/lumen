@@ -140,6 +140,16 @@ function boxNamesOf(body: Stmt[]): Set<string> {
   return out;
 }
 
+// the value of an int literal, a negated one, or an immutable variable that was initialised with one
+function constInt(e: Expr): number | undefined {
+  if (e.k === 'int') return e.value;
+  if (e.k === 'unary' && e.op === '-') {
+    const v = constInt(e.arg);
+    return v === undefined ? undefined : -v;
+  }
+  return e.k === 'var' ? e.sym?.known : undefined;
+}
+
 // builtins that do something besides returning a value
 const EFFECTS = new Set(['print', 'push', 'pop', 'insert', 'remove', 'sort', 'reverse', 'assert', 'exit', 'read_line']);
 
@@ -680,6 +690,7 @@ class Analyzer {
           return NEXT;
         }
         s.sym = this.declareVar(s.name, ty, s.mutable, s.nameSpan);
+        if (!s.mutable) s.sym.known = constInt(s.init);
         return NEXT;
       }
 
@@ -1005,7 +1016,8 @@ class Analyzer {
   }
 
   negativeIndex(idx: Expr) {
-    if (idx.k === 'unary' && idx.op === '-' && idx.arg.k === 'int' && idx.arg.value > 0) {
+    const v = constInt(idx);
+    if (v !== undefined && v < 0) {
       this.err('E014', 'array index is negative, this always fails at runtime', idx.span);
     }
   }
@@ -1227,7 +1239,7 @@ class Analyzer {
     const bad = a === 'error' || b === 'error';
 
     if (e.op === '/' || e.op === '%') {
-      if (e.r.k === 'int' && e.r.value === 0) {
+      if (constInt(e.r) === 0) {
         this.err('E012', e.op === '/' ? 'division by zero' : 'modulo by zero', e.r.span);
       }
     }

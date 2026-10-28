@@ -11,6 +11,7 @@ export interface VarSym {
   isParam: boolean;
   used: boolean;
   assigned: boolean;
+  known?: number; // an immutable int with a literal initializer
   origin?: VarSym; // for a closure's copy of a captured var, the one it was captured from
   box?: Type; // set when a closure captures this var: it lives in a one-element array and `box` is the value type
 }

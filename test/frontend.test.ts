@@ -396,6 +396,14 @@ test('syntax: trailing commas and field shorthand', () => {
   assert.deepEqual(errs(S + 'let x = 1; print(P { x, y });'), ['E001']);
 });
 
+test('constants flow through immutable lets', () => {
+  assert.deepEqual(diagCodes('let d = 0; print(1 / d);'), ['E012']);
+  assert.deepEqual(diagCodes('let z = -0; print(1 % z);'), ['E012']);
+  assert.deepEqual(diagCodes('let a = [1]; let i = -1; print(a[i]);'), ['E014']);
+  assert.deepEqual(diagCodes('var d = 0; d += 1; print(1 / d);'), []);
+  assert.deepEqual(diagCodes('let d = 2; print(1 / d);'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

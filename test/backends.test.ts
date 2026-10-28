@@ -91,7 +91,7 @@ test('runtime errors agree across engines', () => {
 
 test('runtime error carries a source span', () => {
   try {
-    runSrc('let a = 1;\nlet b = 0;\nprint(a / b);', 'vm');
+    runSrc('let a = 1;\nvar b = 0;\nprint(a / b);', 'vm');
     assert.fail('should throw');
   } catch (e) {
     assert.ok(e instanceof RuntimeError);
