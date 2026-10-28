@@ -428,7 +428,10 @@ class Parser {
   // `continue` can't skip it, and the hidden names start with '_$' (not typable, never linted)
   forStmt(): Stmt {
     const kw = this.next();
-    const name = this.vn(this.expect('ident', 'a loop variable'));
+    let name = this.vn(this.expect('ident', 'a loop variable'));
+    // `for i, x in xs` also names the position
+    const indexVar = this.eat(',') ? name : undefined;
+    if (indexVar) name = this.vn(this.expect('ident', 'a loop variable'));
     this.expect('in');
     const first = this.condExpr();
     const id = this.forId++;
@@ -445,6 +448,7 @@ class Parser {
     let cond: Expr;
     let elem: Expr;
     if (this.eat('..')) {
+      if (indexVar) this.diags.push({ severity: 'error', code: 'P001', message: "a range loop has no separate index, use a single variable", span: indexVar.span });
       const end = this.condExpr();
       if (this.cur.kind === 'ident' && this.cur.text === 'step') {
         this.next();
@@ -466,7 +470,7 @@ class Parser {
     const body = this.block();
     const loop: Stmt = {
       k: 'while', span: this.join(kw.span, this.prevSpan()), cond,
-      body: [decl(name.text, elem, false, name.span), bump, ...body],
+      body: [...(indexVar ? [decl(indexVar.text, v(counter), false, indexVar.span)] : []), decl(name.text, elem, false, name.span), bump, ...body],
     };
     return { k: 'block', span: loop.span, body: [...setup, loop] };
   }

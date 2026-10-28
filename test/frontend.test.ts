@@ -445,6 +445,11 @@ test('lambda parameter inference', () => {
   assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) => "s", 2));'), ['E003']);
 });
 
+test('for with an index variable', () => {
+  assert.deepEqual(errs('for i, x in [1, 2] { print(i + x); }'), []);
+  assert.deepEqual(diagCodes('for i, x in 0..3 { print(x); }'), ['P001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

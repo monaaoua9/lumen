@@ -1,0 +1,14 @@
+let fruits = ["fig", "kiwi", "plum"];
+for i, f in fruits {
+  print(str(i) + ": " + f);
+}
+var total = 0;
+for i, n in [10, 20, 30] {
+  total += i * n;
+}
+print(total);
+for i, n in [1, 2, 3, 4] {
+  if i == 1 { continue; }
+  if n == 4 { break; }
+  print(n);
+}
