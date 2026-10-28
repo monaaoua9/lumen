@@ -302,6 +302,9 @@ test('string builtins: checking', () => {
   assert.deepEqual(errs('print(substr("abc", 0.5, 1));'), ['E003']);
   assert.deepEqual(errs('print(find("abc", 1));'), ['E003']);
   assert.deepEqual(errs('print(split("abc"));'), ['E004']);
+  assert.deepEqual(errs('print(chr(byte("a", 0)));'), []);
+  assert.deepEqual(errs('print(chr("a"));'), ['E003']);
+  assert.deepEqual(errs('print(byte("a", "0"));'), ['E003']);
 });
 
 test('closures: capturing', () => {

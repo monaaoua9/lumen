@@ -148,6 +148,8 @@ test('string builtins trap the same way on every engine', () => {
     ['print(substr("abc", -1, 1));', 'substring out of range'],
     ['print(substr("hé", 2, 1));', 'splits a character'],
     ['print(split("abc", ""));', 'empty separator'],
+    ['print(byte("abc", 3));', 'byte index out of range'],
+    ['print(chr(0));', 'chr expects'],
   ];
   const dir = mkdtempSync(join(tmpdir(), 'lumen-str-'));
   try {

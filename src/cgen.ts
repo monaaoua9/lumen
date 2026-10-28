@@ -274,6 +274,16 @@ static long long lm_min_int(long long a, long long b) { return b < a ? b : a; }
 static long long lm_max_int(long long a, long long b) { return b > a ? b : a; }
 static double lm_min_float(double a, double b) { return b < a ? b : a; }
 static double lm_max_float(double a, double b) { return b > a ? b : a; }
+static long long lm_byte(const char *s, long long i) {
+  if (i < 0 || i >= (long long)strlen(s)) lm_die("byte index out of range");
+  return (unsigned char)s[i];
+}
+static const char *lm_chr(long long n) {
+  if (n < 1 || n > 127) lm_die("chr expects 1..127");
+  char *r = (char *)lm_alloc(2, 1);
+  r[0] = (char)n;
+  return r;
+}
 static const char *lm_substr(const char *s, long long start, long long n) {
   long long len = (long long)strlen(s);
   if (start < 0 || n < 0 || start + n > len) lm_die("substring out of range");
@@ -589,6 +599,8 @@ class Gen {
         case 'push': text = `lm_arr_push(${a}, lm_v${slot(elemOf(aty as ArrayType))}(${args[1]}))`; break;
         case 'substr': text = `lm_substr(${a}, ${args[1]}, ${args[2]})`; break;
         case 'find': text = `lm_find_str(${a}, ${args[1]})`; break;
+        case 'byte': text = `lm_byte(${a}, ${args[1]})`; break;
+        case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;
         case 'abs': text = aty === 'int' ? `lm_iabs(${a})` : `fabs(${a})`; break;

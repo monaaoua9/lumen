@@ -7,3 +7,12 @@ for kv in parts {
 }
 print(find("hello", "xyz"));
 print(len(split("a,b,,c", ",")));
+
+// upper-case a word by hand
+let word = "lumen";
+var up = "";
+for i in 0..len(word) {
+  let b = byte(word, i);
+  up = up + chr(b - 32);
+}
+print(up);

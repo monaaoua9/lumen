@@ -61,7 +61,7 @@ while i < 10 {
 
 Types `int float bool string`, one-dimensional arrays (`int[]`, `Point[]`, ...) user `struct`s and `enum`s; `let` (immutable) / `var`; `fn`, `if/else`, `while`, `for i in 0..n` / `for x in array`,
 `break/continue/return`; operators `+ - * / % == != < <= > >= && || !` plus `+= -= ...`.
-Builtins: `print(x)`, `str(x)`, `int(f)`, `float(i)`, `len(s | arr)`, `push(arr, x)`, `pop(arr)`, `sqrt(f)` (traps on negatives), `abs(x)`, `min(a, b)`, `max(a, b)` (int or float, both sides the same type), and byte-based strings helpers: `substr(s, start, n)`, `find(s, needle)` (index or -1) and `split(s, sep)` (traps on an empty separator or when a cut lands inside a UTF-8 character).
+Builtins: `print(x)`, `str(x)`, `int(f)`, `float(i)`, `len(s | arr)`, `push(arr, x)`, `pop(arr)`, `sqrt(f)` (traps on negatives), `abs(x)`, `min(a, b)`, `max(a, b)` (int or float, both sides the same type), and byte-based string helpers: `byte(s, i)`, `chr(n)` (ASCII 1..127), `substr(s, start, n)`, `find(s, needle)` (index or -1) and `split(s, sep)` (traps on an empty separator or when a cut lands inside a UTF-8 character).
 Structs: `struct Point { x: float, y: float }`, `Point { x: 1.0, y: 2.0 }`, `p.x`, `p.x = 3.0`, `p.x += 1.0`; they can nest and be stored in arrays.
 Enums: `enum Light { Red, Yellow, Green }`, values are written `Light.Red`, compare with `==`, print by variant name.
 `match` (statement) works on enums, bool, int and string:

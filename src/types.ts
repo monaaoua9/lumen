@@ -52,7 +52,7 @@ export function typeFromName(name: string): Type | null {
   return NAMED[name] ?? null;
 }
 
-export type BuiltinName = 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split';
+export type BuiltinName = 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split' | 'byte' | 'chr';
 
 // arity only, argument types are checked in the analyzer because several builtins are generic over arrays
 export const BUILTINS: Record<BuiltinName, { arity: number }> = {
@@ -64,6 +64,8 @@ export const BUILTINS: Record<BuiltinName, { arity: number }> = {
   push: { arity: 2 },
   pop: { arity: 1 },
   sqrt: { arity: 1 },
+  byte: { arity: 2 },
+  chr: { arity: 1 },
   abs: { arity: 1 },
   min: { arity: 2 },
   max: { arity: 2 },

@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf } from './runtime.ts';
+import { MAX_DEPTH, byteAt, checkIndex, chrOf, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -131,6 +131,8 @@ export function run(m: Module, io: IO) {
         case Op.SUBSTR: sp -= 2; stack[sp - 1] = substrOf(stack[sp - 1] as string, num(sp), num(sp + 1)); break;
         case Op.FIND: sp--; stack[sp - 1] = Buffer.from(stack[sp - 1] as string).indexOf(Buffer.from(stack[sp] as string)); break;
         case Op.SPLIT: sp--; stack[sp - 1] = splitOf(stack[sp - 1] as string, stack[sp] as string); break;
+        case Op.BYTE: sp--; stack[sp - 1] = byteAt(stack[sp - 1] as string, num(sp)); break;
+        case Op.CHR: stack[sp - 1] = chrOf(num(sp - 1)); break;
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;

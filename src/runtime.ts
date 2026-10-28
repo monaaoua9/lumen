@@ -106,6 +106,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'sqrt': return sqrtOf(a as number, span);
     case 'substr': return substrOf(a as string, args[1] as number, args[2] as number, span);
     case 'find': return Buffer.from(a as string).indexOf(Buffer.from(args[1] as string));
+    case 'byte': return byteAt(a as string, args[1] as number, span);
+    case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
     case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
@@ -125,6 +127,18 @@ export function substrOf(s: string, start: number, n: number, span?: Span): stri
   const inside = (i: number) => i < buf.length && (buf[i] & 0xc0) === 0x80;
   if (inside(start) || inside(start + n)) throw new RuntimeError('substring splits a character', span);
   return buf.toString('utf8', start, start + n);
+}
+
+export function byteAt(s: string, i: number, span?: Span): number {
+  const buf = Buffer.from(s);
+  if (i < 0 || i >= buf.length) throw new RuntimeError('byte index out of range', span);
+  return buf[i];
+}
+
+// ascii only, anything else would depend on an encoding
+export function chrOf(n: number, span?: Span): string {
+  if (n < 1 || n > 127) throw new RuntimeError('chr expects 1..127', span);
+  return String.fromCharCode(n);
 }
 
 export function splitOf(s: string, sep: string, span?: Span): string[] {
