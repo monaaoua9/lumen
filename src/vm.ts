@@ -144,6 +144,8 @@ export function run(m: Module, io: IO) {
         case Op.REVERSE: (stack[--sp] as Value[]).reverse(); break;
         case Op.CONTAINS: sp--; stack[sp - 1] = (stack[sp - 1] as Value[]).includes(stack[sp]); break;
         case Op.SLICE: sp -= 2; stack[sp - 1] = sliceOf(stack[sp - 1] as Value[], num(sp), num(sp + 1)); break;
+        case Op.FLOOR: stack[sp - 1] = Math.floor(num(sp - 1)); break;
+        case Op.CEIL: stack[sp - 1] = Math.ceil(num(sp - 1)); break;
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;

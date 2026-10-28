@@ -16,3 +16,9 @@ print(max(2.5, 1.5));
 print(clamp(15, 0, 10));
 print(clamp(-4, 0, 10));
 print(sqrt(2.0));
+
+// floor and ceil stay floats, convert with int() when an index is needed
+print(floor(2.7));
+print(ceil(2.1));
+print(floor(-2.5));
+print(int(ceil(9.01)));

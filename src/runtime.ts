@@ -117,6 +117,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'reverse': (a as Value[]).reverse(); return null;
     case 'contains': return (a as Value[]).includes(args[1]);
     case 'slice': return sliceOf(a as Value[], args[1] as number, args[2] as number, span);
+    case 'floor': return Math.floor(a as number);
+    case 'ceil': return Math.ceil(a as number);
     case 'exit': throw exitWith(a as number, span);
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);

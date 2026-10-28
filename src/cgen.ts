@@ -682,6 +682,8 @@ class Gen {
         case 'reverse': text = `lm_reverse(${a})`; break;
         case 'contains': text = `lm_contains_${slot(elemOf(aty as ArrayType))}(${a}, ${args[1]})`; break;
         case 'slice': text = `lm_slice(${a}, ${args[1]}, ${args[2]})`; break;
+        case 'floor': text = `floor(${a})`; break;
+        case 'ceil': text = `ceil(${a})`; break;
         case 'exit': text = `lm_exit(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
