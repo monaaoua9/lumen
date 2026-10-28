@@ -64,6 +64,8 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
       i++;
       let val = '';
       let closed = false;
+      // "a{x}b" lexes as ("a" + str(x) + "b"); each hole is a literal token followed by its tokens
+      const holes: { lit: string; toks: Token[] }[] = [];
       while (i < src.length) {
         const ch = src[i];
         if (ch === '"') {
@@ -74,7 +76,7 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
         if (ch === '\n') break;
         if (ch === '\\') {
           const nx = src[i + 1];
-          const map: Record<string, string> = { n: '\n', t: '\t', r: '\r', '\\': '\\', '"': '"', '0': '\0' };
+          const map: Record<string, string> = { n: '\n', t: '\t', r: '\r', '\\': '\\', '"': '"', '0': '\0', '{': '{', '}': '}' };
           if (nx !== undefined && nx in map) {
             val += map[nx];
           } else {
@@ -83,11 +85,52 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
           i += 2;
           continue;
         }
+        if (ch === '{') {
+          // find the matching brace; strings inside the expression are skipped over
+          let depth = 1;
+          let j = i + 1;
+          while (j < src.length && src[j] !== '\n' && depth > 0) {
+            if (src[j] === '"') {
+              j++;
+              while (j < src.length && src[j] !== '"' && src[j] !== '\n') j += src[j] === '\\' ? 2 : 1;
+            } else if (src[j] === '{') depth++;
+            else if (src[j] === '}') depth--;
+            j++;
+          }
+          if (depth > 0 || src.slice(i + 1, j - 1).trim() === '') {
+            err('L004', depth > 0 ? 'unterminated interpolation' : 'empty interpolation', i, j);
+            i = j;
+            continue;
+          }
+          const inner = lex(src.slice(i + 1, j - 1));
+          const shift = i + 1;
+          for (const d of inner.diags) diags.push({ ...d, span: { start: d.span.start + shift, end: d.span.end + shift } });
+          const toks = inner.tokens.slice(0, -1).map(t => ({ ...t, span: { start: t.span.start + shift, end: t.span.end + shift } }));
+          holes.push({ lit: val, toks });
+          val = '';
+          i = j;
+          continue;
+        }
         val += ch;
         i++;
       }
       if (!closed) err('L001', 'unterminated string literal', start, i);
-      tokens.push({ kind: 'string', text: src.slice(start, i), span: { start, end: i }, value: val });
+      if (holes.length === 0) {
+        tokens.push({ kind: 'string', text: src.slice(start, i), span: { start, end: i }, value: val });
+        continue;
+      }
+      const sp = { start, end: i };
+      const punct = (k: string): Token => ({ kind: k, text: k, span: sp });
+      const lit = (v: string): Token => ({ kind: 'string', text: '', span: sp, value: v });
+      tokens.push(punct('('));
+      holes.forEach((h, n) => {
+        // the first literal stays even when empty so the sum starts out as a string
+        if (n === 0) tokens.push(lit(h.lit));
+        else if (h.lit !== '') tokens.push(punct('+'), lit(h.lit));
+        tokens.push(punct('+'), { kind: 'ident', text: 'str', span: sp }, punct('('), ...h.toks, punct(')'));
+      });
+      if (val !== '') tokens.push(punct('+'), lit(val));
+      tokens.push(punct(')'));
       continue;
     }
 

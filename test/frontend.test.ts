@@ -336,6 +336,14 @@ test('stdin builtins: checking', () => {
   assert.deepEqual(errs('let n: int = read_line();'), ['E003']);
 });
 
+test('string interpolation', () => {
+  assert.deepEqual(errs('let n = 1; print("n = {n}, next {n + 1}, \\{raw\\}");'), []);
+  assert.deepEqual(errs('print("{nope}");'), ['E001']);
+  assert.deepEqual(errs('let a = [1]; print("{a[0] + "x"}");'), ['E003']);
+  assert.deepEqual(diagCodes('print("{");').slice(0, 2), ['L004', 'L001']);
+  assert.deepEqual(diagCodes('print("{}");'), ['L004']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

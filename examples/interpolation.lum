@@ -1,0 +1,9 @@
+// "{expr}" inside a string is shorthand for str(expr) glued in with +
+struct Point { x: int, y: int }
+
+let p = Point { x: 3, y: 4 };
+let name = "lumen";
+print("hello {name}, point = {p}");
+print("sum is {p.x + p.y}, doubled {(p.x + p.y) * 2}");
+print("nested quotes: {len("a}b")} and braces: \{literal\}");
+print("{if p.x > 2 { "big" } else { "small" }}");
