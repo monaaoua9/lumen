@@ -44,3 +44,42 @@ pub fn sum(xs: int[]): int {
   for x in xs { total += x; }
   return total;
 }
+
+pub fn count<T>(xs: T[], test: fn(T): bool): int {
+  var n = 0;
+  for x in xs {
+    if test(x) { n += 1; }
+  }
+  return n;
+}
+
+// -1 when nothing matches
+pub fn find_index<T>(xs: T[], test: fn(T): bool): int {
+  for i in 0..len(xs) {
+    if test(xs[i]) { return i; }
+  }
+  return -1;
+}
+
+pub fn take<T>(xs: T[], n: int): T[] {
+  let out: T[] = [];
+  for i in 0..len(xs) {
+    if i >= n { break; }
+    push(out, xs[i]);
+  }
+  return out;
+}
+
+pub fn drop<T>(xs: T[], n: int): T[] {
+  let out: T[] = [];
+  for i in n..len(xs) { push(out, xs[i]); }
+  return out;
+}
+
+// stops at the shorter array
+pub fn zip_with<A, B, C>(xs: A[], ys: B[], f: fn(A, B): C): C[] {
+  let out: C[] = [];
+  let n = if len(xs) < len(ys) { len(xs) } else { len(ys) };
+  for i in 0..n { push(out, f(xs[i], ys[i])); }
+  return out;
+}
