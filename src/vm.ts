@@ -4,19 +4,19 @@ import type { Module, Proto } from './bytecode.ts';
 import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerTypes } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
-interface CallFrame {
-  proto: Proto;
-  pc: number;
-  bp: number;
-}
-
 const STACK_SIZE = 1 << 16;
 
 export function run(m: Module, io: IO) {
   registerTypes(m.structs, m.enums);
   const stack: Value[] = new Array(STACK_SIZE).fill(null);
   const globals: Value[] = new Array(m.nglobals).fill(null);
-  const frames: CallFrame[] = [];
+  // call frames as parallel arrays, no object allocation per call
+  const fProto: Proto[] = new Array(MAX_DEPTH + 1);
+  const fPc: number[] = new Array(MAX_DEPTH + 1).fill(0);
+  const fBp: number[] = new Array(MAX_DEPTH + 1).fill(0);
+  let depth = 0;
+  const consts = m.consts;
+  const fns = m.fns;
 
   let proto = m.main;
   let code = proto.code;
@@ -26,13 +26,11 @@ export function run(m: Module, io: IO) {
 
   const num = (i: number) => stack[i] as number;
 
-  let at = 0;
   try {
     for (;;) {
-      at = pc;
       const op = code[pc++];
       switch (op) {
-        case Op.CONST: stack[sp++] = m.consts[code[pc++]]; break;
+        case Op.CONST: stack[sp++] = consts[code[pc++]]; break;
         case Op.POP: sp--; break;
         case Op.DUP: stack[sp] = stack[sp - 1]; sp++; break;
 
@@ -41,9 +39,9 @@ export function run(m: Module, io: IO) {
         case Op.LOADG: stack[sp++] = globals[code[pc++]]; break;
         case Op.STOREG: globals[code[pc++]] = stack[--sp]; break;
 
-        case Op.ADD: sp--; stack[sp - 1] = checkInt(num(sp - 1) + num(sp)); break;
-        case Op.SUB: sp--; stack[sp - 1] = checkInt(num(sp - 1) - num(sp)); break;
-        case Op.MUL: sp--; stack[sp - 1] = checkInt(num(sp - 1) * num(sp)); break;
+        case Op.ADD: { sp--; const r = num(sp - 1) + num(sp); if (!Number.isSafeInteger(r)) checkInt(r); stack[sp - 1] = r; break; }
+        case Op.SUB: { sp--; const r = num(sp - 1) - num(sp); if (!Number.isSafeInteger(r)) checkInt(r); stack[sp - 1] = r; break; }
+        case Op.MUL: { sp--; const r = num(sp - 1) * num(sp); if (!Number.isSafeInteger(r)) checkInt(r); stack[sp - 1] = r; break; }
         case Op.DIV: sp--; stack[sp - 1] = intDiv(num(sp - 1), num(sp)); break;
         case Op.MOD: sp--; stack[sp - 1] = intMod(num(sp - 1), num(sp)); break;
         case Op.NEG: stack[sp - 1] = -num(sp - 1); break;
@@ -65,13 +63,22 @@ export function run(m: Module, io: IO) {
 
         case Op.JMP: pc = code[pc]; break;
         case Op.JMPF: if (!stack[--sp]) pc = code[pc]; else pc++; break;
+        case Op.JFLT: sp -= 2; if (!(num(sp) < num(sp + 1))) pc = code[pc]; else pc++; break;
+        case Op.JFLE: sp -= 2; if (!(num(sp) <= num(sp + 1))) pc = code[pc]; else pc++; break;
+        case Op.JFGT: sp -= 2; if (!(num(sp) > num(sp + 1))) pc = code[pc]; else pc++; break;
+        case Op.JFGE: sp -= 2; if (!(num(sp) >= num(sp + 1))) pc = code[pc]; else pc++; break;
+        case Op.JFEQ: sp -= 2; if (stack[sp] !== stack[sp + 1]) pc = code[pc]; else pc++; break;
+        case Op.JFNE: sp -= 2; if (stack[sp] === stack[sp + 1]) pc = code[pc]; else pc++; break;
 
         case Op.CALL: {
-          const callee = m.fns[code[pc++]];
-          if (frames.length >= MAX_DEPTH || sp + callee.nlocals >= STACK_SIZE) {
+          const callee = fns[code[pc++]];
+          if (depth >= MAX_DEPTH || sp + callee.nlocals >= STACK_SIZE) {
             throw new RuntimeError('stack overflow');
           }
-          frames.push({ proto, pc, bp });
+          fProto[depth] = proto;
+          fPc[depth] = pc;
+          fBp[depth] = bp;
+          depth++;
           bp = sp - callee.arity;
           for (let i = callee.arity; i < callee.nlocals; i++) stack[bp + i] = null;
           sp = bp + callee.nlocals;
@@ -85,11 +92,11 @@ export function run(m: Module, io: IO) {
         case Op.RETV: {
           const v = op === Op.RET ? stack[sp - 1] : null;
           sp = bp;
-          const f = frames.pop()!;
-          proto = f.proto;
+          depth--;
+          proto = fProto[depth];
           code = proto.code;
-          pc = f.pc;
-          bp = f.bp;
+          pc = fPc[depth];
+          bp = fBp[depth];
           if (op === Op.RET) stack[sp++] = v;
           break;
         }
@@ -143,11 +150,11 @@ export function run(m: Module, io: IO) {
         case Op.HALT: return;
 
         default:
-          throw new Error(`bad opcode ${op} at ${at}`);
+          throw new Error(`bad opcode ${op} at ${pc - 1}`);
       }
     }
   } catch (e) {
-    if (e instanceof RuntimeError && !e.span) e.span = proto.spans[at];
+    if (e instanceof RuntimeError && !e.span) e.span = proto.spans[pc - 1];
     throw e;
   }
 }

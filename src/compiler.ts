@@ -5,6 +5,11 @@ import type { Module, Proto } from './bytecode.ts';
 import type { Type } from './types.ts';
 import type { Value } from './runtime.ts';
 
+// `a < b` feeding an if/while compiles to one compare-and-branch op instead of LT + JMPF
+const FUSED: Record<string, number> = {
+  '<': Op.JFLT, '<=': Op.JFLE, '>': Op.JFGT, '>=': Op.JFGE, '==': Op.JFEQ, '!=': Op.JFNE,
+};
+
 class FnCompiler {
   code: number[] = [];
   spans: (Span | undefined)[] = [];
@@ -28,8 +33,21 @@ class FnCompiler {
   }
 
   emit(op: number, ...args: number[]) {
-    this.spans[this.code.length] = this.span;
+    // every cell of the instruction gets the span, so the VM can look up pc - 1 without tracking where the op started
+    for (let i = 0; i <= args.length; i++) this.spans[this.code.length + i] = this.span;
     this.code.push(op, ...args);
+  }
+
+  // evaluates a condition, returns the jump to patch for "condition is false"
+  condJump(e: Expr): number {
+    if (e.k === 'binary' && FUSED[e.op] !== undefined) {
+      this.expr(e.l);
+      this.expr(e.r);
+      this.span = e.span;
+      return this.jump(FUSED[e.op]);
+    }
+    this.expr(e);
+    return this.jump(Op.JMPF);
   }
 
   jump(op: number): number {
@@ -149,8 +167,7 @@ class FnCompiler {
         return;
 
       case 'if': {
-        this.expr(s.cond);
-        const toElse = this.jump(Op.JMPF);
+        const toElse = this.condJump(s.cond);
         this.block(s.then);
         if (s.els) {
           const toEnd = this.jump(Op.JMP);
@@ -166,8 +183,7 @@ class FnCompiler {
       case 'while': {
         const loop = { start: this.code.length, breaks: [] as number[] };
         this.loops.push(loop);
-        this.expr(s.cond);
-        const exit = this.jump(Op.JMPF);
+        const exit = this.condJump(s.cond);
         this.block(s.body);
         this.emit(Op.JMP, loop.start);
         this.patch(exit);

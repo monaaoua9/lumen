@@ -11,6 +11,7 @@ const TABLE = [
   ['CAT', 0],
   ['EQ', 0], ['NE', 0], ['LT', 0], ['LE', 0], ['GT', 0], ['GE', 0], ['NOT', 0],
   ['JMP', 1], ['JMPF', 1],
+  ['JFLT', 1], ['JFLE', 1], ['JFGT', 1], ['JFGE', 1], ['JFEQ', 1], ['JFNE', 1],
   ['CALL', 1], ['RET', 0], ['RETV', 0],
   ['PRINT', 1], ['STR', 1], ['F2I', 0], ['LEN', 0],
   ['NEWARR', 1], ['REORDER', 1], ['GETF', 1], ['SETF', 1], ['INDEX', 0], ['SETINDEX', 0], ['PUSHA', 0], ['POPA', 0],

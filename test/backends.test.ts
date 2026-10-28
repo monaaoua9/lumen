@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { checked, toC, toBytecode } from '../src/pipeline.ts';
+import { disassemble } from '../src/bytecode.ts';
 import { RuntimeError } from '../src/diagnostics.ts';
 import { ENGINES, runSrc } from './helpers.ts';
 
@@ -300,4 +301,10 @@ test('nested arrays: aliasing and bounds', () => {
   assert.equal(allEngines(ok), '[[1, 9], [1, 9]]\n8\n');
   assert.equal(allEngines('let g = [[1]]; print(g[0][1]);'), 'ERR:index out of bounds');
   assert.equal(allEngines('let g = [[1]]; print(g[1][0]);'), 'ERR:index out of bounds');
+});
+
+test('vm: comparisons feeding branches are fused', () => {
+  const asm = disassemble(toBytecode(checked('var i = 0; while i < 3 { i += 1; } if i == 3 { print(i); }', 't.lum')));
+  assert.ok(asm.includes('JFLT') && asm.includes('JFEQ'), asm);
+  assert.ok(!asm.includes('JMPF'), asm);
 });
