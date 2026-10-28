@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-import { writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
-import { basename } from 'node:path';
+import { basename, join } from 'node:path';
 import { CompileError, ExitSignal, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
 import type { Segment } from './diagnostics.ts';
 import { bundle } from './modules.ts';
@@ -15,7 +16,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 
 commands
   check    static analysis only (types, scopes, lints)
-  run      analyze, then execute        [--engine interp|vm]  (default: vm)
+  run      analyze, then execute        [--engine interp|vm|c]  (default: vm)
   disasm   print the bytecode
   emit-c   translate to C              [-o out.c]
   build    emit C and compile it with gcc/clang/cc   [-o out]
@@ -78,7 +79,8 @@ function main(): number | Promise<number> {
   try {
     switch (cmd) {
       case 'run': {
-        const eng = (opt('--engine') ?? 'vm') as Engine;
+        const eng = (opt('--engine') ?? 'vm') as Engine | 'c';
+        if (eng === 'c') return runNative(toC(fe));
         execute(fe, eng, { out: s => process.stdout.write(s) });
         return 0;
       }
@@ -171,6 +173,26 @@ function build(csrc: string, out: string): number {
   }
   process.stderr.write(`no C compiler found; C source is in ${cfile}\n`);
   return 1;
+}
+
+// compiles to a temp dir and runs the binary, so stdin/stdout/exit status pass straight through
+function runNative(csrc: string): number {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-c-'));
+  try {
+    const exe = join(dir, process.platform === 'win32' ? 'prog.exe' : 'prog');
+    const cfile = join(dir, 'prog.c');
+    writeFileSync(cfile, csrc);
+    for (const cc of ['gcc', 'clang', 'cc']) {
+      const r = spawnSync(cc, ['-O2', '-o', exe, cfile, '-lm'], { stdio: ['ignore', 'inherit', 'inherit'] });
+      if (r.error) continue;
+      if (r.status !== 0) return r.status ?? 1;
+      return spawnSync(exe, { stdio: 'inherit' }).status ?? 1;
+    }
+    process.stderr.write('no C compiler found\n');
+    return 1;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 }
 
 function bench(fe: ReturnType<typeof frontend>): number {

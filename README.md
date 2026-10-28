@@ -148,6 +148,7 @@ Typos get a "did you mean" suggestion (edit distance).
 npm install                      # only needed for tsc / @types/node
 node src/cli.ts run examples/fib.lum
 node src/cli.ts run examples/fib.lum --engine interp
+node src/cli.ts run examples/fib.lum --engine c    # build with gcc/clang/cc into a temp dir and run it
 node src/cli.ts check examples/errors.lum          # diagnostics only, exit 1 on errors
 node src/cli.ts check examples/lints.lum --json    # for editor/CI integration
 node src/cli.ts disasm examples/fib.lum

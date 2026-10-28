@@ -235,3 +235,9 @@ test('slice traps out of range on every engine', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('run --engine c compiles and runs natively', { skip: !['gcc', 'clang', 'cc'].some(c => !spawnSync(c, ['--version']).error) }, () => {
+  const r = spawnSync(process.execPath, ['src/cli.ts', 'run', 'examples/io/stdin.lum', '--engine', 'c'], { encoding: 'utf8', input: 'abc\nxy' });
+  assert.equal(r.stdout, '2\n5\n');
+  assert.equal(cli('run', 'examples/overflow.lum', '--engine', 'c').status, 1);
+});
