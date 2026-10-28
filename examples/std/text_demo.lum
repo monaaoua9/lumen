@@ -12,3 +12,8 @@ print(text.lines("a\nbb\n\nccc\n"));
 print(len(text.lines("")));
 print(text.capitalize("lumen") + text.capitalize(""));
 print("[" + text.center("hi", 7, "*") + "]");
+for i, c in text.chars("abc") {
+  print(str(i) + c);
+}
+print(text.is_blank("  \t ") && !text.is_blank(" x "));
+print(len(text.chars("")));

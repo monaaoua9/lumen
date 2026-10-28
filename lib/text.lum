@@ -76,3 +76,13 @@ pub fn center(s: string, width: int, fill: string): string {
   let left = gap / 2;
   return repeat(fill, left) + s + repeat(fill, gap - left);
 }
+
+pub fn chars(s: string): string[] {
+  let out: string[] = [];
+  for i in 0..len(s) { push(out, substr(s, i, 1)); }
+  return out;
+}
+
+pub fn is_blank(s: string): bool {
+  return len(trim(s)) == 0;
+}
