@@ -1,0 +1,46 @@
+// higher-order helpers over arrays. none of them change their input
+pub fn map<T, U>(xs: T[], f: fn(T): U): U[] {
+  let out: U[] = [];
+  for x in xs { push(out, f(x)); }
+  return out;
+}
+
+pub fn filter<T>(xs: T[], keep: fn(T): bool): T[] {
+  let out: T[] = [];
+  for x in xs {
+    if keep(x) { push(out, x); }
+  }
+  return out;
+}
+
+pub fn fold<T, A>(xs: T[], start: A, step: fn(A, T): A): A {
+  var acc = start;
+  for x in xs { acc = step(acc, x); }
+  return acc;
+}
+
+pub fn any<T>(xs: T[], test: fn(T): bool): bool {
+  for x in xs {
+    if test(x) { return true; }
+  }
+  return false;
+}
+
+pub fn all<T>(xs: T[], test: fn(T): bool): bool {
+  for x in xs {
+    if !test(x) { return false; }
+  }
+  return true;
+}
+
+pub fn range(lo: int, hi: int): int[] {
+  let out: int[] = [];
+  for i in lo..hi { push(out, i); }
+  return out;
+}
+
+pub fn sum(xs: int[]): int {
+  var total = 0;
+  for x in xs { total += x; }
+  return total;
+}

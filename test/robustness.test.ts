@@ -322,3 +322,15 @@ test('std/option.lum and std/math.lum run the same on every engine', () => {
   assert.equal(outs[2], outs[0]);
   assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true']);
 });
+
+test('std/list.lum higher-order helpers agree on every engine', () => {
+  const outs = ['interp', 'vm', 'c'].map(engine => {
+    const r = cli('run', 'examples/std/list_demo.lum', '--engine', engine);
+    assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
+    assert.equal(r.stderr, '', engine);
+    return r.stdout.replace(/\r\n/g, '\n');
+  });
+  assert.equal(outs[1], outs[0]);
+  assert.equal(outs[2], outs[0]);
+  assert.deepEqual(outs[0].trim().split('\n').slice(2, 4), ['220', '12345678910']);
+});

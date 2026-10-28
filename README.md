@@ -151,6 +151,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/option.lum`: generic `Option<T>` (`Some`/`None`) and `Result<T>` (`Ok`/`Err(string)`) with `unwrap_or`, `is_some`, `ok_or`, `is_ok`. `std/math.lum`: `gcd`, `lcm`, `pow`, `clamp`, `is_prime` on ints.
 
+`std/list.lum`: `map`, `filter`, `fold`, `any`, `all` over any element type (they take function values, so `list.map(xs, fn(x: int): int { return x * 2; })`), plus `range(lo, hi)` and `sum`.
+
 `std/map.lum`: a string-keyed `Map<V>` with `new`, `set`, `get(m, key, fallback)`, `has`, `delete` and `size`. It is two parallel arrays, so lookups are linear.
 
 ## Static analysis

@@ -1,0 +1,13 @@
+import "std/list.lum"
+
+let nums = list.range(1, 11);
+let squares = list.map(nums, fn(x: int): int { return x * x; });
+let even = list.filter(squares, fn(x: int): bool { return x % 2 == 0; });
+print(squares);
+print(even);
+print(list.sum(even));
+print(list.fold(nums, "", fn(acc: string, x: int): string { return acc + str(x); }));
+print(list.any(nums, fn(x: int): bool { return x > 9; }));
+print(list.all(nums, fn(x: int): bool { return x > 1; }));
+let lens = list.map(["a", "bcd", "ef"], fn(s: string): int { return len(s); });
+print(lens);
