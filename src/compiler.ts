@@ -396,7 +396,7 @@ export function compile(prog: Program): Module {
   }
 
   const main = build('<main>', 0, prog.nlocals, false, prog.body, Op.HALT);
-  const structs = prog.structs.map(d => ({ name: d.name, fields: d.fields.map(f => ({ name: f.name, ty: f.ty })) }));
+  const structs = prog.structs.map(d => ({ name: d.name, shown: d.shown, fields: d.fields.map(f => ({ name: f.name, ty: f.ty })) }));
   const enums = prog.enums.map(d => ({ name: d.name, variants: d.variants.map(v => ({ name: v.name, payload: v.payload })) }));
   return { consts, types, structs, enums, fns, main, nglobals: prog.nglobals };
 }

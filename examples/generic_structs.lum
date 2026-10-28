@@ -1,0 +1,39 @@
+struct Box<T> { value: T }
+struct Pair<A, B> { first: A, second: B }
+struct Stack<T> { items: T[] }
+
+fn unbox<T>(b: Box<T>): T {
+    return b.value;
+}
+
+fn push_item<T>(s: Stack<T>, x: T) {
+    push(s.items, x);
+}
+
+fn top<T>(s: Stack<T>): T {
+    return s.items[len(s.items) - 1];
+}
+
+fn swap<A, B>(p: Pair<A, B>): Pair<B, A> {
+    return Pair { first: p.second, second: p.first };
+}
+
+let a = Box { value: 41 };
+print(unbox(a) + 1);
+print(Box { value: "hi" });
+
+let p = Pair { first: 1, second: "one" };
+print(p);
+print(swap(p));
+
+let nested = Box { value: Box { value: 2.5 } };
+print(unbox(unbox(nested)));
+
+let s: Stack<int> = Stack { items: [] };
+push_item(s, 3);
+push_item(s, 4);
+print(top(s));
+print(s);
+
+fn total(b: Box<int>): int { return b.value * 2; }
+print(total(Box { value: 21 }));

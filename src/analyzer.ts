@@ -1,5 +1,5 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
-import type { EnumDecl, Expr, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
+import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
 import { BUILTINS, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { FnType, Type } from './types.ts';
 
@@ -57,34 +57,58 @@ function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
 }
 
 // generic functions are templates: each distinct set of type arguments gets its own checked copy
-function unify(pat: string, actual: Type, params: Set<string>, binds: Map<string, Type>) {
+function unify(pat: string, actual: Type, params: Set<string>, binds: Map<string, Type>, insts: Map<string, { tmpl: string; args: Type[] }>) {
   if (actual === 'error' || actual === 'void') return;
   if (pat.startsWith('@') && params.has(pat.slice(1))) {
     if (!binds.has(pat.slice(1))) binds.set(pat.slice(1), actual);
   } else if (pat.endsWith('[]') && isArray(actual)) {
-    unify(pat.slice(0, -2), elemOf(actual), params, binds);
+    unify(pat.slice(0, -2), elemOf(actual), params, binds, insts);
   } else if (pat.startsWith('<') && pat.endsWith('>') && isFn(actual)) {
     const want = fnSig(pat as FnType);
     const got = fnSig(actual);
-    want.params.forEach((p, i) => { if (got.params[i]) unify(p, got.params[i], params, binds); });
-    unify(want.ret, got.ret, params, binds);
+    want.params.forEach((p, i) => { if (got.params[i]) unify(p, got.params[i], params, binds, insts); });
+    unify(want.ret, got.ret, params, binds, insts);
+  } else if (isStruct(actual)) {
+    const m = /^@([A-Za-z_][A-Za-z0-9_]*)<(.*)>$/s.exec(pat);
+    const info = insts.get(structName(actual));
+    if (m && info && info.tmpl === m[1]) splitTop(m[2]).forEach((p, i) => unify(p, info.args[i], params, binds, insts));
   }
 }
 
-function substTypes(node: unknown, map: Map<string, Type>) {
-  const sub = (v: string) => v.replace(/@([A-Za-z_][A-Za-z0-9_]*)/g, (m, n: string) => map.get(n) ?? m);
+const replaceVars = (v: string, map: Map<string, Type>) => v.replace(/@([A-Za-z_][A-Za-z0-9_]*)/g, (m, n: string) => map.get(n) ?? m);
+
+// applies fn to every written type inside an AST fragment; `skip` keeps templates out of the walk
+function mapTypes(node: unknown, fn: (t: string, owner: Record<string, unknown>) => string, skip?: (o: Record<string, unknown>) => boolean) {
   if (Array.isArray(node)) {
-    node.forEach(n => substTypes(n, map));
+    node.forEach(n => mapTypes(n, fn, skip));
     return;
   }
   if (!node || typeof node !== 'object') return;
   const o = node as Record<string, unknown>;
+  if (skip?.(o)) return;
   for (const k of Object.keys(o)) {
     const v = o[k];
-    if ((k === 'ty' || k === 'annot' || k === 'ret') && typeof v === 'string') o[k] = sub(v);
-    else if (k === 'tys' && Array.isArray(v)) o[k] = v.map(x => sub(x as string));
-    else substTypes(v, map);
+    if ((k === 'ty' || k === 'annot' || k === 'ret') && typeof v === 'string') o[k] = fn(v, o);
+    else if ((k === 'tys' || k === 'payload') && Array.isArray(v)) o[k] = v.map(x => fn(x as string, o));
+    else mapTypes(v, fn, skip);
   }
+}
+
+// splits "A,B<C,D>,E" at the commas that are not nested
+function splitTop(s: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let from = 0;
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '(' || s[i] === '<') depth++;
+    else if (s[i] === ')' || s[i] === '>') depth--;
+    else if (s[i] === ',' && depth === 0) {
+      out.push(s.slice(from, i));
+      from = i + 1;
+    }
+  }
+  if (from < s.length) out.push(s.slice(from));
+  return out;
 }
 
 function lambdasIn(node: unknown, out: Extract<Expr, { k: 'lambda' }>[]) {
@@ -163,13 +187,17 @@ class Analyzer {
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
   ninst = 0;
+  structTemplates = new Map<string, StructDecl>();
+  structKeys = new Map<string, string>(); // Box<int> -> Box__int
+  structInst = new Map<string, { tmpl: string; args: Type[] }>();
   generics = new Map<string, FnDecl>();
   insts = new Map<string, FnSym>();
   prog!: Program;
 
   report(severity: Severity, code: string, message: string, span: Span, hint?: string) {
     // generic instances re-check the same source, report each problem once
-    const msg = showTypes(message);
+    let msg = showTypes(message);
+    for (const [inst, info] of this.structInst) msg = msg.replaceAll(inst, `${info.tmpl}<${info.args.map(a => showTypes(a)).join(', ')}>`);
     if (this.diags.some(d => d.code === code && d.span.start === span.start && d.span.end === span.end && d.message === msg)) return;
     this.diags.push({ severity, code, message: msg, span, hint });
   }
@@ -178,6 +206,26 @@ class Analyzer {
 
   run(prog: Program) {
     this.prog = prog;
+
+    for (const sd of prog.structs) if (sd.typeParams) this.structTemplates.set(sd.name, sd);
+    prog.structs = prog.structs.filter(sd => !sd.typeParams);
+    const templateFns = new Set<unknown>();
+    for (const f of prog.fns) {
+      if (!f.typeParams) continue;
+      templateFns.add(f);
+      const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+      lambdasIn(f.body, ls);
+      ls.forEach(l => templateFns.add(l.fn));
+    }
+    {
+      // written Name<Args> types become real (monomorphized) structs before anything else looks at types
+      const canon = (t: string, o: Record<string, unknown>) => this.canon(t, (o.span as Span | undefined) ?? { start: 0, end: 0 });
+      const skip = (o: Record<string, unknown>) => templateFns.has(o);
+      mapTypes(prog.enums, canon, skip);
+      mapTypes(prog.structs, canon, skip);
+      mapTypes(prog.fns, canon, skip);
+      mapTypes(prog.body, canon, skip);
+    }
     this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
     for (const d of this.enums.values()) {
@@ -229,8 +277,69 @@ class Analyzer {
     }
   }
 
+  // rewrites every `@Name<A,B>` in a type string to the instance's own name, creating the instance on first use
+  canon(t: string, span: Span): string {
+    let out = '';
+    for (let i = 0; i < t.length; i++) {
+      if (t[i] !== '@') {
+        out += t[i];
+        continue;
+      }
+      let j = i + 1;
+      while (j < t.length && /[A-Za-z0-9_]/.test(t[j])) j++;
+      const name = t.slice(i + 1, j);
+      if (t[j] !== '<') {
+        out += t.slice(i, j);
+        i = j - 1;
+        continue;
+      }
+      let depth = 0;
+      let k = j;
+      for (; k < t.length; k++) {
+        if (t[k] === '<') depth++;
+        else if (t[k] === '>' && --depth === 0) break;
+      }
+      const args = splitTop(t.slice(j + 1, k)).map(a => this.canon(a, span) as Type);
+      const inst = this.structInstance(name, args, span);
+      out += inst ? '@' + inst : 'error';
+      i = k;
+    }
+    return out;
+  }
+
+  structInstance(name: string, args: Type[], span: Span): string | null {
+    const tmpl = this.structTemplates.get(name);
+    if (!tmpl) {
+      this.err('E016', this.structs.has(name) ? `struct '${name}' is not generic` : `unknown struct '${name}'`, span);
+      return null;
+    }
+    if (args.length !== tmpl.typeParams!.length) {
+      this.err('E016', `struct '${name}' takes ${tmpl.typeParams!.length} type argument${tmpl.typeParams!.length === 1 ? '' : 's'}, but ${args.length} ${args.length === 1 ? 'was' : 'were'} given`, span);
+      return null;
+    }
+    const key = `${name}<${args.join(',')}>`;
+    const known = this.structKeys.get(key);
+    if (known) return known;
+
+    let inst = `${name}__${args.map(a => a.replace(/[^A-Za-z0-9_]/g, '_')).join('__')}`;
+    while (this.structs.has(inst) || this.enums.has(inst) || [...this.structKeys.values()].includes(inst)) inst += '_';
+    this.structKeys.set(key, inst);
+    this.structInst.set(inst, { tmpl: name, args });
+    const map = new Map<string, Type>(tmpl.typeParams!.map((p, i) => [p, args[i]]));
+    const decl: StructDecl = {
+      k: 'struct', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, shown: name,
+      fields: tmpl.fields.map(f => ({ name: f.name, span: f.span, ty: this.canon(replaceVars(f.ty, map), f.span) as Type })),
+    };
+    this.structs.set(inst, decl);
+    this.prog.structs.push(decl);
+    // fields of an instance created after declareStructs ran still have to name real types
+    for (const f of decl.fields) this.checkType(f.ty, f.span);
+    return inst;
+  }
+
   declareStructs(list: StructDecl[]) {
     for (const s of list) {
+      if (this.structs.get(s.name) === s) continue; // instance registered while canonicalising types
       if (this.enums.has(s.name)) this.err('E006', `'${s.name}' is already defined as an enum`, s.nameSpan);
       else if (this.structs.has(s.name)) this.err('E006', `struct '${s.name}' is already defined`, s.nameSpan);
       else this.structs.set(s.name, s);
@@ -418,7 +527,7 @@ class Analyzer {
         } else if (s.name.startsWith('_$a') && !isArray(t) && t !== 'error') {
           this.err('E003', `cannot iterate over a value of type ${t}`, s.init.span, 'for loops work on int ranges (a..b) and arrays');
           ty = 'error';
-        } else if (s.annot && t !== 'error' && t !== s.annot) {
+        } else if (s.annot && s.annot !== 'error' && t !== 'error' && t !== s.annot) {
           this.mismatch(s.annot, t, s.init.span);
         }
         // declared after the initializer so `let x = x + 1` sees the outer x
@@ -830,6 +939,30 @@ class Analyzer {
       }
 
       case 'structlit': {
+        const pre = new Map<FieldInit, Type>();
+        const tmpl = this.structTemplates.get(e.name);
+        if (tmpl) {
+          const binds = new Map<string, Type>();
+          const params = new Set(tmpl.typeParams!);
+          const info = want && isStruct(want) ? this.structInst.get(structName(want)) : undefined;
+          if (info && info.tmpl === tmpl.name) tmpl.typeParams!.forEach((p, i) => binds.set(p, info.args[i]));
+          for (const f of e.fields) {
+            const fd = tmpl.fields.find(d => d.name === f.name);
+            if (!fd) continue;
+            const t = this.expr(f.value, fd.ty.includes('@') && info ? this.canon(replaceVars(fd.ty, binds), f.nameSpan) as Type : undefined);
+            pre.set(f, t);
+            unify(fd.ty, t, params, binds, this.structInst);
+          }
+          const missingParam = tmpl.typeParams!.find(p => !binds.has(p));
+          if (missingParam) {
+            if ([...pre.values()].includes('error')) return 'error';
+            this.err('E024', `cannot infer type parameter '${missingParam}' of struct '${e.name}'`, e.nameSpan, 'no field mentions it');
+            return 'error';
+          }
+          const inst = this.structInstance(e.name, tmpl.typeParams!.map(p => binds.get(p)!), e.nameSpan);
+          if (!inst) return 'error';
+          e.name = inst;
+        }
         const decl = this.structs.get(e.name);
         if (!decl) {
           const sug = closest(e.name, this.structs.keys());
@@ -848,10 +981,10 @@ class Analyzer {
           f.idx = idx;
           if (seen.has(f.name)) this.err('E018', `field '${f.name}' is given twice`, f.nameSpan);
           seen.add(f.name);
-          const want = decl.fields[idx].ty;
-          const t = this.expr(f.value, want);
+          const wantTy = decl.fields[idx].ty;
+          const t = pre.get(f) ?? this.expr(f.value, wantTy);
           if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', f.value.span);
-          else if (t !== 'error' && t !== want) this.mismatch(want, t, f.value.span, `in field '${f.name}' of '${e.name}'`);
+          else if (t !== 'error' && t !== wantTy) this.mismatch(wantTy, t, f.value.span, `in field '${f.name}' of '${e.name}'`);
         }
         const missing = decl.fields.filter(d => !seen.has(d.name)).map(d => d.name);
         if (missing.length) this.err('E018', `missing field${missing.length > 1 ? 's' : ''} ${missing.map(m => `'${m}'`).join(', ')} in '${e.name}'`, e.span);
@@ -1024,7 +1157,7 @@ class Analyzer {
     if (tys.includes('error')) return 'error';
     const names = gen.typeParams!;
     const binds = new Map<string, Type>();
-    gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds));
+    gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds, this.structInst));
     const missing = names.find(n => !binds.has(n));
     if (missing) {
       this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it');
@@ -1037,7 +1170,8 @@ class Analyzer {
       const d = structuredClone(gen);
       d.typeParams = undefined;
       d.name = `${gen.name}$${this.insts.size}`;
-      substTypes(d, binds);
+      mapTypes(d, t => replaceVars(t, binds));
+      mapTypes(d, (t, o) => this.canon(t, (o.span as Span | undefined) ?? e.span));
       const ls: Extract<Expr, { k: 'lambda' }>[] = [];
       lambdasIn(d.body, ls);
       ls.forEach(l => {

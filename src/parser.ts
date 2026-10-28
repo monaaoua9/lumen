@@ -146,6 +146,14 @@ class Parser {
       const t = this.expect('ident', 'a type name');
       // anything that is not a builtin type is assumed to be a struct, the analyzer checks it exists
       out = (typeFromName(t.text) ?? (this.enumNames.has(t.text) ? enumType(t.text) : structType(t.text))) as Elem;
+      if (this.at('<')) {
+        // Name<A, B>: stays a string until the analyzer instantiates the struct
+        this.next();
+        const args: Type[] = [];
+        do args.push(this.type()); while (this.eat(','));
+        this.expect('>');
+        out = structType(`${t.text}<${args.join(',')}>`);
+      }
     }
     while (this.eat('[')) {
       this.expect(']');
@@ -383,6 +391,12 @@ class Parser {
       this.diags.push({ severity: 'error', code: 'P002', message: 'structs can only be declared at the top level', span: kw.span });
     }
     const name = this.expect('ident', 'a struct name');
+    let typeParams: string[] | undefined;
+    if (this.eat('<')) {
+      typeParams = [];
+      do typeParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      this.expect('>');
+    }
     this.expect('{');
     const fields: StructField[] = [];
     while (!this.at('}') && !this.at('eof')) {
@@ -395,7 +409,7 @@ class Parser {
     if (fields.length === 0) {
       this.diags.push({ severity: 'error', code: 'P003', message: `struct '${name.text}' needs at least one field`, span: name.span });
     }
-    const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields };
+    const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields, typeParams };
     this.structs.push(decl);
     return decl;
   }

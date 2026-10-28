@@ -323,3 +323,16 @@ test('generics: inference and instantiation', () => {
   // an error inside the body shows up once per source location, not once per instance
   assert.deepEqual(errs('fn bad<T>(x: T): T { return x + 1; } print(bad(1)); print(bad(2.5));'), ['E003']);
 });
+
+test('generic structs: instantiation and inference', () => {
+  const B = 'struct Box<T> { value: T } struct Pair<A, B> { a: A, b: B } fn unbox<T>(b: Box<T>): T { return b.value; } ';
+  assert.deepEqual(errs(B + 'print(unbox(Box { value: 1 }) + 1);'), []);
+  assert.deepEqual(errs(B + 'let b: Box<string> = Box { value: "s" }; print(b.value + "x");'), []);
+  assert.deepEqual(errs(B + 'let b: Box<int> = Box { value: "s" };'), ['E003']);
+  assert.deepEqual(errs(B + 'let b: Box<int> = Box { value: 1 }; let c: Box<float> = b;'), ['E003']);
+  assert.deepEqual(errs(B + 'let p = Pair { a: 1, b: "x" }; print(p.b + "y");'), []);
+  assert.deepEqual(errs(B + 'let x: Box<int, int> = Box { value: 1 };'), ['E016']);
+  assert.deepEqual(errs(B + 'struct Plain { v: int } let x: Plain<int> = Plain { v: 1 };'), ['E016']);
+  assert.deepEqual(errs(B + 'let b = Box { value: [] };'), ['E013']);
+  assert.deepEqual(errs('struct Box<T> { value: T } fn f(b: Box<Nope>) { }'), ['E016']);
+});

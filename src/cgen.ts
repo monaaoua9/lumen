@@ -779,7 +779,7 @@ export function emitC(prog: Program): string {
     out.push(`static const char *lm_se_S_${d.name}(lm_val v) { return lm_str_S_${d.name}((S_${d.name} *)v.p); }`);
   }
   for (const d of prog.structs) {
-    out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, `  const char *r = "${d.name} { ";`);
+    out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, `  const char *r = "${d.shown ?? d.name} { ";`);
     d.fields.forEach((f, i) => {
       out.push(`  r = lm_cat(r, "${i ? ', ' : ''}${f.name}: ");`);
       out.push(`  r = lm_cat(r, ${strIn(f.ty, `p->f_${f.name}`)});`);

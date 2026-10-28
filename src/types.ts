@@ -27,8 +27,8 @@ export function fnSig(t: FnType): { params: Type[]; ret: Type } {
   let from = 0;
   depth = 0;
   for (let i = 0; i < close; i++) {
-    if (body[i] === '(') depth++;
-    else if (body[i] === ')') depth--;
+    if (body[i] === '(' || body[i] === '<') depth++;
+    else if (body[i] === ')' || body[i] === '>') depth--;
     else if (body[i] === ',' && depth === 0) {
       params.push(body.slice(from, i) as Type);
       from = i + 1;

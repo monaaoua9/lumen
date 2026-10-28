@@ -69,6 +69,8 @@ export interface StructDecl {
   name: string;
   nameSpan: Span;
   fields: StructField[];
+  typeParams?: string[];
+  shown?: string; // what to print for an instance of a generic struct
 }
 
 export interface EnumDecl {

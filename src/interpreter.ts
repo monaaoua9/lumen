@@ -25,7 +25,7 @@ export class Interpreter {
 
   run(prog: Program) {
     registerTypes(
-      prog.structs.map(s => ({ name: s.name, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })),
+      prog.structs.map(s => ({ name: s.name, shown: s.shown, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })),
       prog.enums.map(e => ({ name: e.name, variants: e.variants.map(v => ({ name: v.name, payload: v.payload })) })),
     );
     const main: Frame = { locals: new Array(prog.nlocals).fill(null), ret: null };

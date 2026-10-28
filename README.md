@@ -98,6 +98,8 @@ Function values: `fn(int, int): int` is a type, a function name is a value (`app
 
 Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are always inferred from the call (`E024` when a parameter is not mentioned by any argument), and every distinct set of type arguments is checked and compiled as its own copy of the function (monomorphization), so the three backends need no special support. A generic function is only checked when it is called, and it cannot be used as a value. Functions only for now, no generic structs or methods.
 
+Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`). No `impl` blocks on generic structs and no generic enums yet.
+
 Modules: `import "geometry.lum";` on its own line pulls in another file (path relative to the importing file). Imports are resolved before lexing: each file is read once, dependencies come first, and the result is one program, so every top-level name is global and a clash is the usual `E006`. Diagnostics still point at the right file and line. A missing file is `P004`; import cycles are tolerated. See `examples/modules/`.
 
 Semantics worth knowing:
@@ -169,6 +171,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No traits/interfaces or generic types yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- No traits/interfaces or generic enums yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

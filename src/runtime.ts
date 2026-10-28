@@ -18,6 +18,7 @@ export function formatFloat(v: number): string {
 
 export interface StructInfo {
   name: string;
+  shown?: string;
   fields: { name: string; ty: Type }[];
 }
 
@@ -66,7 +67,7 @@ export function format(v: Value, ty: Type): string {
   }
   const info = layouts.get(ty.slice(1))!;
   const vals = v as Value[];
-  return `${info.name} { ${info.fields.map((f, i) => `${f.name}: ${formatInner(vals[i], f.ty)}`).join(', ')} }`;
+  return `${info.shown ?? info.name} { ${info.fields.map((f, i) => `${f.name}: ${formatInner(vals[i], f.ty)}`).join(', ')} }`;
 }
 
 // ints are plain JS numbers but trap as soon as they leave the safe range,
