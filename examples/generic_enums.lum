@@ -8,7 +8,7 @@ enum Result<T, E> {
     Err(E),
 }
 
-fn find<T>(xs: T[], pred: fn(T): bool): Option<T> {
+fn first_where<T>(xs: T[], pred: fn(T): bool): Option<T> {
     for x in xs {
         if pred(x) { return Option.Some(x); }
     }
@@ -35,9 +35,9 @@ fn show(r: Result<int, string>) {
 }
 
 let nums = [3, 8, 12];
-print(unwrap_or(find(nums, fn(x: int): bool { return x > 5; }), -1));
-print(unwrap_or(find(nums, fn(x: int): bool { return x > 50; }), -1));
-print(find(["a", "bb"], fn(s: string): bool { return len(s) > 1; }));
+print(unwrap_or(first_where(nums, fn(x: int): bool { return x > 5; }), -1));
+print(unwrap_or(first_where(nums, fn(x: int): bool { return x > 50; }), -1));
+print(first_where(["a", "bb"], fn(s: string): bool { return len(s) > 1; }));
 show(divide(10, 2));
 show(divide(1, 0));
 let none: Option<float> = Option.None;

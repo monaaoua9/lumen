@@ -1,0 +1,9 @@
+// byte-based string helpers
+let line = "name=lumen;kind=dsl;year=2024";
+let parts = split(line, ";");
+for kv in parts {
+  let at = find(kv, "=");
+  print(substr(kv, 0, at) + " -> " + substr(kv, at + 1, len(kv) - at - 1));
+}
+print(find("hello", "xyz"));
+print(len(split("a,b,,c", ",")));

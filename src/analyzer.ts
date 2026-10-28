@@ -1271,13 +1271,13 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
       return ret;
     }
-    const [t0, t1] = tys;
+    const [t0, t1, t2] = tys;
     if (t0 === 'void') {
       this.err('E010', 'a function that returns nothing cannot be used as a value', e.args[0].span);
       return ret;
@@ -1303,6 +1303,16 @@ class Analyzer {
         if (t0 === 'error') return ret;
         if (!isArray(t0)) { bad('expects an array as its first argument'); return ret; }
         if (t1 !== 'error' && t1 !== elemOf(t0)) this.mismatch(elemOf(t0), t1, e.args[1].span, `in argument 2 of 'push'`);
+        return ret;
+      case 'substr':
+        if (t0 !== 'error' && t0 !== 'string') bad('expects a string as its first argument');
+        if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'substr'`);
+        if (t2 !== 'error' && t2 !== 'int') this.mismatch('int', t2, e.args[2].span, `in argument 3 of 'substr'`);
+        return ret;
+      case 'find':
+      case 'split':
+        if (t0 !== 'error' && t0 !== 'string') bad('expects a string as its first argument');
+        if (t1 !== 'error' && t1 !== 'string') this.mismatch('string', t1, e.args[1].span, `in argument 2 of '${name}'`);
         return ret;
       case 'sqrt':
         if (t0 !== 'error' && t0 !== 'float') bad('expects a float');

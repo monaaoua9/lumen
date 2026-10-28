@@ -274,6 +274,33 @@ static long long lm_min_int(long long a, long long b) { return b < a ? b : a; }
 static long long lm_max_int(long long a, long long b) { return b > a ? b : a; }
 static double lm_min_float(double a, double b) { return b < a ? b : a; }
 static double lm_max_float(double a, double b) { return b > a ? b : a; }
+static const char *lm_substr(const char *s, long long start, long long n) {
+  long long len = (long long)strlen(s);
+  if (start < 0 || n < 0 || start + n > len) lm_die("substring out of range");
+  if ((start < len && (s[start] & 0xc0) == 0x80) || (start + n < len && (s[start + n] & 0xc0) == 0x80)) lm_die("substring splits a character");
+  char *r = (char *)lm_alloc((size_t)n + 1, 1);
+  memcpy(r, s + start, (size_t)n);
+  return r;
+}
+static long long lm_find_str(const char *s, const char *needle) {
+  const char *p = strstr(s, needle);
+  return p ? (long long)(p - s) : -1;
+}
+static lm_arr *lm_split(const char *s, const char *sep) {
+  size_t k = strlen(sep);
+  if (k == 0) lm_die("split with an empty separator");
+  lm_arr *out = lm_arr_new(0);
+  for (;;) {
+    const char *p = strstr(s, sep);
+    size_t n = p ? (size_t)(p - s) : strlen(s);
+    char *piece = (char *)lm_alloc(n + 1, 1);
+    memcpy(piece, s, n);
+    lm_arr_push(out, lm_vs(piece));
+    if (!p) break;
+    s = p + k;
+  }
+  return out;
+}
 static long long lm_len(const char *s) { return (long long)strlen(s); }
 `;
 
@@ -560,6 +587,9 @@ class Gen {
         case 'float': text = aty === 'float' ? a : `((double)${a})`; break;
         case 'len': text = isArray(aty) ? `lm_arr_len(${a})` : `lm_len(${a})`; break;
         case 'push': text = `lm_arr_push(${a}, lm_v${slot(elemOf(aty as ArrayType))}(${args[1]}))`; break;
+        case 'substr': text = `lm_substr(${a}, ${args[1]}, ${args[2]})`; break;
+        case 'find': text = `lm_find_str(${a}, ${args[1]})`; break;
+        case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;
         case 'abs': text = aty === 'int' ? `lm_iabs(${a})` : `fabs(${a})`; break;
         case 'min': text = `lm_min_${aty}(${a}, ${args[1]})`; break;

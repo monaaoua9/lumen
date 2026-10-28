@@ -141,3 +141,26 @@ test('frontend survives token-level mutations of real programs', () => {
     }
   }
 });
+
+test('string builtins trap the same way on every engine', () => {
+  const cases: [string, string][] = [
+    ['print(substr("abc", 2, 5));', 'substring out of range'],
+    ['print(substr("abc", -1, 1));', 'substring out of range'],
+    ['print(substr("hé", 2, 1));', 'splits a character'],
+    ['print(split("abc", ""));', 'empty separator'],
+  ];
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-str-'));
+  try {
+    for (const [src, msg] of cases) {
+      const f = join(dir, 't.lum');
+      writeFileSync(f, src);
+      for (const engine of ['interp', 'vm']) {
+        const r = cli('run', f, '--engine', engine);
+        assert.equal(r.status, 1, `${engine}: ${src}`);
+        assert.ok((r.stdout + r.stderr).includes(msg), `${engine}: ${src}\n${r.stderr}`);
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

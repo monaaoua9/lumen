@@ -296,6 +296,14 @@ test('math builtins: checking', () => {
   assert.deepEqual(errs('print(max(1));'), ['E004']);
 });
 
+test('string builtins: checking', () => {
+  assert.deepEqual(errs('let a: string[] = split("a,b", ","); print(substr("abc", 1, 1) + str(find("abc", "c")) + str(len(a)));'), []);
+  assert.deepEqual(errs('print(substr(1, 0, 1));'), ['E003']);
+  assert.deepEqual(errs('print(substr("abc", 0.5, 1));'), ['E003']);
+  assert.deepEqual(errs('print(find("abc", 1));'), ['E003']);
+  assert.deepEqual(errs('print(split("abc"));'), ['E004']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

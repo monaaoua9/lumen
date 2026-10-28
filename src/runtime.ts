@@ -104,6 +104,9 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'len': return Array.isArray(a) ? a.length : Buffer.byteLength(a as string);
     case 'push': (a as Value[]).push(args[1]); return null;
     case 'sqrt': return sqrtOf(a as number, span);
+    case 'substr': return substrOf(a as string, args[1] as number, args[2] as number, span);
+    case 'find': return Buffer.from(a as string).indexOf(Buffer.from(args[1] as string));
+    case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
     case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
     case 'max': return (args[1] as number) > (a as number) ? args[1] : a;
@@ -113,6 +116,20 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
       return arr.pop()!;
     }
   }
+}
+
+// strings are UTF-8 and offsets count bytes, cutting through a multi-byte character is an error
+export function substrOf(s: string, start: number, n: number, span?: Span): string {
+  const buf = Buffer.from(s);
+  if (start < 0 || n < 0 || start + n > buf.length) throw new RuntimeError('substring out of range', span);
+  const inside = (i: number) => i < buf.length && (buf[i] & 0xc0) === 0x80;
+  if (inside(start) || inside(start + n)) throw new RuntimeError('substring splits a character', span);
+  return buf.toString('utf8', start, start + n);
+}
+
+export function splitOf(s: string, sep: string, span?: Span): string[] {
+  if (sep === '') throw new RuntimeError('split with an empty separator', span);
+  return s.split(sep);
 }
 
 export function sqrtOf(x: number, span?: Span): number {
