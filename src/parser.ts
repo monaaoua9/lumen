@@ -41,6 +41,8 @@ class Parser {
   diags: Diagnostic[];
   fns: FnDecl[] = [];
   lambdas = 0;
+  recs: { name: string; mangled: string; used: boolean }[] = [];
+  hoisted: Stmt[] = [];
   structs: StructDecl[] = [];
   traits: TraitDecl[] = [];
   qualified: Qualified[] = [];
@@ -178,6 +180,7 @@ class Parser {
       if (s) body.push(s);
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
+    body.push(...this.hoisted);
     return { qualified: this.qualified, body, fns: this.fns, structs: this.structs, enums: this.enums, traits: this.traits, impls: this.impls, nlocals: 0, nglobals: 0 };
   }
 
@@ -273,10 +276,19 @@ class Parser {
     switch (t.kind) {
       case 'fn': {
         if (this.depth > 0 && this.toks[this.pos + 1]?.kind === 'ident') {
-          // a named fn inside a body is a let bound to a lambda: it captures like one and cannot call itself
+          // a named fn inside a body is a let bound to a lambda. one that calls itself becomes a real
+          // top-level function instead (so it cannot capture locals), the let just names it
           const kw = this.next();
           const name = this.vn(this.next());
-          const init = this.lambdaExpr(kw);
+          const rec = { name: name.text, mangled: `${name.text}$r${this.lambdas++}`, used: false };
+          this.recs.push(rec);
+          let init = this.lambdaExpr(kw);
+          this.recs.pop();
+          if (rec.used && init.k === 'lambda') {
+            init.fn.name = rec.mangled;
+            this.hoisted.push(init.fn);
+            init = { k: 'var', name: rec.mangled, span: init.span, ty: 'error' };
+          }
           return { k: 'let', span: this.join(kw.span, init.span), name: name.text, nameSpan: name.span, mutable: false, init };
         }
         return this.fnDecl();
@@ -504,7 +516,7 @@ class Parser {
     const startsStmt = new Set(['let', 'var', 'while', 'for', 'return', 'break', 'continue', 'fn', 'struct', 'enum', 'impl', 'trait', 'pub']);
     while (!this.at('}') && !this.at('eof')) {
       if (!startsStmt.has(this.cur.kind)) {
-        const snap = [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId];
+        const snap = [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId, this.hoisted.length];
         try {
           const e = this.allowStruct(() => this.expr());
           if (this.at('}')) {
@@ -514,7 +526,7 @@ class Parser {
         } catch (err) {
           if (!(err instanceof Bail)) throw err;
         }
-        [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId] = snap;
+        [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId, this.hoisted.length] = snap;
       }
       const s = this.statementRecovering();
       if (s) body.push(s);
@@ -950,6 +962,13 @@ class Parser {
       if (this.at('(') || (this.at('{') && !this.noStruct) || typePath) t = this.rn(t);
     }
     t = this.vn(t);
+    if (this.at('(')) {
+      const rec = [...this.recs].reverse().find(r => r.name === t.text);
+      if (rec) {
+        rec.used = true;
+        t = { ...t, text: rec.mangled };
+      }
+    }
     if (this.at('{') && !this.noStruct) return this.structLit(t);
     if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
     this.next();

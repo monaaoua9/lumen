@@ -1,0 +1,22 @@
+fn main_calc(n: int): int {
+  fn fact(k: int): int {
+    if k <= 1 { return 1; }
+    return k * fact(k - 1);
+  }
+  fn fib(k: int): int {
+    return if k < 2 { k } else { fib(k - 1) + fib(k - 2) };
+  }
+  return fact(n) + fib(n);
+}
+
+print(main_calc(5));
+print(main_calc(10));
+
+fn other() {
+  // same helper name in a different function
+  fn fact(k: int): int {
+    return if k == 0 { 1 } else { 2 * fact(k - 1) };
+  }
+  print(fact(8));
+}
+other();
