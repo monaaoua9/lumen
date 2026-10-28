@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { RuntimeError } from './diagnostics.ts';
+import { ExitSignal, RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
 import type { BuiltinName, Type } from './types.ts';
 
@@ -113,6 +113,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
     case 'read_line': return readLine();
     case 'at_eof': return atEof();
+    case 'exit': throw exitWith(a as number, span);
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
@@ -151,6 +152,10 @@ function stdinLines(): string[] {
     pending = pending.map(l => l.replace(/\r$/, '')).reverse();
   }
   return pending;
+}
+
+export function exitWith(code: number, span?: Span): Error {
+  return code < 0 || code > 255 ? new RuntimeError('exit code must be 0..255', span) : new ExitSignal(code);
 }
 
 export function atEof(): boolean {

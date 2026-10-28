@@ -2,7 +2,7 @@
 import { writeFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
 import { basename } from 'node:path';
-import { CompileError, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
+import { CompileError, ExitSignal, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
 import type { Segment } from './diagnostics.ts';
 import { bundle } from './modules.ts';
 import { checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
@@ -100,6 +100,7 @@ function main(): number {
         return 2;
     }
   } catch (e) {
+    if (e instanceof ExitSignal) return e.code;
     if (e instanceof RuntimeError) {
       let msg = `runtime error: ${e.message}`;
       if (e.span) {

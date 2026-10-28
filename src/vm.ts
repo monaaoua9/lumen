@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, byteAt, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
+import { MAX_DEPTH, byteAt, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -139,6 +139,7 @@ export function run(m: Module, io: IO) {
         case Op.ASSERT: sp -= 2; if (!stack[sp]) throw new RuntimeError('assertion failed: ' + (stack[sp + 1] as string)); break;
         case Op.READLN: stack[sp++] = readLine(); break;
         case Op.ATEOF: stack[sp++] = atEof(); break;
+        case Op.EXIT: throw exitWith(num(--sp));
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;

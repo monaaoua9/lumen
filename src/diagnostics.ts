@@ -73,6 +73,15 @@ export class CompileError extends Error {
   }
 }
 
+// thrown by exit(code); the cli turns it into the process exit status
+export class ExitSignal extends Error {
+  code: number;
+  constructor(code: number) {
+    super(`exit ${code}`);
+    this.code = code;
+  }
+}
+
 export class RuntimeError extends Error {
   span?: Span;
   constructor(msg: string, span?: Span) {

@@ -296,6 +296,11 @@ static const char *lm_trim(const char *s) {
   memcpy(r, s, (size_t)(e - s));
   return r;
 }
+static void lm_exit(long long code) {
+  if (code < 0 || code > 255) lm_die("exit code must be 0..255");
+  fflush(stdout);
+  exit((int)code);
+}
 static void lm_assert(int ok, const char *msg) {
   if (ok) return;
   fflush(stdout);
@@ -654,6 +659,7 @@ class Gen {
         case 'assert': text = `lm_assert(${a}, ${args[1]})`; break;
         case 'read_line': text = 'lm_read_line()'; break;
         case 'at_eof': text = 'lm_at_eof()'; break;
+        case 'exit': text = `lm_exit(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;

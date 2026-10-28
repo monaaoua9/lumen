@@ -344,6 +344,12 @@ test('string interpolation', () => {
   assert.deepEqual(diagCodes('print("{}");'), ['L004']);
 });
 
+test('exit builtin', () => {
+  assert.deepEqual(errs('exit(2);'), []);
+  assert.deepEqual(errs('exit("x");'), ['E003']);
+  assert.deepEqual(errs('exit();'), ['E004']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

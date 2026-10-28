@@ -176,3 +176,22 @@ test('stdin builtins agree on every engine', () => {
   const none = spawnSync(process.execPath, ['src/cli.ts', 'run', 'examples/io/stdin.lum'], { encoding: 'utf8', input: '' });
   assert.equal(none.stdout, '0\n0\n');
 });
+
+test('exit(code) sets the status and keeps earlier output', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-exit-'));
+  try {
+    const f = join(dir, 't.lum');
+    writeFileSync(f, 'print("before");\nif len("ab") == 2 { exit(3); }\nprint("after");\n');
+    for (const engine of ['interp', 'vm']) {
+      const r = cli('run', f, '--engine', engine);
+      assert.equal(r.status, 3, engine);
+      assert.equal(r.stdout, 'before\n', engine);
+    }
+    writeFileSync(f, 'exit(300);\n');
+    const bad = cli('run', f);
+    assert.equal(bad.status, 1);
+    assert.ok(bad.stderr.includes('exit code must be 0..255'));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
