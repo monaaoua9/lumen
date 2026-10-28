@@ -68,9 +68,9 @@ function unify(pat: string, actual: Type, params: Set<string>, binds: Map<string
     const got = fnSig(actual);
     want.params.forEach((p, i) => { if (got.params[i]) unify(p, got.params[i], params, binds, insts); });
     unify(want.ret, got.ret, params, binds, insts);
-  } else if (isStruct(actual)) {
-    const m = /^@([A-Za-z_][A-Za-z0-9_]*)<(.*)>$/s.exec(pat);
-    const info = insts.get(structName(actual));
+  } else if (isStruct(actual) || isEnum(actual)) {
+    const m = /^[@#]([A-Za-z_][A-Za-z0-9_]*)<(.*)>$/s.exec(pat);
+    const info = insts.get(actual.slice(1));
     if (m && info && info.tmpl === m[1]) splitTop(m[2]).forEach((p, i) => unify(p, info.args[i], params, binds, insts));
   }
 }
@@ -189,6 +189,8 @@ class Analyzer {
   ninst = 0;
   traits = new Map<string, TraitDecl>();
   impls = new Set<string>(); // "Trait for <type string>"
+  enumTemplates = new Map<string, EnumDecl>();
+  keep = new Map<Expr, Type>(); // arguments already typed while inferring a generic's type arguments
   structTemplates = new Map<string, StructDecl>();
   structKeys = new Map<string, string>(); // Box<int> -> Box__int
   structInst = new Map<string, { tmpl: string; args: Type[] }>();
@@ -211,6 +213,8 @@ class Analyzer {
 
     for (const sd of prog.structs) if (sd.typeParams) this.structTemplates.set(sd.name, sd);
     prog.structs = prog.structs.filter(sd => !sd.typeParams);
+    for (const ed of prog.enums) if (ed.typeParams) this.enumTemplates.set(ed.name, ed);
+    prog.enums = prog.enums.filter(ed => !ed.typeParams);
     const templateFns = new Set<unknown>();
     for (const f of prog.fns) {
       if (!f.typeParams) continue;
@@ -268,6 +272,7 @@ class Analyzer {
 
   declareEnums(list: EnumDecl[]) {
     for (const d of list) {
+      if (this.enums.get(d.name) === d) continue; // instance registered while canonicalising types
       if (this.enums.has(d.name)) {
         this.err('E006', `enum '${d.name}' is already defined`, d.nameSpan);
         continue;
@@ -285,10 +290,11 @@ class Analyzer {
   canon(t: string, span: Span): string {
     let out = '';
     for (let i = 0; i < t.length; i++) {
-      if (t[i] !== '@') {
+      if (t[i] !== '@' && t[i] !== '#') {
         out += t[i];
         continue;
       }
+      const prefix = t[i];
       let j = i + 1;
       while (j < t.length && /[A-Za-z0-9_]/.test(t[j])) j++;
       const name = t.slice(i + 1, j);
@@ -304,8 +310,8 @@ class Analyzer {
         else if (t[k] === '>' && --depth === 0) break;
       }
       const args = splitTop(t.slice(j + 1, k)).map(a => this.canon(a, span) as Type);
-      const inst = this.structInstance(name, args, span);
-      out += inst ? '@' + inst : 'error';
+      const inst = prefix === '@' ? this.structInstance(name, args, span) : this.enumInstance(name, args, span);
+      out += inst ? prefix + inst : 'error';
       i = k;
     }
     return out;
@@ -339,6 +345,68 @@ class Analyzer {
     // fields of an instance created after declareStructs ran still have to name real types
     for (const f of decl.fields) this.checkType(f.ty, f.span);
     return inst;
+  }
+
+  enumInstance(name: string, args: Type[], span: Span): string | null {
+    const tmpl = this.enumTemplates.get(name);
+    if (!tmpl) {
+      this.err('E016', this.enums.has(name) ? `enum '${name}' is not generic` : `unknown enum '${name}'`, span);
+      return null;
+    }
+    if (args.length !== tmpl.typeParams!.length) {
+      this.err('E016', `enum '${name}' takes ${tmpl.typeParams!.length} type argument${tmpl.typeParams!.length === 1 ? '' : 's'}, but ${args.length} ${args.length === 1 ? 'was' : 'were'} given`, span);
+      return null;
+    }
+    const key = `#${name}<${args.join(',')}>`;
+    const known = this.structKeys.get(key);
+    if (known) return known;
+
+    let inst = `${name}__${args.map(a => a.replace(/[^A-Za-z0-9_]/g, '_')).join('__')}`;
+    while (this.structs.has(inst) || this.enums.has(inst) || [...this.structKeys.values()].includes(inst)) inst += '_';
+    this.structKeys.set(key, inst);
+    this.structInst.set(inst, { tmpl: name, args });
+    const map = new Map<string, Type>(tmpl.typeParams!.map((p, i) => [p, args[i]]));
+    const decl: EnumDecl = {
+      k: 'enum', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan,
+      variants: tmpl.variants.map(v => ({ name: v.name, span: v.span, payload: v.payload.map(p => this.canon(replaceVars(p, map), v.span) as Type) })),
+    };
+    this.enums.set(inst, decl);
+    this.prog.enums.push(decl);
+    for (const v of decl.variants) v.payload.forEach(t => this.checkType(t, v.span));
+    return inst;
+  }
+
+  // which instance of a generic enum an expression like Option.Some(1) or Option.None builds
+  enumFor(tmpl: EnumDecl, want: Type | undefined, variant: string, args: Expr[], span: Span): string | null {
+    if (want === 'error') {
+      args.forEach(a => this.expr(a));
+      return null;
+    }
+    const info = want && isEnum(want) ? this.structInst.get(want.slice(1)) : undefined;
+    const binds = new Map<string, Type>();
+    if (info && info.tmpl === tmpl.name) {
+      tmpl.typeParams!.forEach((p, i) => binds.set(p, info.args[i]));
+    } else {
+      const v = tmpl.variants.find(x => x.name === variant);
+      if (!v) {
+        args.forEach(a => this.expr(a));
+        this.err('E021', `enum '${tmpl.name}' has no variant '${variant}'`, span, closestHint(variant, tmpl.variants.map(x => x.name)));
+        return null;
+      }
+      const params = new Set(tmpl.typeParams!);
+      args.forEach((a, i) => {
+        const t = this.expr(a);
+        this.keep.set(a, t);
+        if (i < v.payload.length) unify(v.payload[i], t, params, binds, this.structInst);
+      });
+    }
+    const missing = tmpl.typeParams!.find(p => !binds.has(p));
+    if (missing) {
+      if (args.some(a => this.keep.get(a) === 'error')) return null;
+      this.err('E024', `cannot infer type parameter '${missing}' of enum '${tmpl.name}'`, span, `add a type annotation, e.g. let x: ${tmpl.name}<int> = ...`);
+      return null;
+    }
+    return this.enumInstance(tmpl.name, tmpl.typeParams!.map(p => binds.get(p)!), span);
   }
 
   declareStructs(list: StructDecl[]) {
@@ -625,7 +693,13 @@ class Analyzer {
   }
 
   // Color.Red parses as a field access; once we know Color is an enum, turn the node into a constant
-  enumValue(e: Extract<Expr, { k: 'field' }>): Type {
+  enumValue(e: Extract<Expr, { k: 'field' }>, want?: Type): Type {
+    const tm = this.enumTemplates.get((e.obj as Extract<Expr, { k: 'var' }>).name);
+    if (tm) {
+      const inst = this.enumFor(tm, want, e.name, [], e.nameSpan);
+      if (!inst) return 'error';
+      (e.obj as Extract<Expr, { k: 'var' }>).name = inst;
+    }
     const decl = this.enums.get((e.obj as Extract<Expr, { k: 'var' }>).name)!;
     const idx = decl.variants.findIndex(v => v.name === e.name);
     if (idx < 0) {
@@ -642,7 +716,13 @@ class Analyzer {
   }
 
   // Shape.Circle(1.0): a call on `.name` is a constructor when the left side is an enum
-  methodCall(e: Extract<Expr, { k: 'mcall' }>): Type {
+  methodCall(e: Extract<Expr, { k: 'mcall' }>, hint?: Type): Type {
+    const tm = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) ? this.enumTemplates.get(e.obj.name) : undefined;
+    if (tm) {
+      const inst = this.enumFor(tm, hint, e.name, e.args, e.nameSpan);
+      if (!inst) return 'error';
+      (e.obj as Extract<Expr, { k: 'var' }>).name = inst;
+    }
     const typeName = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && (this.enums.has(e.obj.name) || this.structs.has(e.obj.name)) ? e.obj.name : null;
     const decl = typeName ? this.enums.get(typeName) : undefined;
     const idx = decl ? decl.variants.findIndex(v => v.name === e.name) : -1;
@@ -848,6 +928,8 @@ class Analyzer {
   }
 
   expr(e: Expr, want?: Type): Type {
+    const cached = this.keep.get(e);
+    if (cached !== undefined) return cached;
     const t = this.expr0(e, want);
     e.ty = t;
     return t;
@@ -863,7 +945,7 @@ class Analyzer {
       case 'fnref': return e.ty; // only produced by the 'var' case below
       case 'lambda': return this.lambda(e);
       case 'matchx': return this.matchExpr(e, want);
-      case 'mcall': return this.methodCall(e);
+      case 'mcall': return this.methodCall(e, want);
       case 'enumctor': return ('#' + e.enumName) as Type;
 
       case 'var': {
@@ -934,7 +1016,7 @@ class Analyzer {
       }
 
       case 'field': {
-        if (e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && this.enums.has(e.obj.name)) return this.enumValue(e);
+        if (e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && (this.enums.has(e.obj.name) || this.enumTemplates.has(e.obj.name))) return this.enumValue(e, want);
         const ot = this.expr(e.obj);
         const fld = this.fieldOf(ot, e.name, e.nameSpan, e.obj.span);
         if (!fld) return 'error';

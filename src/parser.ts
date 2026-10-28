@@ -154,7 +154,7 @@ class Parser {
         const args: Type[] = [];
         do args.push(this.type()); while (this.eat(','));
         this.expect('>');
-        out = structType(`${t.text}<${args.join(',')}>`);
+        out = (this.enumNames.has(t.text) ? enumType : structType)(`${t.text}<${args.join(',')}>`);
       }
     }
     while (this.eat('[')) {
@@ -278,6 +278,12 @@ class Parser {
       this.diags.push({ severity: 'error', code: 'P002', message: 'enums can only be declared at the top level', span: kw.span });
     }
     const name = this.expect('ident', 'an enum name');
+    let typeParams: string[] | undefined;
+    if (this.eat('<')) {
+      typeParams = [];
+      do typeParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      this.expect('>');
+    }
     this.expect('{');
     const variants: EnumDecl['variants'] = [];
     while (!this.at('}') && !this.at('eof')) {
@@ -294,7 +300,7 @@ class Parser {
     if (variants.length === 0) {
       this.diags.push({ severity: 'error', code: 'P003', message: `enum '${name.text}' needs at least one variant`, span: name.span });
     }
-    const decl: EnumDecl = { k: 'enum', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, variants };
+    const decl: EnumDecl = { k: 'enum', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, variants, typeParams };
     this.enums.push(decl);
     return decl;
   }

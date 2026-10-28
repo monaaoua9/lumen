@@ -351,3 +351,14 @@ test('traits: impls and bounds', () => {
   assert.deepEqual(errs('fn f<T: Nope>(x: T) { }'), ['E025']);
   assert.deepEqual(errs('trait A { fn f(self); } trait A { fn g(self); }'), ['E006']);
 });
+
+test('generic enums: instantiation and inference', () => {
+  const O = 'enum Opt<T> { Some(T), None } fn get<T>(o: Opt<T>, d: T): T { match o { Some(v) => { return v; } None => { return d; } } } ';
+  assert.deepEqual(errs(O + 'print(get(Opt.Some(1), 2) + 1); let n: Opt<string> = Opt.None; print(get(n, "x") + "y");'), []);
+  assert.deepEqual(errs(O + 'let n = Opt.None;'), ['E024']);
+  assert.deepEqual(errs(O + 'let n: Opt<int> = Opt.Some("s");'), ['E003']);
+  assert.deepEqual(errs(O + 'let n: Opt<int> = Opt.Some(1); let m: Opt<float> = n;'), ['E003']);
+  assert.deepEqual(errs(O + 'let n = Opt.Nope(1);'), ['E021']);
+  assert.deepEqual(errs(O + 'let n: Opt<int, int> = Opt.None;'), ['E016']);
+  assert.deepEqual(errs(O + 'let n: Opt<int> = Opt.Some(1); match n { Some(v) => { print(v); } }'), ['E020']);
+});

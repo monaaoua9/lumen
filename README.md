@@ -98,7 +98,9 @@ Function values: `fn(int, int): int` is a type, a function name is a value (`app
 
 Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are always inferred from the call (`E024` when a parameter is not mentioned by any argument), and every distinct set of type arguments is checked and compiled as its own copy of the function (monomorphization), so the three backends need no special support. A generic function is only checked when it is called, and it cannot be used as a value. Functions only for now, no generic structs or methods.
 
-Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`). No `impl` blocks on generic structs and no generic enums yet.
+Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`).
+
+Generic enums: `enum Option<T> { Some(T), None }`, written `Option<int>`. `Option.Some(7)` infers its argument, `Option.None` takes it from the expected type (`let n: Option<int> = Option.None;`, a return type, a parameter) and is `E024` when nothing says which instance is meant. Matching works as usual with the instance's variants.
 
 Traits: `trait Shape { fn area(self): float; }` declares a set of method signatures and `impl Shape for Circle { ... }` provides them (`E026` for a missing or mismatching method). A generic function can require a trait, `fn total<T: Shape>(xs: T[])`, and a call with a type that does not implement it is `E025`. Dispatch is static: because generics are monomorphized, `s.area()` inside `total` is resolved to the concrete method for every instance, so there is no runtime cost and no trait objects (a `Shape` is not a type you can store in a variable).
 
@@ -173,6 +175,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No trait objects (dynamic dispatch), default trait methods or generic enums yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- No trait objects (dynamic dispatch), default trait methods, or `impl` blocks on generic types yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

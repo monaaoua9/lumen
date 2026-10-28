@@ -79,6 +79,7 @@ export interface EnumDecl {
   name: string;
   nameSpan: Span;
   variants: { name: string; span: Span; payload: Type[] }[];
+  typeParams?: string[];
 }
 
 export type Pat =
