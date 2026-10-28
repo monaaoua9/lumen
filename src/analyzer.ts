@@ -141,7 +141,7 @@ function boxNamesOf(body: Stmt[]): Set<string> {
 }
 
 // builtins that do something besides returning a value
-const EFFECTS = new Set(['print', 'push', 'pop', 'sort', 'reverse', 'assert', 'exit', 'read_line']);
+const EFFECTS = new Set(['print', 'push', 'pop', 'insert', 'remove', 'sort', 'reverse', 'assert', 'exit', 'read_line']);
 
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
 function showTypes(msg: string): string {
@@ -1276,7 +1276,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1376,6 +1376,17 @@ class Analyzer {
         if (!isNumeric(t0)) { bad('expects int or float'); return 'error'; }
         if (t1 !== t0) { this.mismatch(t0, t1, e.args[1].span, `in argument 2 of '${name}'`); return t0; }
         return t0;
+      case 'insert':
+        if (t0 === 'error') return ret;
+        if (!isArray(t0)) { bad('expects an array'); return ret; }
+        if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'insert'`);
+        if (t2 !== 'error' && t2 !== elemOf(t0)) this.mismatch(elemOf(t0), t2, e.args[2].span, `in argument 3 of 'insert'`);
+        return ret;
+      case 'remove':
+        if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'remove'`);
+        if (t0 === 'error') return 'error';
+        if (!isArray(t0)) { bad('expects an array'); return 'error'; }
+        return elemOf(t0);
       case 'pop':
         if (t0 === 'error') return 'error';
         if (!isArray(t0)) { bad('expects an array'); return 'error'; }

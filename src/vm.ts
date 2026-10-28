@@ -146,6 +146,15 @@ export function run(m: Module, io: IO) {
         case Op.SLICE: sp -= 2; stack[sp - 1] = sliceOf(stack[sp - 1] as Value[], num(sp), num(sp + 1)); break;
         case Op.FLOOR: stack[sp - 1] = Math.floor(num(sp - 1)); break;
         case Op.CEIL: stack[sp - 1] = Math.ceil(num(sp - 1)); break;
+        case Op.INSERT: {
+          sp -= 3;
+          const arr = stack[sp] as Value[];
+          const at = num(sp + 1);
+          if (at < 0 || at > arr.length) throw new RuntimeError('insert index out of bounds');
+          arr.splice(at, 0, stack[sp + 2]);
+          break;
+        }
+        case Op.REMOVE: sp--; stack[sp - 1] = (stack[sp - 1] as Value[]).splice(checkIndex(stack[sp - 1] as Value[], num(sp)), 1)[0]; break;
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;

@@ -125,6 +125,14 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'abs': return Math.abs(a as number);
     case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
     case 'max': return (args[1] as number) > (a as number) ? args[1] : a;
+    case 'insert': {
+      const arr = a as Value[];
+      const at = args[1] as number;
+      if (at < 0 || at > arr.length) throw new RuntimeError('insert index out of bounds', span);
+      arr.splice(at, 0, args[2]);
+      return null;
+    }
+    case 'remove': return (a as Value[]).splice(checkIndex(a as Value[], args[1] as number, span), 1)[0];
     case 'pop': {
       const arr = a as Value[];
       if (arr.length === 0) throw new RuntimeError('pop from empty array', span);

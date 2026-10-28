@@ -248,6 +248,19 @@ static lm_val lm_arr_pop(lm_arr *a) {
   if (a->len == 0) lm_die("pop from empty array");
   return a->d[--a->len];
 }
+static void lm_arr_insert(lm_arr *a, long long at, lm_val v) {
+  if (at < 0 || at > a->len) lm_die("insert index out of bounds");
+  lm_arr_push(a, v);
+  memmove(a->d + at + 1, a->d + at, sizeof(lm_val) * (size_t)(a->len - 1 - at));
+  a->d[at] = v;
+}
+static lm_val lm_arr_remove(lm_arr *a, long long at) {
+  if (at < 0 || at >= a->len) lm_die("index out of bounds");
+  lm_val v = a->d[at];
+  memmove(a->d + at, a->d + at + 1, sizeof(lm_val) * (size_t)(a->len - 1 - at));
+  a->len--;
+  return v;
+}
 static long long lm_arr_len(lm_arr *a) { return a->len; }
 
 typedef const char *(*lm_strfn)(lm_val);
@@ -684,6 +697,8 @@ class Gen {
         case 'slice': text = `lm_slice(${a}, ${args[1]}, ${args[2]})`; break;
         case 'floor': text = `floor(${a})`; break;
         case 'ceil': text = `ceil(${a})`; break;
+        case 'insert': text = `lm_arr_insert(${a}, ${args[1]}, lm_v${slot(elemOf(aty as ArrayType))}(${args[2]}))`; break;
+        case 'remove': text = fromSlot(e.ty, `lm_arr_remove(${a}, ${args[1]}).${slot(e.ty)}`); break;
         case 'exit': text = `lm_exit(${a})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;

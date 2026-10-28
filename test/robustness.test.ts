@@ -261,3 +261,20 @@ test('explain: every diagnostic code the compiler can emit has an entry', () => 
   assert.ok(cli('explain', 'E003').stdout.includes('type mismatch'));
   assert.equal(cli('explain', 'E999').status, 1);
 });
+
+test('insert and remove trap out of bounds on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-ins-'));
+  try {
+    const f = join(dir, 't.lum');
+    for (const [src, msg] of [['let a = [1]; insert(a, 3, 2);', 'insert index out of bounds'], ['let a = [1]; remove(a, 1);', 'index out of bounds']]) {
+      writeFileSync(f, src);
+      for (const engine of ['interp', 'vm']) {
+        const r = cli('run', f, '--engine', engine);
+        assert.equal(r.status, 1, `${engine}: ${src}`);
+        assert.ok(r.stderr.includes(msg), `${engine}: ${src}\n${r.stderr}`);
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

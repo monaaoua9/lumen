@@ -52,7 +52,7 @@ export function typeFromName(name: string): Type | null {
   return NAMED[name] ?? null;
 }
 
-export type BuiltinName = 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split' | 'byte' | 'chr' | 'join' | 'trim' | 'assert' | 'read_line' | 'at_eof' | 'exit' | 'sort' | 'reverse' | 'contains' | 'slice' | 'floor' | 'ceil';
+export type BuiltinName = 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split' | 'byte' | 'chr' | 'join' | 'trim' | 'assert' | 'read_line' | 'at_eof' | 'exit' | 'sort' | 'reverse' | 'contains' | 'slice' | 'floor' | 'ceil' | 'insert' | 'remove';
 
 // arity only, argument types are checked in the analyzer because several builtins are generic over arrays
 export const BUILTINS: Record<BuiltinName, { arity: number }> = {
@@ -66,6 +66,8 @@ export const BUILTINS: Record<BuiltinName, { arity: number }> = {
   sqrt: { arity: 1 },
   byte: { arity: 2 },
   chr: { arity: 1 },
+  insert: { arity: 3 },
+  remove: { arity: 2 },
   floor: { arity: 1 },
   ceil: { arity: 1 },
   sort: { arity: 1 },

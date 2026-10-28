@@ -18,3 +18,15 @@ let flags = [true, false];
 print(contains(flags, false));
 let grid = [[1, 2], [3, 4], [5, 6]];
 print(slice(grid, 1, 2));
+
+// insert shifts the tail right, remove hands back the element it took out
+let q = [10, 20, 30];
+insert(q, 1, 15);
+insert(q, 4, 40);
+print(q);
+print(remove(q, 0));
+remove(q, 2);
+print(q);
+let names = ["a", "b"];
+insert(names, 0, "z");
+print(remove(names, 1) + str(len(names)));

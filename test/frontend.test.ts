@@ -356,6 +356,9 @@ test('array builtins: checking', () => {
   assert.deepEqual(errs('let a = [3, 1]; sort(a); reverse(a); print(slice(a, 0, 1)); print(contains(a, 1));'), []);
   assert.deepEqual(errs('let s = [[1]]; reverse(s); print(slice(s, 0, 1));'), []);
   assert.deepEqual(errs('sort([[1]]);'), ['E003']);
+  assert.deepEqual(errs('let a = [1]; insert(a, 0, 2); print(remove(a, 0)); remove(a, 0);'), []);
+  assert.deepEqual(errs('let a = [1]; insert(a, 0, "x");'), ['E003']);
+  assert.deepEqual(errs('let a = [1]; print(remove(a, "0"));'), ['E003']);
   assert.deepEqual(errs('print(contains([1], "x"));'), ['E003']);
   assert.deepEqual(errs('print(slice(1, 0, 1));'), ['E003']);
   assert.deepEqual(errs('let a: int[] = slice(["a"], 0, 1);'), ['E003']);
