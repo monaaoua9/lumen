@@ -323,6 +323,13 @@ test('if expressions', () => {
   assert.deepEqual(diagCodes('print(if true { 1 });'), ['P001']);
 });
 
+test('assert builtin', () => {
+  assert.deepEqual(errs('assert(1 < 2, "math");'), []);
+  assert.deepEqual(errs('assert(1, "math");'), ['E003']);
+  assert.deepEqual(errs('assert(true);'), ['E004']);
+  assert.deepEqual(errs('print(assert(true, "x"));'), ['E010']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

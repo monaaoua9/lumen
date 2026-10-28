@@ -1,0 +1,9 @@
+// a failed assert stops the program with its message
+fn mean(xs: int[]): int {
+  assert(len(xs) > 0, "mean of an empty array");
+  var sum = 0;
+  for x in xs { sum += x; }
+  return sum / len(xs);
+}
+print(mean([2, 4, 9]));
+print(mean([]));

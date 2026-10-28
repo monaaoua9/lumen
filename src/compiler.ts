@@ -366,6 +366,7 @@ class FnCompiler {
           case 'split': this.emit(Op.SPLIT); break;
           case 'byte': this.emit(Op.BYTE); break;
           case 'chr': this.emit(Op.CHR); break;
+          case 'assert': this.emit(Op.ASSERT); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;

@@ -136,6 +136,7 @@ export function run(m: Module, io: IO) {
         case Op.SCMP: sp--; stack[sp - 1] = cmpStr(stack[sp - 1] as string, stack[sp] as string); break;
         case Op.JOIN: sp--; stack[sp - 1] = (stack[sp - 1] as unknown as string[]).join(stack[sp] as string); break;
         case Op.TRIM: stack[sp - 1] = trimOf(stack[sp - 1] as string); break;
+        case Op.ASSERT: sp -= 2; if (!stack[sp]) throw new RuntimeError('assertion failed: ' + (stack[sp + 1] as string)); break;
         case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
         case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
         case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;

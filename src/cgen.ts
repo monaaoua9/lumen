@@ -296,6 +296,12 @@ static const char *lm_trim(const char *s) {
   memcpy(r, s, (size_t)(e - s));
   return r;
 }
+static void lm_assert(int ok, const char *msg) {
+  if (ok) return;
+  fflush(stdout);
+  fprintf(stderr, "runtime error: assertion failed: %s\n", msg);
+  exit(1);
+}
 static long long lm_byte(const char *s, long long i) {
   if (i < 0 || i >= (long long)strlen(s)) lm_die("byte index out of range");
   return (unsigned char)s[i];
@@ -625,6 +631,7 @@ class Gen {
         case 'byte': text = `lm_byte(${a}, ${args[1]})`; break;
         case 'join': text = `lm_join(${a}, ${args[1]})`; break;
         case 'trim': text = `lm_trim(${a})`; break;
+        case 'assert': text = `lm_assert(${a}, ${args[1]})`; break;
         case 'chr': text = `lm_chr(${a})`; break;
         case 'split': text = `lm_split(${a}, ${args[1]})`; break;
         case 'sqrt': text = `lm_sqrt(${a})`; break;

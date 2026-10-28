@@ -109,6 +109,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'byte': return byteAt(a as string, args[1] as number, span);
     case 'join': return (a as unknown as string[]).join(args[1] as string);
     case 'trim': return trimOf(a as string);
+    case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
     case 'chr': return chrOf(a as number, span);
     case 'split': return splitOf(a as string, args[1] as string, span);
     case 'abs': return Math.abs(a as number);
