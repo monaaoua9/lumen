@@ -362,3 +362,12 @@ test('generic enums: instantiation and inference', () => {
   assert.deepEqual(errs(O + 'let n: Opt<int, int> = Opt.None;'), ['E016']);
   assert.deepEqual(errs(O + 'let n: Opt<int> = Opt.Some(1); match n { Some(v) => { print(v); } }'), ['E020']);
 });
+
+test('generic impl blocks', () => {
+  const S = 'struct Box<T> { v: T } impl<T> Box<T> { fn new(x: T): Box<T> { return Box { v: x }; } fn get(self): T { return self.v; } fn put(self, x: T) { self.v = x; } } ';
+  assert.deepEqual(errs(S + 'let b = Box.new(1); b.put(2); print(b.get() + 1);'), []);
+  assert.deepEqual(errs(S + 'let b = Box.new("s"); print(b.get() + 1);'), ['E003']);
+  assert.deepEqual(errs(S + 'let b = Box.new(1); b.put("s");'), ['E003']);
+  assert.deepEqual(errs(S + 'let b = Box.new(1); b.nope();'), ['E019']);
+  assert.deepEqual(errs(S + 'let b = Box.new(1); print(b.get(5));'), ['E004']);
+});

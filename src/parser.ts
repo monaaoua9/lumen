@@ -465,7 +465,21 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'impl blocks can only be declared at the top level', span: kw.span });
     }
+    // impl<T> Box<T> { ... }: every method becomes a generic function over the impl's type parameters
+    let implParams: string[] | undefined;
+    if (this.eat('<')) {
+      implParams = [];
+      do implParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      this.expect('>');
+    }
     let name = this.expect('ident', 'a type name');
+    let ownerTy: Type | undefined;
+    if (implParams && this.eat('<')) {
+      const args: Type[] = [];
+      do args.push(this.type()); while (this.eat(','));
+      this.expect('>');
+      ownerTy = (this.enumNames.has(name.text) ? enumType : structType)(`${name.text}<${args.join(',')}>`);
+    }
     if (this.eat('for')) {
       // impl Trait for Type: the methods are ordinary `Type$m` functions, the analyzer checks them against the trait
       const trait = name;
@@ -476,13 +490,13 @@ class Parser {
     const body: Stmt[] = [];
     while (!this.at('}') && !this.at('eof')) {
       if (!this.at('fn')) this.fail(`expected 'fn' inside impl, found '${this.cur.text}'`);
-      body.push(this.fnDecl(name.text));
+      body.push(this.fnDecl(name.text, ownerTy, implParams));
     }
     const close = this.expect('}');
     return { k: 'block', span: this.join(kw.span, close.span), body };
   }
 
-  fnDecl(owner?: string): FnDecl {
+  fnDecl(owner?: string, ownerTy?: Type, implParams?: string[]): FnDecl {
     const kw = this.next();
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
@@ -509,7 +523,7 @@ class Parser {
       do {
         const p = this.expect('ident', 'a parameter name');
         if (owner && p.text === 'self' && params.length === 0 && !this.at(':')) {
-          const ty = (typeFromName(owner) ?? (this.enumNames.has(owner) ? enumType(owner) : structType(owner))) as Elem;
+          const ty = (ownerTy ?? typeFromName(owner) ?? (this.enumNames.has(owner) ? enumType(owner) : structType(owner))) as Elem;
           params.push({ name: 'self', span: p.span, ty });
           continue;
         }
@@ -520,7 +534,7 @@ class Parser {
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
     const body = this.block();
-    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams, bounds };
+    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams: typeParams ?? implParams, bounds };
     if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
     return decl;

@@ -717,13 +717,14 @@ class Analyzer {
 
   // Shape.Circle(1.0): a call on `.name` is a constructor when the left side is an enum
   methodCall(e: Extract<Expr, { k: 'mcall' }>, hint?: Type): Type {
-    const tm = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) ? this.enumTemplates.get(e.obj.name) : undefined;
+    let tm = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) ? this.enumTemplates.get(e.obj.name) : undefined;
+    if (tm && this.generics.has(`${tm.name}$${e.name}`)) tm = undefined; // Option.map(...) is an associated function, not a variant
     if (tm) {
       const inst = this.enumFor(tm, hint, e.name, e.args, e.nameSpan);
       if (!inst) return 'error';
       (e.obj as Extract<Expr, { k: 'var' }>).name = inst;
     }
-    const typeName = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && (this.enums.has(e.obj.name) || this.structs.has(e.obj.name)) ? e.obj.name : null;
+    const typeName = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && (this.enums.has(e.obj.name) || this.structs.has(e.obj.name) || this.structTemplates.has(e.obj.name) || this.enumTemplates.has(e.obj.name)) ? e.obj.name : null;
     const decl = typeName ? this.enums.get(typeName) : undefined;
     const idx = decl ? decl.variants.findIndex(v => v.name === e.name) : -1;
 
@@ -746,6 +747,14 @@ class Analyzer {
       if (ot === 'error') {
         rest.forEach(a => this.expr(a));
         return 'error';
+      }
+      // a method of `impl<T> Box<T>`: the template is a generic function taking self first
+      const instInfo = isStruct(ot) || isEnum(ot) ? this.structInst.get(ot.slice(1)) : undefined;
+      const generic = instInfo ? this.generics.get(`${instInfo.tmpl}$${e.name}`) : undefined;
+      if (generic && generic.params[0]?.name === 'self') {
+        this.keep.set(e.obj, ot);
+        Object.assign(e, { k: 'call', name: generic.name, args: [e.obj, ...e.args] });
+        return this.genericCall(e as unknown as Extract<Expr, { k: 'call' }>, generic);
       }
       const owner = isStruct(ot) ? structName(ot) : isEnum(ot) ? ot.slice(1) : null;
       const fn = owner ? this.fns.get(`${owner}$${e.name}`) : undefined;
