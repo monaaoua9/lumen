@@ -1059,7 +1059,10 @@ class Analyzer {
     const names: string[] = [];
     for (let s: Scope | null = this.scope; s; s = s.parent) names.push(...s.vars.keys());
     const sug = closest(name, names);
-    this.err('E001', `cannot find variable '${name}'`, span, sug ? `did you mean '${sug}'?` : undefined);
+    // a local function that calls itself is a plain top-level function (name$rN), see the parser
+    const recursive = /\$r\d+$/.test(this.ctx.name);
+    const hint = recursive ? 'a local function that calls itself cannot use the locals around it; pass the value as a parameter' : sug ? `did you mean '${sug}'?` : undefined;
+    this.err('E001', `cannot find variable '${name}'`, span, hint);
   }
 
   expr(e: Expr, want?: Type): Type {
