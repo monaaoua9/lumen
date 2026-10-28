@@ -57,3 +57,22 @@ pub fn words(s: string): string[] {
   }
   return out;
 }
+
+pub fn lines(s: string): string[] {
+  let out = split(s, "\n");
+  // a trailing newline does not start another line
+  if len(out) > 0 && out[len(out) - 1] == "" { pop(out); }
+  return out;
+}
+
+pub fn capitalize(s: string): string {
+  if len(s) == 0 { return s; }
+  return upper(substr(s, 0, 1)) + substr(s, 1, len(s) - 1);
+}
+
+pub fn center(s: string, width: int, fill: string): string {
+  let gap = width - len(s);
+  if gap <= 0 { return s; }
+  let left = gap / 2;
+  return repeat(fill, left) + s + repeat(fill, gap - left);
+}

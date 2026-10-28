@@ -8,3 +8,7 @@ print(text.is_alpha("Lumen") && !text.is_alpha("Lumen1"));
 print(text.reversed("stressed"));
 print(text.count("banana", "an") + text.count("aaaa", "aa") * 10);
 print(text.words("  the  quick   fox "));
+print(text.lines("a\nbb\n\nccc\n"));
+print(len(text.lines("")));
+print(text.capitalize("lumen") + text.capitalize(""));
+print("[" + text.center("hi", 7, "*") + "]");
