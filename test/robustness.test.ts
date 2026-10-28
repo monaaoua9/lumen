@@ -352,6 +352,9 @@ test('lumen test runs each test_ function and reports failures', () => {
   assert.equal(good.status, 0, good.stdout + good.stderr);
   assert.ok(good.stdout.includes('3 passed, 0 failed'), good.stdout);
 
+  const only = cli('test', 'examples/tests/arith.lum', '--only', 'pow');
+  assert.ok(only.stdout.includes('1 passed, 0 failed'), only.stdout);
+
   const dir = mkdtempSync(join(tmpdir(), 'lumen-test-'));
   try {
     writeFileSync(join(dir, 't.lum'), 'fn test_a() {\n  assert(1 == 1, "a");\n}\n\nfn test_b() {\n  assert(1 == 2, "b is wrong");\n}\n');

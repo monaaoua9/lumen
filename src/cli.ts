@@ -19,7 +19,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 commands
   check    static analysis only (types, scopes, lints)
   run      analyze, then execute        [--engine interp|vm|c]  (default: vm)
-  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm]
+  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm] [--only substr]
   emit-c   translate to C              [-o out.c]
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
@@ -55,7 +55,7 @@ function main(): number | Promise<number> {
     else process.stderr.write(`no explanation for '${code}'\n`);
     return code && !text ? 1 : 0;
   }
-  const file = args.find((a, i) => i > 0 && !a.startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--engine');
+  const file = args.find((a, i) => i > 0 && !a.startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--engine' && args[i - 1] !== '--only');
   if (!cmd || cmd === '-h' || cmd === '--help' || !file) {
     process.stderr.write(USAGE);
     return cmd && !file && cmd !== '-h' && cmd !== '--help' ? 2 : 0;
@@ -99,9 +99,10 @@ function main(): number | Promise<number> {
       }
       case 'test': {
         // every `fn test_*()` runs on its own: the file plus one call appended
-        const names = [...text.matchAll(/^fn (test_\w+)\s*\(\s*\)/gm)].map(m => m[1]);
+        const only = opt('--only');
+        const names = [...text.matchAll(/^fn (test_\w+)\s*\(\s*\)/gm)].map(m => m[1]).filter(n => !only || n.includes(only));
         if (names.length === 0) {
-          process.stderr.write(`no test_ functions in ${name}
+          process.stderr.write(`no matching test_ functions in ${name}
 `);
           return 1;
         }
