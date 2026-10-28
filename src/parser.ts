@@ -105,7 +105,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'impl', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -142,6 +142,7 @@ class Parser {
     const t = this.cur;
     switch (t.kind) {
       case 'fn': return this.fnDecl();
+      case 'impl': return this.implDecl();
       case 'struct': return this.structDecl();
       case 'enum': return this.enumDecl();
       case 'match': return this.matchStmt();
@@ -376,7 +377,25 @@ class Parser {
     return decl;
   }
 
-  fnDecl(): FnDecl {
+  // `impl T { fn m(self) ... }` is sugar for top-level functions named `T$m`;
+  // `x.m(a)` is resolved to `T$m(x, a)` by the analyzer
+  implDecl(): Stmt {
+    const kw = this.next();
+    if (this.depth > 0) {
+      this.diags.push({ severity: 'error', code: 'P002', message: 'impl blocks can only be declared at the top level', span: kw.span });
+    }
+    const name = this.expect('ident', 'a type name');
+    this.expect('{');
+    const body: Stmt[] = [];
+    while (!this.at('}') && !this.at('eof')) {
+      if (!this.at('fn')) this.fail(`expected 'fn' inside impl, found '${this.cur.text}'`);
+      body.push(this.fnDecl(name.text));
+    }
+    const close = this.expect('}');
+    return { k: 'block', span: this.join(kw.span, close.span), body };
+  }
+
+  fnDecl(owner?: string): FnDecl {
     const kw = this.next();
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
@@ -387,6 +406,11 @@ class Parser {
     if (!this.at(')')) {
       do {
         const p = this.expect('ident', 'a parameter name');
+        if (owner && p.text === 'self' && params.length === 0 && !this.at(':')) {
+          const ty = (typeFromName(owner) ?? (this.enumNames.has(owner) ? enumType(owner) : structType(owner))) as Elem;
+          params.push({ name: 'self', span: p.span, ty });
+          continue;
+        }
         this.expect(':');
         params.push({ name: p.text, span: p.span, ty: this.type() });
       } while (this.eat(','));
@@ -395,6 +419,7 @@ class Parser {
     const ret: Type = this.eat(':') ? this.type() : 'void';
     const body = this.block();
     const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0 };
+    if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
     return decl;
   }

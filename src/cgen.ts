@@ -188,6 +188,8 @@ function hasCall(e: Expr): boolean {
   }
 }
 
+const cname = (n: string) => n.replace('$', '__');
+
 const isConst = (e: Expr) => e.k === 'int' || e.k === 'float' || e.k === 'str' || e.k === 'bool';
 
 function cString(s: string): string {
@@ -386,7 +388,7 @@ class Gen {
         case 'pop': text = fromSlot(e.ty, `lm_arr_pop(${a}).${slot(e.ty)}`); break;
       }
     } else {
-      text = `f_${e.fn!.name}(${args.join(', ')})`;
+      text = `f_${cname(e.fn!.name)}(${args.join(', ')})`;
     }
 
     if (e.ty === 'void') {
@@ -556,7 +558,7 @@ class Gen {
 
   fnSig(f: FnDecl): string {
     const ps = f.params.map(p => `${ctype(p.ty)} ${this.name(p.sym!)}`).join(', ');
-    return `static ${ctype(f.ret)} f_${f.name}(${ps || 'void'})`;
+    return `static ${ctype(f.ret)} f_${cname(f.name)}(${ps || 'void'})`;
   }
 }
 

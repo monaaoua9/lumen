@@ -251,3 +251,17 @@ test('enums with data: semantics agree across engines', () => {
   `;
   assert.equal(allEngines(src), '1\n2\n3\n6\nNode(Leaf(1), Node(Leaf(2), Leaf(3)))\n15\n');
 });
+
+test('methods: receiver is a reference, args run left to right', () => {
+  const src = `
+    struct C { n: int }
+    impl C {
+      fn bump(self, by: int): int { self.n += by; return self.n; }
+    }
+    fn t(k: int): int { print(k); return k; }
+    let c = C { n: 0 };
+    print(c.bump(t(2)) + c.bump(t(3)));
+    print(c.n);
+  `;
+  assert.equal(allEngines(src), '2\n3\n7\n5\n');
+});

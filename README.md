@@ -90,6 +90,9 @@ Enums with data are references and cannot be compared with `==`; use `match`.
 Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive
 (`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose
 every arm returns counts as returning on all paths.
+Methods: `impl Counter { fn new(step: int): Counter { ... } fn tick(self) { self.n += 1; } }`, called as
+`Counter.new(5)` and `c.tick()`. Works for structs and enums. `self` is the receiver (a reference), methods are
+resolved statically and compile down to plain functions named `Counter$tick` (shown as `Counter.tick` in messages).
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
 
 Semantics worth knowing:
@@ -111,7 +114,7 @@ Semantics worth knowing:
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,
 `E004` wrong arity, `E005` assign to immutable, `E006` redeclaration, `E007` missing return on some path,
 `E008` break/continue outside loop, `E009` return at top level, `E010` void used as value,
-`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access, `E020` non-exhaustive match, `E021` unknown enum variant, `E022` wrong number of values for a variant (constructor or pattern).
+`E011` non-bool condition, `E012` constant division by zero, `E013` bad array literal (empty without a type, nested), `E014` constant negative index, `E016` unknown type/struct, `E017` recursive struct, `E018` bad struct literal (missing/unknown/duplicate field), `E019` bad field access / unknown method, `E020` non-exhaustive match, `E021` unknown enum variant, `E022` wrong number of values for a variant (constructor or pattern).
 
 Lints (warnings): `W001` unused variable, `W002` unused parameter, `W003` shadowing, `W004` unreachable code
 / constant condition, `W005` function never called, `W006` self-comparison, `W007` `var` never reassigned,

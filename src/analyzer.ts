@@ -71,7 +71,7 @@ class Analyzer {
   allVars: VarSym[] = [];
 
   report(severity: Severity, code: string, message: string, span: Span, hint?: string) {
-    this.diags.push({ severity, code, message: message.replaceAll('@', ''), span, hint });
+    this.diags.push({ severity, code, message: message.replaceAll('@', '').replaceAll('$', '.'), span, hint });
   }
   err(code: string, message: string, span: Span, hint?: string) { this.report('error', code, message, span, hint); }
   warn(code: string, message: string, span: Span, hint?: string) { this.report('warning', code, message, span, hint); }
@@ -412,19 +412,45 @@ class Analyzer {
 
   // Shape.Circle(1.0): a call on `.name` is a constructor when the left side is an enum
   methodCall(e: Extract<Expr, { k: 'mcall' }>): Type {
-    if (!(e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && this.enums.has(e.obj.name))) {
-      e.args.forEach(a => this.expr(a));
+    const typeName = e.obj.k === 'var' && !this.scope.lookup(e.obj.name) && (this.enums.has(e.obj.name) || this.structs.has(e.obj.name)) ? e.obj.name : null;
+    const decl = typeName ? this.enums.get(typeName) : undefined;
+    const idx = decl ? decl.variants.findIndex(v => v.name === e.name) : -1;
+
+    if (typeName && idx < 0) {
+      // Type.func(args): an associated function, enums report a bad variant when there is none either
+      const fname = `${typeName}$${e.name}`;
+      if (decl && !this.fns.has(fname)) {
+        e.args.forEach(a => this.expr(a));
+        this.err('E021', `enum '${decl.name}' has no variant or function '${e.name}'`, e.nameSpan, closestHint(e.name, decl.variants.map(v => v.name)));
+        return 'error';
+      }
+      Object.assign(e, { k: 'call', name: fname, nameSpan: e.nameSpan });
+      return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
+    }
+
+    if (!decl) {
+      // value.method(args)
       const ot = this.expr(e.obj);
-      if (ot !== 'error') this.err('E019', `'${e.name}' is not callable: methods are not supported yet`, e.nameSpan);
-      return 'error';
+      const rest = e.args.map(a => a);
+      if (ot === 'error') {
+        rest.forEach(a => this.expr(a));
+        return 'error';
+      }
+      const owner = isStruct(ot) ? structName(ot) : isEnum(ot) ? ot.slice(1) : null;
+      const fn = owner ? this.fns.get(`${owner}$${e.name}`) : undefined;
+      if (!fn || fn.params[0] !== ot || fn.decl.params[0].name !== 'self') {
+        rest.forEach(a => this.expr(a));
+        const cands = owner ? [...this.fns.values()].filter(f => f.name.startsWith(owner + '$') && f.decl.params[0]?.name === 'self').map(f => f.name.slice(owner.length + 1)) : [];
+        this.err('E019', owner ? `type '${owner}' has no method '${e.name}'` : `cannot call a method on a value of type ${ot}`, e.nameSpan,
+          cands.length ? closestHint(e.name, cands) : undefined);
+        return 'error';
+      }
+      const argTys = [ot, ...rest.map((a, i) => this.expr(a, fn.params[i + 1]))];
+      const call = e as unknown as Extract<Expr, { k: 'call' }>;
+      Object.assign(e, { k: 'call', name: fn.name, args: [e.obj, ...e.args] });
+      return this.checkUserCall(call, fn, argTys);
     }
-    const decl = this.enums.get(e.obj.name)!;
-    const idx = decl.variants.findIndex(v => v.name === e.name);
-    if (idx < 0) {
-      e.args.forEach(a => this.expr(a));
-      this.err('E021', `enum '${decl.name}' has no variant '${e.name}'`, e.nameSpan, closestHint(e.name, decl.variants.map(v => v.name)));
-      return 'error';
-    }
+    if (idx < 0) return 'error';
     const want = decl.variants[idx].payload;
     const tys = e.args.map((a, i) => this.expr(a, want[i]));
     if (e.args.length !== want.length) {
@@ -814,6 +840,10 @@ class Analyzer {
       return 'error';
     }
 
+    return this.checkUserCall(e, fn, argTys);
+  }
+
+  checkUserCall(e: Extract<Expr, { k: 'call' }>, fn: FnSym, argTys: Type[]): Type {
     e.fn = fn;
     fn.used = true;
     if (e.args.length !== fn.params.length) {

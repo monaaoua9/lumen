@@ -232,6 +232,23 @@ test('enums with data: checking', () => {
   assert.deepEqual(diagCodes(D + 'match S.U { A(n) => { print(n + 1.5); } _ => { } }'), ['E003']);
   assert.deepEqual(diagCodes(D + 'let a = S.U; let b = S.U; print(a == b);'), ['E003']);
   assert.deepEqual(diagCodes('enum T { X(Nope) }'), ['E016']);
-  assert.ok(diagCodes('struct P { x: int } print(P.go(1));').includes('E001'));
+  assert.ok(diagCodes('struct P { x: int } print(P.go(1));').includes('E002'));
   assert.ok(diagCodes('let a = 5; print(a.go(1));').includes('E019'));
+});
+
+const M = 'struct V { x: int } impl V { fn new(x: int): V { return V { x: x }; } fn get(self): int { return self.x; } fn plus(self, n: int): int { return self.x + n; } } ';
+
+// errors only; unused-function warnings are noise for these snippets
+const errs = (src: string) => diagCodes(src).filter(c => c.startsWith('E'));
+
+test('methods: checking', () => {
+  assert.deepEqual(errs(M + 'let v = V.new(1); print(v.get()); print(v.plus(2)); print(V.get(v));'), []);
+  assert.deepEqual(errs(M + 'let v = V.new(1); print(v.nope());'), ['E019']);
+  assert.deepEqual(errs(M + 'let v = V.new(1); print(v.plus());'), ['E004']);
+  assert.deepEqual(errs(M + 'let v = V.new(1); print(v.plus("a"));'), ['E003']);
+  assert.deepEqual(errs(M + 'print(V.nope(1));'), ['E002']);
+  assert.deepEqual(errs(M + 'let n = 5; print(n.get());'), ['E019']);
+  assert.deepEqual(errs(M + 'let v = V.new(1); print(v.new(2));'), ['E019']); // `new` has no self
+  assert.deepEqual(errs('impl Nope { fn f(self) { } }').includes('E016'), true);
+  assert.deepEqual(errs('struct A { x: int } impl A { fn f(self) { } fn f(self) { } }').includes('E006'), true);
 });

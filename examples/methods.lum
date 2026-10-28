@@ -1,0 +1,36 @@
+// impl blocks: methods and associated functions on structs and enums
+struct Counter { n: int, step: int }
+struct Vec2 { x: float, y: float }
+enum Light { Red, Green }
+
+impl Counter {
+  fn new(step: int): Counter { return Counter { n: 0, step: step }; }
+  fn tick(self) { self.n += self.step; }
+  fn get(self): int { return self.n; }
+}
+
+impl Vec2 {
+  fn add(self, o: Vec2): Vec2 { return Vec2 { x: self.x + o.x, y: self.y + o.y }; }
+  fn dot(self, o: Vec2): float { return self.x * o.x + self.y * o.y; }
+}
+
+impl Light {
+  fn next(self): Light {
+    return match self { Red => Light.Green, Green => Light.Red };
+  }
+}
+
+let c = Counter.new(5);
+c.tick();
+c.tick();
+print(c.get());
+
+let a = Vec2 { x: 1.0, y: 2.0 };
+let b = Vec2 { x: 3.0, y: 4.0 };
+print(a.add(b).add(b));
+print(a.dot(b));
+
+var l = Light.Red;
+for _ in 0..3 { l = l.next(); }
+print(l);
+print(Counter.get(c));
