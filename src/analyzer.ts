@@ -18,6 +18,16 @@ class Scope {
   }
 }
 
+// internal type spellings (@Name, <fn(int):int>) back to what the user wrote
+function showTypes(msg: string): string {
+  let out = msg.replaceAll('@', '').replaceAll('$', '.');
+  for (let prev = ''; prev !== out; ) {
+    prev = out;
+    out = out.replace(/<fn\(([^<>]*)\):([^<>]*)>/g, (_, ps: string, r: string) => `fn(${ps.replace(/,(?! )/g, ', ')})` + (r === 'void' ? '' : `: ${r}`));
+  }
+  return out;
+}
+
 interface FnCtx {
   ret: Type;
   nlocals: number;
@@ -71,7 +81,7 @@ class Analyzer {
   allVars: VarSym[] = [];
 
   report(severity: Severity, code: string, message: string, span: Span, hint?: string) {
-    this.diags.push({ severity, code, message: message.replaceAll('@', '').replaceAll('$', '.'), span, hint });
+    this.diags.push({ severity, code, message: showTypes(message), span, hint });
   }
   err(code: string, message: string, span: Span, hint?: string) { this.report('error', code, message, span, hint); }
   warn(code: string, message: string, span: Span, hint?: string) { this.report('warning', code, message, span, hint); }
