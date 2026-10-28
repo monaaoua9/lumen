@@ -288,3 +288,11 @@ test('function values: calling expressions and fields', () => {
   assert.deepEqual(errs(F + 'let s = S { f: inc, n: 1 }; print(s.n(2));'), ['E019']);
   assert.deepEqual(errs(F + 'print(1(2));'), ['E003']);
 });
+
+test('math builtins: checking', () => {
+  assert.deepEqual(errs('print(sqrt(2.0) + 1.0); print(abs(-1) + 1); print(abs(-1.5) + 1.0); print(min(1, 2) + 1); print(max(1.0, 2.0) + 1.0);'), []);
+  assert.deepEqual(errs('print(sqrt(4));'), ['E003']);
+  assert.deepEqual(errs('print(min(1, 2.0));'), ['E003']);
+  assert.deepEqual(errs('print(abs("x"));'), ['E003']);
+  assert.deepEqual(errs('print(max(1));'), ['E004']);
+});

@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerTypes } from './runtime.ts';
+import { MAX_DEPTH, checkIndex, checkInt, floatToInt, format, intDiv, intMod, registerTypes, sqrtOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -104,6 +104,10 @@ export function run(m: Module, io: IO) {
 
         case Op.PRINT: io.out(format(stack[--sp], m.types[code[pc++]]) + '\n'); break;
         case Op.STR: stack[sp - 1] = format(stack[sp - 1], m.types[code[pc++]]); break;
+        case Op.SQRT: stack[sp - 1] = sqrtOf(num(sp - 1)); break;
+        case Op.ABS: stack[sp - 1] = Math.abs(num(sp - 1)); break;
+        case Op.MIN: sp--; if (num(sp) < num(sp - 1)) stack[sp - 1] = stack[sp]; break;
+        case Op.MAX: sp--; if (num(sp) > num(sp - 1)) stack[sp - 1] = stack[sp]; break;
         case Op.F2I: stack[sp - 1] = floatToInt(num(sp - 1)); break;
         case Op.LEN: {
           const v = stack[sp - 1];

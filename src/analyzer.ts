@@ -817,7 +817,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -850,6 +850,19 @@ class Analyzer {
         if (!isArray(t0)) { bad('expects an array as its first argument'); return ret; }
         if (t1 !== 'error' && t1 !== elemOf(t0)) this.mismatch(elemOf(t0), t1, e.args[1].span, `in argument 2 of 'push'`);
         return ret;
+      case 'sqrt':
+        if (t0 !== 'error' && t0 !== 'float') bad('expects a float');
+        return ret;
+      case 'abs':
+        if (t0 === 'error') return 'error';
+        if (!isNumeric(t0)) { bad('expects int or float'); return 'error'; }
+        return t0;
+      case 'min':
+      case 'max':
+        if (t0 === 'error' || t1 === 'error') return t0 === 'error' ? t1 : t0;
+        if (!isNumeric(t0)) { bad('expects int or float'); return 'error'; }
+        if (t1 !== t0) { this.mismatch(t0, t1, e.args[1].span, `in argument 2 of '${name}'`); return t0; }
+        return t0;
       case 'pop':
         if (t0 === 'error') return 'error';
         if (!isArray(t0)) { bad('expects an array'); return 'error'; }

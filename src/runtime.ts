@@ -102,12 +102,21 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'float': return a;
     case 'len': return Array.isArray(a) ? a.length : Buffer.byteLength(a as string);
     case 'push': (a as Value[]).push(args[1]); return null;
+    case 'sqrt': return sqrtOf(a as number, span);
+    case 'abs': return Math.abs(a as number);
+    case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
+    case 'max': return (args[1] as number) > (a as number) ? args[1] : a;
     case 'pop': {
       const arr = a as Value[];
       if (arr.length === 0) throw new RuntimeError('pop from empty array', span);
       return arr.pop()!;
     }
   }
+}
+
+export function sqrtOf(x: number, span?: Span): number {
+  if (x < 0) throw new RuntimeError('sqrt of a negative number', span);
+  return Math.sqrt(x);
 }
 
 export function checkIndex(arr: Value[], i: number, span?: Span): number {

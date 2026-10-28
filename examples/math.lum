@@ -1,0 +1,18 @@
+fn dist(x1: float, y1: float, x2: float, y2: float): float {
+    let dx = x2 - x1;
+    let dy = y2 - y1;
+    return sqrt(dx * dx + dy * dy);
+}
+
+fn clamp(v: int, lo: int, hi: int): int {
+    return max(lo, min(v, hi));
+}
+
+print(dist(0.0, 0.0, 3.0, 4.0));
+print(abs(-7));
+print(abs(-2.5));
+print(min(3, 9));
+print(max(2.5, 1.5));
+print(clamp(15, 0, 10));
+print(clamp(-4, 0, 10));
+print(sqrt(2.0));

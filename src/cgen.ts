@@ -255,6 +255,12 @@ static const char *lm_str_arr(lm_arr *a, lm_strfn fn) {
 }
 static void lm_print_arr(lm_arr *a, lm_strfn fn) { puts(lm_str_arr(a, fn)); }
 
+static double lm_sqrt(double x) { if (x < 0) lm_die("sqrt of a negative number"); return sqrt(x); }
+static long long lm_iabs(long long x) { return x < 0 ? -x : x; }
+static long long lm_min_int(long long a, long long b) { return b < a ? b : a; }
+static long long lm_max_int(long long a, long long b) { return b > a ? b : a; }
+static double lm_min_float(double a, double b) { return b < a ? b : a; }
+static double lm_max_float(double a, double b) { return b > a ? b : a; }
 static long long lm_len(const char *s) { return (long long)strlen(s); }
 `;
 
@@ -526,6 +532,10 @@ class Gen {
         case 'float': text = aty === 'float' ? a : `((double)${a})`; break;
         case 'len': text = isArray(aty) ? `lm_arr_len(${a})` : `lm_len(${a})`; break;
         case 'push': text = `lm_arr_push(${a}, lm_v${slot(elemOf(aty as ArrayType))}(${args[1]}))`; break;
+        case 'sqrt': text = `lm_sqrt(${a})`; break;
+        case 'abs': text = aty === 'int' ? `lm_iabs(${a})` : `fabs(${a})`; break;
+        case 'min': text = `lm_min_${aty}(${a}, ${args[1]})`; break;
+        case 'max': text = `lm_max_${aty}(${a}, ${args[1]})`; break;
         case 'pop': text = fromSlot(e.ty, `lm_arr_pop(${a}).${slot(e.ty)}`); break;
       }
     } else {

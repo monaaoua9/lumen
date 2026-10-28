@@ -339,6 +339,10 @@ class FnCompiler {
           case 'push': this.emit(Op.PUSHA); break;
           case 'pop': this.emit(Op.POPA); break;
           case 'float': break; // same representation as int
+          case 'sqrt': this.emit(Op.SQRT); break;
+          case 'abs': this.emit(Op.ABS); break;
+          case 'min': this.emit(Op.MIN); break;
+          case 'max': this.emit(Op.MAX); break;
         }
       }
     }
