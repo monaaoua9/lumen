@@ -104,6 +104,8 @@ Generic enums: `enum Option<T> { Some(T), None }`, written `Option<int>`. `Optio
 
 Methods on generic types: `impl<T> Stack<T> { fn new(first: T): Stack<T> { ... } fn push(self, x: T) { ... } }`, used as `Stack.new(1)` and `s.push(2)`. Each method is a generic function over the impl's parameters, so it follows the same inference and instantiation rules, and `impl<T: Shape> Holder<T>` puts a trait bound on every method.
 
+Impls can also target one instance of a generic type: `impl Show for Box<int> { ... }` and `impl Box<float> { ... }` (each instance gets its own).
+
 Traits: `trait Shape { fn area(self): float; }` declares method signatures and `impl Shape for Circle { ... }` provides them (`E026` for a missing or mismatching method). A method with a body in the trait is a default; impls that do not define it get their own copy. Two ways to use a trait:
 
 - **Static**, through a bound: `fn total<T: Shape>(xs: T[])`. Calling it with a type that has no impl is `E025`. Generics are monomorphized, so `s.area()` is resolved per instance at no runtime cost.
@@ -180,6 +182,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No trait impls for generic types; a generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- A generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

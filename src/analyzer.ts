@@ -217,7 +217,6 @@ class Analyzer {
     prog.structs = prog.structs.filter(sd => !sd.typeParams);
     for (const ed of prog.enums) if (ed.typeParams) this.enumTemplates.set(ed.name, ed);
     prog.enums = prog.enums.filter(ed => !ed.typeParams);
-    this.synthDyn(prog);
     const templateFns = new Set<unknown>();
     for (const f of prog.fns) {
       if (!f.typeParams) continue;
@@ -235,6 +234,14 @@ class Analyzer {
       mapTypes(prog.fns, canon, skip);
       mapTypes(prog.body, canon, skip);
     }
+    // `impl Trait for Box<int>` / `impl Box<int> { ... }`: the owner in the names is the instance now
+    const ownerName = (written: string) => this.canon((this.enumTemplates.has(written.split('<')[0]) ? '#' : '@') + written, prog.body[0]?.span ?? { start: 0, end: 0 }).slice(1);
+    for (const f of prog.fns) {
+      const dollar = f.name.indexOf('$');
+      if (dollar > 0 && f.name.slice(0, dollar).includes('<')) f.name = ownerName(f.name.slice(0, dollar)) + f.name.slice(dollar);
+    }
+    for (const im of prog.impls) if (im.type.includes('<')) im.type = ownerName(im.type);
+    this.synthDyn(prog);
     this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
     for (const d of this.enums.values()) {

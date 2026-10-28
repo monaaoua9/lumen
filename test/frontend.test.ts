@@ -404,3 +404,11 @@ test('generic impl blocks: trait bounds', () => {
   assert.deepEqual(errs(S + 'let h = Holder { item: Sq { s: 2.0 } }; print(h.total());'), []);
   assert.deepEqual(errs(S + 'let h = Holder { item: No { v: 1 } }; print(h.total());'), ['E025']);
 });
+
+test('impls for instances of generic types', () => {
+  const S = 'trait Show { fn show(self): string; } struct Box<T> { v: T } impl Show for Box<int> { fn show(self): string { return str(self.v); } } fn sh<T: Show>(x: T): string { return x.show(); } ';
+  assert.deepEqual(errs(S + 'print(sh(Box { v: 1 }));'), []);
+  assert.deepEqual(errs(S + 'print(sh(Box { v: "s" }));'), ['E025']);
+  assert.deepEqual(errs(S + 'impl Show for Box<float> { }'), ['E026']);
+  assert.deepEqual(errs(S + 'impl Box<int> { fn twice(self): int { return self.v * 2; } } print(Box { v: 2 }.twice());'), []);
+});

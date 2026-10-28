@@ -1,0 +1,17 @@
+trait Show { fn show(self): string; }
+struct Box<T> { v: T }
+impl Show for Box<int> {
+    fn show(self): string { return "int box " + str(self.v); }
+}
+impl Show for Box<string> {
+    fn show(self): string { return "string box " + self.v; }
+}
+impl Box<float> {
+    fn double(self): float { return self.v * 2.0; }
+}
+fn announce<T: Show>(x: T) { print(x.show()); }
+announce(Box { v: 1 });
+announce(Box { v: "a" });
+print(Box { v: 1.5 }.double());
+let items: dyn Show[] = [Box { v: 2 }, Box { v: "b" }];
+for i in items { print(i.show()); }

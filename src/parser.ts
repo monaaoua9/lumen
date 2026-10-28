@@ -488,24 +488,28 @@ class Parser {
       this.expect('>');
     }
     let name = this.expect('ident', 'a type name');
+    let trait: Token | undefined;
+    if (this.eat('for')) {
+      // impl Trait for Type: the methods are ordinary `Type$m` functions, the analyzer checks them against the trait
+      trait = name;
+      name = this.expect('ident', 'a type name');
+    }
+    let owner = name.text;
     let ownerTy: Type | undefined;
-    if (implParams && this.eat('<')) {
+    if (this.eat('<')) {
       const args: Type[] = [];
       do args.push(this.type()); while (this.eat(','));
       this.expect('>');
+      // methods of impl<T> Box<T> keep the bare name, they are templates; a concrete instance names itself
+      owner = implParams ? name.text : `${name.text}<${args.join(',')}>`;
       ownerTy = (this.enumNames.has(name.text) ? enumType : structType)(`${name.text}<${args.join(',')}>`);
     }
-    if (this.eat('for')) {
-      // impl Trait for Type: the methods are ordinary `Type$m` functions, the analyzer checks them against the trait
-      const trait = name;
-      name = this.expect('ident', 'a type name');
-      this.impls.push({ trait: trait.text, type: name.text, span: this.join(kw.span, name.span) });
-    }
+    if (trait) this.impls.push({ trait: trait.text, type: owner, span: this.join(kw.span, name.span) });
     this.expect('{');
     const body: Stmt[] = [];
     while (!this.at('}') && !this.at('eof')) {
       if (!this.at('fn')) this.fail(`expected 'fn' inside impl, found '${this.cur.text}'`);
-      body.push(this.fnDecl(name.text, ownerTy, implParams, implBounds));
+      body.push(this.fnDecl(owner, ownerTy, implParams, implBounds));
     }
     const close = this.expect('}');
     return { k: 'block', span: this.join(kw.span, close.span), body };
