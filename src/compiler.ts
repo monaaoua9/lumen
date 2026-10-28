@@ -143,6 +143,13 @@ class FnCompiler {
 
       case 'let':
       case 'assign': {
+        // `x += 3` / `x -= 3` on an int is one instruction
+        if (s.k === 'assign' && s.sym!.ty === 'int' && s.value.k === 'binary' && (s.value.op === '+' || s.value.op === '-')
+          && s.value.l.k === 'var' && s.value.l.sym === s.sym && s.value.r.k === 'int') {
+          this.span = s.span;
+          this.emit(s.sym!.where === 'global' ? Op.INCG : Op.INCL, s.sym!.slot, s.value.op === '+' ? s.value.r.value : -s.value.r.value);
+          return;
+        }
         this.expr(s.k === 'let' ? s.init : s.value);
         const sym = s.sym!;
         this.span = s.span;
