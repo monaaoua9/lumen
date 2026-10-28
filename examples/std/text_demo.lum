@@ -1,0 +1,10 @@
+import "std/text.lum"
+
+print("[" + text.pad_left("42", 6, "0") + "]");
+print("[" + text.pad_right("ab", 5, ".") + "]");
+print("[" + text.pad_left("toolong", 3, " ") + "]");
+print(text.is_digits("12345") && !text.is_digits("12a") && !text.is_digits(""));
+print(text.is_alpha("Lumen") && !text.is_alpha("Lumen1"));
+print(text.reversed("stressed"));
+print(text.count("banana", "an") + text.count("aaaa", "aa") * 10);
+print(text.words("  the  quick   fox "));

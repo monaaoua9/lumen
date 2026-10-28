@@ -334,3 +334,15 @@ test('std/list.lum higher-order helpers agree on every engine', () => {
   assert.equal(outs[2], outs[0]);
   assert.deepEqual(outs[0].trim().split('\n').slice(2, 4), ['220', '12345678910']);
 });
+
+test('std/text.lum helpers agree on every engine', () => {
+  const outs = ['interp', 'vm', 'c'].map(engine => {
+    const r = cli('run', 'examples/std/text_demo.lum', '--engine', engine);
+    assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
+    assert.equal(r.stderr, '', engine);
+    return r.stdout.replace(/\r\n/g, '\n');
+  });
+  assert.equal(outs[1], outs[0]);
+  assert.equal(outs[2], outs[0]);
+  assert.equal(outs[0].split('\n')[0], '[000042]');
+});

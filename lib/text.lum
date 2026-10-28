@@ -1,0 +1,59 @@
+// byte-based text helpers (ASCII, like the string builtins)
+pub fn pad_left(s: string, width: int, fill: string): string {
+  return repeat(fill, max(0, width - len(s))) + s;
+}
+
+pub fn pad_right(s: string, width: int, fill: string): string {
+  return s + repeat(fill, max(0, width - len(s)));
+}
+
+pub fn is_digits(s: string): bool {
+  if len(s) == 0 { return false; }
+  for i in 0..len(s) {
+    let c = byte(s, i);
+    if c < 48 || c > 57 { return false; }
+  }
+  return true;
+}
+
+pub fn is_alpha(s: string): bool {
+  if len(s) == 0 { return false; }
+  for i in 0..len(s) {
+    let c = byte(s, i);
+    if !((c >= 65 && c <= 90) || (c >= 97 && c <= 122)) { return false; }
+  }
+  return true;
+}
+
+pub fn reversed(s: string): string {
+  var out = "";
+  var i = len(s);
+  while i > 0 {
+    i -= 1;
+    out = out + chr(byte(s, i));
+  }
+  return out;
+}
+
+pub fn count(s: string, needle: string): int {
+  if len(needle) == 0 { return 0; }
+  var n = 0;
+  var at = 0;
+  while at + len(needle) <= len(s) {
+    if substr(s, at, len(needle)) == needle {
+      n += 1;
+      at += len(needle);
+    } else {
+      at += 1;
+    }
+  }
+  return n;
+}
+
+pub fn words(s: string): string[] {
+  let out: string[] = [];
+  for w in split(s, " ") {
+    if w != "" { push(out, w); }
+  }
+  return out;
+}
