@@ -100,6 +100,8 @@ Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are 
 
 Generic structs: `struct Box<T> { value: T }`, written `Box<int>` in types and built with plain literals (`Box { value: 41 }`, the arguments are inferred from the fields or from the expected type). Each instance is its own struct (`Box<int>` and `Box<string>` are unrelated types) and prints as `Box { value: 41 }`. Works together with generic functions (`fn unbox<T>(b: Box<T>): T`). No `impl` blocks on generic structs and no generic enums yet.
 
+Traits: `trait Shape { fn area(self): float; }` declares a set of method signatures and `impl Shape for Circle { ... }` provides them (`E026` for a missing or mismatching method). A generic function can require a trait, `fn total<T: Shape>(xs: T[])`, and a call with a type that does not implement it is `E025`. Dispatch is static: because generics are monomorphized, `s.area()` inside `total` is resolved to the concrete method for every instance, so there is no runtime cost and no trait objects (a `Shape` is not a type you can store in a variable).
+
 Modules: `import "geometry.lum";` on its own line pulls in another file (path relative to the importing file). Imports are resolved before lexing: each file is read once, dependencies come first, and the result is one program, so every top-level name is global and a clash is the usual `E006`. Diagnostics still point at the right file and line. A missing file is `P004`; import cycles are tolerated. See `examples/modules/`.
 
 Semantics worth knowing:
@@ -171,6 +173,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No traits/interfaces or generic enums yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- No trait objects (dynamic dispatch), default trait methods or generic enums yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

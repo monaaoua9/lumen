@@ -1,5 +1,5 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
-import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
+import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
 import { BUILTINS, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { FnType, Type } from './types.ts';
 
@@ -187,6 +187,8 @@ class Analyzer {
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
   ninst = 0;
+  traits = new Map<string, TraitDecl>();
+  impls = new Set<string>(); // "Trait for <type string>"
   structTemplates = new Map<string, StructDecl>();
   structKeys = new Map<string, string>(); // Box<int> -> Box__int
   structInst = new Map<string, { tmpl: string; args: Type[] }>();
@@ -243,6 +245,8 @@ class Analyzer {
     for (const f of prog.fns) {
       if (!f.typeParams && !templateLambdas.has(f)) this.declareFn(f);
     }
+
+    this.checkTraits(prog);
 
     this.analyzeBlockBody(prog.body);
 
@@ -432,7 +436,7 @@ class Analyzer {
   }
 
   lintVar(v: VarSym) {
-    if (v.name.startsWith('_')) return;
+    if (v.name.startsWith('_') || (v.isParam && v.name === 'self')) return;
     if (!v.used) {
       this.warn(v.isParam ? 'W002' : 'W001', `unused ${v.isParam ? 'parameter' : 'variable'} '${v.name}'`, v.span, `prefix with '_' to silence`);
     }
@@ -1148,6 +1152,57 @@ class Analyzer {
     return ty;
   }
 
+  // the type string a user-written type name stands for, same rule the parser uses
+  typeOfName(name: string): Type | null {
+    if (name === 'int' || name === 'float' || name === 'bool' || name === 'string') return name;
+    if (this.enums.has(name)) return ('#' + name) as Type;
+    if (this.structs.has(name)) return ('@' + name) as Type;
+    return null;
+  }
+
+  checkTraits(prog: Program) {
+    for (const t of prog.traits) {
+      if (this.traits.has(t.name)) this.err('E006', `trait '${t.name}' is already defined`, t.nameSpan);
+      else this.traits.set(t.name, t);
+    }
+    for (const f of this.generics.values()) {
+      for (const [param, list] of Object.entries(f.bounds ?? {})) {
+        for (const tr of list) {
+          if (!this.traits.has(tr)) this.err('E025', `unknown trait '${tr}' (bound of '${param}' in '${f.name}')`, f.nameSpan, closestHint(tr, [...this.traits.keys()]));
+        }
+      }
+    }
+    for (const im of prog.impls) {
+      const tr = this.traits.get(im.trait);
+      const ty = this.typeOfName(im.type);
+      if (!tr) {
+        this.err('E025', `unknown trait '${im.trait}'`, im.span, closestHint(im.trait, [...this.traits.keys()]));
+        continue;
+      }
+      if (!ty) {
+        this.err('E016', `unknown type '${im.type}'`, im.span);
+        continue;
+      }
+      let ok = true;
+      for (const m of tr.methods) {
+        const fn = this.fns.get(`${im.type}$${m.name}`);
+        if (!fn) {
+          this.err('E026', `'impl ${im.trait} for ${im.type}' is missing method '${m.name}'`, im.span, `add: fn ${m.name}(${m.hasSelf ? 'self' : ''}...)`);
+          ok = false;
+          continue;
+        }
+        const hasSelf = fn.decl.params[0]?.name === 'self';
+        const rest = hasSelf ? fn.params.slice(1) : fn.params;
+        if (hasSelf !== m.hasSelf || rest.length !== m.params.length || rest.some((p, i) => p !== m.params[i].ty) || fn.ret !== m.ret) {
+          const sig = `${m.hasSelf ? ['self', ...m.params.map(p => p.ty)] : m.params.map(p => p.ty)}`;
+          this.err('E026', `method '${m.name}' of '${im.type}' does not match trait '${im.trait}': expected (${sig}) -> ${m.ret}`, fn.decl.nameSpan);
+          ok = false;
+        }
+      }
+      if (ok) this.impls.add(`${im.trait} for ${ty}`);
+    }
+  }
+
   genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl): Type {
     const tys = e.args.map(a => this.expr(a));
     if (e.args.length !== gen.params.length) {
@@ -1162,6 +1217,16 @@ class Analyzer {
     if (missing) {
       this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it');
       return 'error';
+    }
+
+    for (const [param, list] of Object.entries(gen.bounds ?? {})) {
+      for (const tr of list) {
+        const ty = binds.get(param)!;
+        if (this.traits.has(tr) && !this.impls.has(`${tr} for ${ty}`)) {
+          this.err('E025', `type ${ty} does not implement trait '${tr}'`, e.nameSpan, `'${param}' of '${e.name}' requires it; add: impl ${tr} for ${ty.replace(/^[@#]/, '')} { ... }`);
+          return 'error';
+        }
+      }
     }
 
     const key = `${e.name}<${names.map(n => binds.get(n)).join(',')}>`;

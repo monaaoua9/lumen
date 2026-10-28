@@ -1,5 +1,5 @@
 import type { Diagnostic, Span } from './diagnostics.ts';
-import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, MatchArm, Param, Pat, Program, Stmt, StructDecl, StructField } from './ast.ts';
+import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
 import { arrayOf, enumType, fnType, structType, typeFromName } from './types.ts';
@@ -41,6 +41,8 @@ class Parser {
   fns: FnDecl[] = [];
   lambdas = 0;
   structs: StructDecl[] = [];
+  traits: TraitDecl[] = [];
+  impls: ImplFor[] = [];
   enums: EnumDecl[] = [];
   enumNames = new Set<string>();
   forId = 0;
@@ -92,7 +94,7 @@ class Parser {
       if (s) body.push(s);
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
-    return { body, fns: this.fns, structs: this.structs, enums: this.enums, nlocals: 0, nglobals: 0 };
+    return { body, fns: this.fns, structs: this.structs, enums: this.enums, traits: this.traits, impls: this.impls, nlocals: 0, nglobals: 0 };
   }
 
   statementRecovering(): Stmt | null {
@@ -106,7 +108,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'impl', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'impl', 'trait', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -174,6 +176,7 @@ class Parser {
     switch (t.kind) {
       case 'fn': return this.fnDecl();
       case 'impl': return this.implDecl();
+      case 'trait': return this.traitDecl();
       case 'struct': return this.structDecl();
       case 'enum': return this.enumDecl();
       case 'match': return this.matchStmt();
@@ -414,6 +417,41 @@ class Parser {
     return decl;
   }
 
+  traitDecl(): Stmt {
+    const kw = this.next();
+    if (this.depth > 0) {
+      this.diags.push({ severity: 'error', code: 'P002', message: 'traits can only be declared at the top level', span: kw.span });
+    }
+    const name = this.expect('ident', 'a trait name');
+    this.expect('{');
+    const methods: TraitDecl['methods'] = [];
+    while (!this.at('}') && !this.at('eof')) {
+      const f = this.expect('fn', `'fn'`);
+      const m = this.expect('ident', 'a method name');
+      this.expect('(');
+      let hasSelf = false;
+      const params: Param[] = [];
+      if (!this.at(')')) {
+        do {
+          const p = this.expect('ident', 'a parameter name');
+          if (params.length === 0 && !hasSelf && p.text === 'self' && !this.at(':')) {
+            hasSelf = true;
+            continue;
+          }
+          this.expect(':');
+          params.push({ name: p.text, span: p.span, ty: this.type() });
+        } while (this.eat(','));
+      }
+      this.expect(')');
+      const ret: Type = this.eat(':') ? this.type() : 'void';
+      this.expect(';');
+      methods.push({ name: m.text, span: this.join(f.span, m.span), hasSelf, params, ret });
+    }
+    const close = this.expect('}');
+    this.traits.push({ name: name.text, nameSpan: name.span, methods });
+    return { k: 'block', span: this.join(kw.span, close.span), body: [] };
+  }
+
   // `impl T { fn m(self) ... }` is sugar for top-level functions named `T$m`;
   // `x.m(a)` is resolved to `T$m(x, a)` by the analyzer
   implDecl(): Stmt {
@@ -421,7 +459,13 @@ class Parser {
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'impl blocks can only be declared at the top level', span: kw.span });
     }
-    const name = this.expect('ident', 'a type name');
+    let name = this.expect('ident', 'a type name');
+    if (this.eat('for')) {
+      // impl Trait for Type: the methods are ordinary `Type$m` functions, the analyzer checks them against the trait
+      const trait = name;
+      name = this.expect('ident', 'a type name');
+      this.impls.push({ trait: trait.text, type: name.text, span: this.join(kw.span, name.span) });
+    }
     this.expect('{');
     const body: Stmt[] = [];
     while (!this.at('}') && !this.at('eof')) {
@@ -439,9 +483,18 @@ class Parser {
     }
     const name = this.expect('ident', 'a function name');
     let typeParams: string[] | undefined;
+    let bounds: Record<string, string[]> | undefined;
     if (!owner && this.eat('<')) {
       typeParams = [];
-      do typeParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      do {
+        const tp = this.expect('ident', 'a type parameter name').text;
+        typeParams.push(tp);
+        if (this.eat(':')) {
+          bounds ??= {};
+          bounds[tp] = [];
+          do bounds[tp].push(this.expect('ident', 'a trait name').text); while (this.eat('+'));
+        }
+      } while (this.eat(','));
       this.expect('>');
     }
     this.expect('(');
@@ -461,7 +514,7 @@ class Parser {
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
     const body = this.block();
-    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams };
+    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams, bounds };
     if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
     return decl;

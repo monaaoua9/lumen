@@ -7,7 +7,7 @@ export interface Token {
   value?: number | string;
 }
 
-const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'for', 'in', 'impl', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false']);
+const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'for', 'in', 'impl', 'trait', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false']);
 
 const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '=>', '..']);
 const ONE = new Set('+-*/%(){}[],;:=<>!.|'.split(''));

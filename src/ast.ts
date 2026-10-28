@@ -110,6 +110,7 @@ export interface FnDecl {
   sym?: FnSym;
   nlocals: number;
   typeParams?: string[];
+  bounds?: Record<string, string[]>; // T: Shape + Other
 }
 
 export type Stmt =
@@ -129,7 +130,21 @@ export type Stmt =
   | EnumDecl
   | FnDecl;
 
+export interface TraitDecl {
+  name: string;
+  nameSpan: Span;
+  methods: { name: string; span: Span; hasSelf: boolean; params: Param[]; ret: Type }[];
+}
+
+export interface ImplFor {
+  trait: string;
+  type: string;
+  span: Span;
+}
+
 export interface Program {
+  traits: TraitDecl[];
+  impls: ImplFor[];
   body: Stmt[];
   fns: FnDecl[];
   structs: StructDecl[];

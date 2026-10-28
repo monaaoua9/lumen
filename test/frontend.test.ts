@@ -336,3 +336,18 @@ test('generic structs: instantiation and inference', () => {
   assert.deepEqual(errs(B + 'let b = Box { value: [] };'), ['E013']);
   assert.deepEqual(errs('struct Box<T> { value: T } fn f(b: Box<Nope>) { }'), ['E016']);
 });
+
+test('traits: impls and bounds', () => {
+  const T = 'trait Area { fn area(self): float; fn scale(self, k: float): float; } struct Sq { s: float } struct Ci { r: float } '
+    + 'impl Area for Sq { fn area(self): float { return self.s * self.s; } fn scale(self, k: float): float { return self.s * k; } } '
+    + 'fn show<T: Area>(x: T): float { return x.area(); } ';
+  assert.deepEqual(errs(T + 'print(show(Sq { s: 2.0 }));'), []);
+  assert.deepEqual(errs(T + 'print(show(Ci { r: 1.0 }));'), ['E025']);
+  assert.deepEqual(errs(T + 'print(show(3));'), ['E025']);
+  assert.deepEqual(errs(T + 'impl Area for Ci { fn area(self): float { return 1.0; } }'), ['E026']);
+  assert.deepEqual(errs(T + 'impl Area for Ci { fn area(self): int { return 1; } fn scale(self, k: float): float { return k; } }'), ['E026']);
+  assert.deepEqual(errs(T + 'impl Nope for Ci { }'), ['E025']);
+  assert.deepEqual(errs(T + 'impl Area for Missing { }'), ['E016']);
+  assert.deepEqual(errs('fn f<T: Nope>(x: T) { }'), ['E025']);
+  assert.deepEqual(errs('trait A { fn f(self); } trait A { fn g(self); }'), ['E006']);
+});
