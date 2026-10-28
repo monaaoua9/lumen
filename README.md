@@ -183,6 +183,7 @@ node src/cli.ts run examples/fib.lum --engine interp
 node src/cli.ts run examples/fib.lum --engine c    # build with gcc/clang/cc into a temp dir and run it
 node src/cli.ts check examples/errors.lum          # diagnostics only, exit 1 on errors
 node src/cli.ts check examples/lints.lum --json    # for editor/CI integration
+node src/cli.ts check a.lum b.lum c.lum            # several files, exit 1 if any fails
 node src/cli.ts disasm examples/fib.lum
 node src/cli.ts emit-c examples/fib.lum -o fib.c
 node src/cli.ts build examples/bench.lum -o bench  # emit C + gcc/clang/cc

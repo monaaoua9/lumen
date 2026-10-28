@@ -61,6 +61,19 @@ function main(): number | Promise<number> {
     return cmd && !file && cmd !== '-h' && cmd !== '--help' ? 2 : 0;
   }
 
+  if (cmd === 'check') {
+    // several files: each is checked on its own, the worst exit code wins
+    const files = args.filter((x, i) => i > 0 && !x.startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--engine' && args[i - 1] !== '--only');
+    if (files.length > 1) return files.reduce((worst, f) => {
+      if (!flag('--json')) process.stdout.write(`== ${f}
+`);
+      return Math.max(worst, runFile(f, 'check') as number);
+    }, 0);
+  }
+  return runFile(file, cmd);
+}
+
+function runFile(file: string, cmd: string): number | Promise<number> {
   const name = basename(file);
   const b = bundle(file);
   if (b.diags.length) {

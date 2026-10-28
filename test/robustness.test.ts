@@ -367,3 +367,16 @@ test('lumen test runs each test_ function and reports failures', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('check takes several files and fails if any does', () => {
+  const ok = cli('check', 'examples/fib.lum', 'examples/queens.lum');
+  assert.equal(ok.status, 0);
+  assert.equal((ok.stdout.match(/ok: no issues/g) ?? []).length, 2);
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-multi-'));
+  try {
+    writeFileSync(join(dir, 'bad.lum'), 'let x: int = "s";');
+    assert.equal(cli('check', 'examples/fib.lum', join(dir, 'bad.lum')).status, 1);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
