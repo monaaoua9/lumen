@@ -1,0 +1,25 @@
+// match as an expression, and for-loops over the results
+enum Shape { Circle, Square, Tri }
+
+fn sides(s: Shape): int {
+  return match s { Circle => 0, Square => 4, Tri => 3 };
+}
+
+fn noisy(n: int): int { print(n); return n; }
+
+let names = ["zero", "one", "two"];
+for i in 0..4 {
+  let label = match i {
+    0 | 1 => names[i],
+    2 => "two!",
+    _ => "many"
+  };
+  print(label);
+}
+
+print(sides(Shape.Square) + sides(Shape.Tri));
+let x = match sides(Shape.Tri) { 3 => noisy(30), _ => noisy(0) };
+print(x * 2);
+let flag = match x > 10 { true => "big", false => "small" };
+print(flag);
+for s in [Shape.Circle, Shape.Tri] { print(match s { Circle => "round", _ => "pointy" }); }

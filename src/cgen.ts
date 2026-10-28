@@ -178,6 +178,7 @@ function hasCall(e: Expr): boolean {
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
+    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
   }
@@ -297,6 +298,27 @@ class Gen {
         const a = this.pin(e.arr, this.expr(e.arr), hasCall(e.idx));
         const i = this.expr(e.idx);
         return fromSlot(e.ty, `(lm_arr_at(${a}, ${i})->${slot(e.ty)})`);
+      }
+
+      case 'matchx': {
+        const v = this.newTmp(e.scrut.ty, this.expr(e.scrut));
+        const r = `t${this.tmp++}`;
+        this.line(`${ctype(e.ty)} ${r};`);
+        let first = true;
+        for (const arm of e.arms) {
+          const wild = arm.pats.some(p => p.k === 'wild');
+          const cond = wild ? '' : arm.pats.map(p => this.patTest(v, p, e.scrut.ty)).join(' || ');
+          if (first) this.line(wild ? '{' : `if (${cond}) {`);
+          else this.line(wild ? '} else {' : `} else if (${cond}) {`);
+          first = false;
+          this.ind++;
+          const val = this.expr(arm.value);
+          this.line(`${r} = ${val};`);
+          this.ind--;
+          if (wild) break;
+        }
+        if (!first) this.line('}');
+        return r;
       }
 
       case 'enumval': return `${e.idx}LL`;

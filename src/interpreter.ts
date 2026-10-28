@@ -153,6 +153,16 @@ export class Interpreter {
 
       case 'array': return e.elems.map(x => this.eval(x, f));
 
+      case 'matchx': {
+        const v = this.eval(e.scrut, f);
+        for (const arm of e.arms) {
+          if (arm.pats.some(p => p.k === 'wild' || (p.k === 'variant' ? p.idx === v : p.value === v))) {
+            return this.eval(arm.value, f);
+          }
+        }
+        return null;
+      }
+
       case 'enumval': return e.idx;
 
       case 'field': return (this.eval(e.obj, f) as Value[])[e.idx];

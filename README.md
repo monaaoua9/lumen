@@ -73,6 +73,8 @@ match light {
 }
 ```
 
+`match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs).
+
 Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive
 (`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose
 every arm returns counts as returning on all paths.
@@ -138,7 +140,7 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No nested arrays, enum payloads (variants carry no data), match as an expression, methods or closures yet.
+- No nested arrays, enum payloads (variants carry no data), methods or closures yet.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Generated C never frees strings or arrays (fine for short programs).
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

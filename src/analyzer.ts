@@ -1,5 +1,5 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
-import type { EnumDecl, Expr, FnDecl, FnSym, Program, Stmt, StructDecl, VarSym } from './ast.ts';
+import type { EnumDecl, Expr, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
 import { BUILTINS, elemOf, isArray, isBuiltin, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Type } from './types.ts';
 
@@ -285,6 +285,13 @@ class Analyzer {
         if (t === 'void') {
           this.err('E010', 'a function that returns nothing cannot be used as a value', s.init.span);
           ty = 'error';
+        } else if (/^_\$[ei]/.test(s.name) && t !== 'int' && t !== 'error') {
+          // hidden bindings made by the parser for `for a..b`
+          this.err('E003', `range bounds must be int, found ${t}`, s.init.span);
+          ty = 'error';
+        } else if (s.name.startsWith('_$a') && !isArray(t) && t !== 'error') {
+          this.err('E003', `cannot iterate over a value of type ${t}`, s.init.span, 'for loops work on int ranges (a..b) and arrays');
+          ty = 'error';
         } else if (s.annot && t !== 'error' && t !== s.annot) {
           this.mismatch(s.annot, t, s.init.span);
         }
@@ -391,17 +398,39 @@ class Analyzer {
   }
 
   matchStmt(s: Extract<Stmt, { k: 'match' }>): Flow {
-    const st = this.expr(s.scrut);
-    s.tmp = this.ctx.nlocals++;
+    const r = this.matchCore(s.scrut, s.arms.map(a => a.pats), i => this.withScope(() => this.block(s.arms[i].body)));
+    s.tmp = r.tmp;
+    const all = (k: 'diverges' | 'returns') => r.out.length > 0 && r.exhaustive && r.out.every(f => f[k]);
+    return { diverges: all('diverges'), returns: all('returns') };
+  }
+
+  matchExpr(e: Extract<Expr, { k: 'matchx' }>, want?: Type): Type {
+    const r = this.matchCore(e.scrut, e.arms.map(a => a.pats), i => this.expr(e.arms[i].value, want));
+    e.tmp = r.tmp;
+    let ty: Type = 'error';
+    r.out.forEach((t, i) => {
+      const at = e.arms[i].value.span;
+      if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', at);
+      else if (t === 'error') return;
+      else if (ty === 'error') ty = t;
+      else if (t !== ty) this.mismatch(ty, t, at, 'in match arm');
+    });
+    return ty;
+  }
+
+  // shared by match statements and match expressions: pattern checks + exhaustiveness
+  matchCore<T>(scrut: Expr, patLists: Pat[][], runArm: (i: number) => T): { tmp: number; out: T[]; exhaustive: boolean } {
+    const st = this.expr(scrut);
+    const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
     const matchable = st === 'bool' || st === 'int' || st === 'string' || !!decl;
-    if (st !== 'error' && !matchable) this.err('E003', `cannot match on a value of type ${st}`, s.scrut.span, 'match works on enums, bool, int and string');
+    if (st !== 'error' && !matchable) this.err('E003', `cannot match on a value of type ${st}`, scrut.span, 'match works on enums, bool, int and string');
 
     const seen = new Set<string>();
     let wild = false;
-    const flows: Flow[] = [];
-    for (const arm of s.arms) {
-      for (const p of arm.pats) {
+    const out: T[] = [];
+    for (let ai = 0; ai < patLists.length; ai++) {
+      for (const p of patLists[ai]) {
         let key: string | null = null;
         if (p.k === 'wild') {
           if (wild) this.warn('W010', 'unreachable pattern', p.span);
@@ -427,7 +456,7 @@ class Analyzer {
           seen.add(key);
         }
       }
-      flows.push(this.withScope(() => this.block(arm.body)));
+      out.push(runArm(ai));
     }
 
     const exhaustive = wild
@@ -435,10 +464,9 @@ class Analyzer {
       || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)));
     if (matchable && !exhaustive) {
       const missing = decl ? decl.variants.filter((_, i) => !seen.has(`v${i}`)).map(v => `${decl.name}.${v.name}`) : [];
-      this.err('E020', 'non-exhaustive match', s.scrut.span, missing.length ? `missing: ${missing.join(', ')}` : "add a '_' arm");
+      this.err('E020', 'non-exhaustive match', scrut.span, missing.length ? `missing: ${missing.join(', ')}` : "add a '_' arm");
     }
-    const all = (k: 'diverges' | 'returns') => flows.length > 0 && exhaustive && flows.every(f => f[k]);
-    return { diverges: all('diverges'), returns: all('returns') };
+    return { tmp, out, exhaustive };
   }
 
   fieldOf(ot: Type, name: string, nameSpan: Span, objSpan: Span): { ty: Type; idx: number } | null {
@@ -500,6 +528,7 @@ class Analyzer {
       case 'str': return 'string';
       case 'bool': return 'bool';
       case 'enumval': return ('#' + e.enumName) as Type;
+      case 'matchx': return this.matchExpr(e, want);
 
       case 'var': {
         const sym = this.scope.lookup(e.name);

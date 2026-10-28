@@ -225,3 +225,13 @@ test('for loops: continue cannot skip the counter', () => {
   `;
   assert.equal(allEngines(src), '6\n11\n');
 });
+
+test('match expressions: arms run lazily, values agree', () => {
+  const src = `
+    fn t(n: int): int { print(n); return n; }
+    let a = match 2 { 1 => t(10), 2 => t(20), _ => t(30) };
+    print(a + match true { true => 1, false => 2 });
+    print(t(1) + match t(2) { 2 => t(3), _ => 0 });
+  `;
+  assert.equal(allEngines(src), '20\n21\n1\n2\n3\n4\n');
+});

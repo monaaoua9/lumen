@@ -15,6 +15,7 @@ function hasCall(e: Expr): boolean {
     case 'index': return hasCall(e.arr) || hasCall(e.idx);
     case 'array': return e.elems.some(hasCall);
     case 'field': return hasCall(e.obj);
+    case 'matchx': return hasCall(e.scrut) || e.arms.some(a => hasCall(a.value));
     case 'structlit': return e.fields.some(f => hasCall(f.value));
     default: return false;
   }
@@ -482,6 +483,22 @@ class Parser {
         const e = this.allowStruct(() => this.expr());
         this.expect(')');
         return e;
+      }
+      case 'match': {
+        const scrut = this.condExpr();
+        this.expect('{');
+        const arms: Extract<Expr, { k: 'matchx' }>['arms'] = [];
+        while (!this.at('}') && !this.at('eof')) {
+          const first = this.cur.span;
+          const pats: Pat[] = [this.pattern()];
+          while (this.eat('|')) pats.push(this.pattern());
+          this.expect('=>');
+          const value = this.allowStruct(() => this.expr());
+          arms.push({ pats, value, span: this.join(first, value.span) });
+          if (!this.eat(',')) break;
+        }
+        const close = this.expect('}');
+        return { k: 'matchx', scrut, arms, tmp: -1, span: this.join(t.span, close.span), ty: 'error' };
       }
       case '[': {
         const elems: Expr[] = [];

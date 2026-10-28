@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { lex } from '../src/lexer.ts';
 import { parse } from '../src/parser.ts';
 import { diagCodes } from './helpers.ts';
+import { frontend } from '../src/pipeline.ts';
 
 test('lexer: tokens, comments, escapes', () => {
   const { tokens, diags } = lex('let s = "a\\n\\"b"; // note\n1.5 += x');
@@ -200,8 +201,17 @@ test('for loops: checking', () => {
   assert.deepEqual(diagCodes('for i in 0..3 { print(i); }'), []);
   assert.deepEqual(diagCodes('for x in [1, 2] { print(x); }'), []);
   assert.deepEqual(diagCodes('for i in 0..2.5 { print(i); }'), ['E003']);
-  assert.ok(diagCodes('for x in 5 { print(x); }').includes('E003'));
+  assert.ok(frontend('for i in 0..2.5 { print(i); }').diagnostics[0].message.includes('range bounds'));
+  assert.deepEqual(diagCodes('for x in 5 { print(x); }'), ['E003']); // one clear error, no leaked len/index messages
   assert.ok(diagCodes('for i in 0..3 { print(1); }').includes('W001'));
   assert.deepEqual(diagCodes('for _ in 0..3 { print(1); }'), []);
   assert.ok(diagCodes('for i in 0..3 { i = 2; }').includes('E005'));
+});
+
+test('match expressions: checking', () => {
+  assert.deepEqual(diagCodes(E + 'let c = C.R; print(match c { R => 1, G => 2, B => 3 });'), []);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; print(match c { R => 1, G => "x", B => 3 });'), ['E003']);
+  assert.deepEqual(diagCodes(E + 'let c = C.R; print(match c { R => 1, G => 2 });'), ['E020']);
+  assert.deepEqual(diagCodes('let a: int[] = match 1 { 1 => [], _ => [2] }; print(a);'), []);
+  assert.ok(diagCodes('fn f() {} let x = match 1 { 1 => f(), _ => f() }; print(x);').includes('E010'));
 });

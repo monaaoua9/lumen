@@ -40,6 +40,7 @@ export type Expr =
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
+  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; value: Expr; span: Span }[]; tmp: number })
   | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number })
   | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
   | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[] })

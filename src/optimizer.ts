@@ -72,6 +72,11 @@ function foldExpr(e: Expr): Expr {
       e.obj = foldExpr(e.obj);
       return e;
 
+    case 'matchx':
+      e.scrut = foldExpr(e.scrut);
+      e.arms.forEach(a => { a.value = foldExpr(a.value); });
+      return e;
+
     case 'structlit':
       e.fields.forEach(f => { f.value = foldExpr(f.value); });
       return e;

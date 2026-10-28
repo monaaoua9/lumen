@@ -1,5 +1,5 @@
 import type { Span } from './diagnostics.ts';
-import type { Expr, Program, Stmt } from './ast.ts';
+import type { Expr, Pat, Program, Stmt } from './ast.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
 import type { Type } from './types.ts';
@@ -56,6 +56,28 @@ class FnCompiler {
     this.emit(Op.CONST, this.poolIdx(v));
   }
 
+  // tests the scrutinee (in local `tmp`) against the patterns. falls into the arm body on a match,
+  // returns the jump to patch for "no match" (or -1 when a `_` makes the arm unconditional)
+  armTest(tmp: number, pats: Pat[]): number {
+    const toBody: number[] = [];
+    let wild = false;
+    for (const p of pats) {
+      if (p.k === 'wild') {
+        wild = true;
+        break;
+      }
+      this.emit(Op.LOADL, tmp);
+      this.konst(p.k === 'variant' ? p.idx : p.value);
+      this.emit(Op.EQ);
+      const skip = this.jump(Op.JMPF);
+      toBody.push(this.jump(Op.JMP));
+      this.patch(skip);
+    }
+    const next = wild ? -1 : this.jump(Op.JMP);
+    toBody.forEach(j => this.patch(j));
+    return next;
+  }
+
   block(body: Stmt[]) {
     for (const s of body) this.stmt(s);
   }
@@ -74,22 +96,7 @@ class FnCompiler {
         this.emit(Op.STOREL, s.tmp);
         const ends: number[] = [];
         for (const arm of s.arms) {
-          const toBody: number[] = [];
-          let wild = false;
-          for (const p of arm.pats) {
-            if (p.k === 'wild') {
-              wild = true;
-              break;
-            }
-            this.emit(Op.LOADL, s.tmp);
-            this.konst(p.k === 'variant' ? p.idx : p.value);
-            this.emit(Op.EQ);
-            const skip = this.jump(Op.JMPF);
-            toBody.push(this.jump(Op.JMP));
-            this.patch(skip);
-          }
-          const next = wild ? -1 : this.jump(Op.JMP);
-          toBody.forEach(j => this.patch(j));
+          const next = this.armTest(s.tmp, arm.pats);
           this.block(arm.body);
           ends.push(this.jump(Op.JMP));
           if (next >= 0) this.patch(next);
@@ -226,6 +233,21 @@ class FnCompiler {
       case 'enumval':
         this.konst(e.idx);
         return;
+
+      case 'matchx': {
+        this.expr(e.scrut);
+        this.span = e.span;
+        this.emit(Op.STOREL, e.tmp);
+        const ends: number[] = [];
+        for (const arm of e.arms) {
+          const next = this.armTest(e.tmp, arm.pats);
+          this.expr(arm.value);
+          ends.push(this.jump(Op.JMP));
+          if (next >= 0) this.patch(next);
+        }
+        ends.forEach(j => this.patch(j));
+        return;
+      }
 
       case 'field':
         this.expr(e.obj);
