@@ -279,3 +279,12 @@ test('function values: checking', () => {
   // lambdas are hoisted, so locals of the enclosing function are not visible
   assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { return x + k; }; }'), ['E001']);
 });
+
+test('function values: calling expressions and fields', () => {
+  const F = 'fn inc(x: int): int { return x + 1; } fn get(): fn(int): int { return inc; } struct S { f: fn(int): int, n: int } ';
+  assert.deepEqual(errs(F + 'print(get()(1)); let s = S { f: inc, n: 1 }; print(s.f(2));'), []);
+  assert.deepEqual(errs(F + 'print(get()("x"));'), ['E003']);
+  assert.deepEqual(errs(F + 'print(get()(1, 2));'), ['E004']);
+  assert.deepEqual(errs(F + 'let s = S { f: inc, n: 1 }; print(s.n(2));'), ['E019']);
+  assert.deepEqual(errs(F + 'print(1(2));'), ['E003']);
+});

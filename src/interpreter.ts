@@ -185,11 +185,7 @@ export class Interpreter {
       case 'call': {
         if (e.builtin) return callBuiltin(e.builtin, e.args.map(a => this.eval(a, f)), e.args.map(a => a.ty), this.io, e.span);
         const args = e.args.map(a => this.eval(a, f));
-        if (e.via) {
-          const v = e.via;
-          const callee = (v.where === 'global' ? this.globals[v.slot] : f.locals[v.slot]) as unknown as FnDecl;
-          return this.callFn(callee, args, e.span);
-        }
+        if (e.callee) return this.callFn(this.eval(e.callee, f) as unknown as FnDecl, args, e.span);
         return this.callFn(e.fn!.decl, args, e.span);
       }
     }

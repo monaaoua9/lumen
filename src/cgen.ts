@@ -284,6 +284,7 @@ function strIn(t: Type, e: string): string {
 }
 
 function strOf(t: Type, e: string): string {
+  if (isFn(t)) return '"<fn>"';
   if (isArray(t)) return `lm_str_arr(${e}, ${elemFn(elemOf(t))})`;
   if (isStruct(t)) return `lm_str_S_${structName(t)}(${e})`;
   if (isEnum(t)) return `lm_str_E_${enumName(t)}(${e})`;
@@ -510,7 +511,7 @@ class Gen {
   call(e: Extract<Expr, { k: 'call' }>, asStmt: boolean): string {
     const args: string[] = [];
     e.args.forEach((a, i) => {
-      const later = e.args.slice(i + 1).some(hasCall);
+      const later = e.args.slice(i + 1).some(hasCall) || (e.callee !== undefined && hasCall(e.callee));
       args.push(this.pin(a, this.expr(a), later));
     });
 
@@ -528,10 +529,11 @@ class Gen {
         case 'pop': text = fromSlot(e.ty, `lm_arr_pop(${a}).${slot(e.ty)}`); break;
       }
     } else {
-      if (e.via) {
-        const sig = fnSig(e.via.ty as `<${string}>`);
+      if (e.callee) {
+        const sig = fnSig(e.callee.ty as `<${string}>`);
         const ptypes = sig.params.map(ctype).join(', ') || 'void';
-        text = `((${ctype(sig.ret)} (*)(${ptypes}))${this.name(e.via)})(${args.join(', ')})`;
+        const target = this.pin(e.callee, this.expr(e.callee), false);
+        text = `((${ctype(sig.ret)} (*)(${ptypes}))${target})(${args.join(', ')})`;
       } else {
         text = `f_${cname(e.fn!.name)}(${args.join(', ')})`;
       }

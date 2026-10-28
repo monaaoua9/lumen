@@ -50,6 +50,7 @@ export function format(v: Value, ty: Type): string {
     case 'bool': return v ? 'true' : 'false';
     case 'string': return v as string;
   }
+  if (ty.startsWith('<')) return '<fn>';
   if (ty.startsWith('#') && !ty.endsWith('[]')) {
     const info = enumLayouts.get(ty.slice(1))!;
     if (!info.variants.some(x => x.payload.length > 0)) return info.variants[v as number].name;

@@ -94,7 +94,7 @@ Methods: `impl Counter { fn new(step: int): Counter { ... } fn tick(self) { self
 `Counter.new(5)` and `c.tick()`. Works for structs and enums. `self` is the receiver (a reference), methods are
 resolved statically and compile down to plain functions named `Counter$tick` (shown as `Counter.tick` in messages).
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
-Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. They are plain code pointers: a lambda cannot see the locals of the function around it (the name simply does not resolve), and function values cannot be compared or printed. Calling goes through a variable or parameter (`f(x)`), not an arbitrary expression.
+Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. They are plain code pointers: a lambda cannot see the locals of the function around it (the name simply does not resolve), and function values cannot be compared or printed. Any expression of function type can be called: `f(x)`, `pick("double")(8)`, `table[1](9)`, and struct fields (`op.run(3, 4)`).
 
 Semantics worth knowing:
 

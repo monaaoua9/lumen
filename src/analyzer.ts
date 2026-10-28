@@ -447,6 +447,12 @@ class Analyzer {
       }
       const owner = isStruct(ot) ? structName(ot) : isEnum(ot) ? ot.slice(1) : null;
       const fn = owner ? this.fns.get(`${owner}$${e.name}`) : undefined;
+      const fld = isStruct(ot) ? this.structs.get(owner!)?.fields.find(f => f.name === e.name && isFn(f.ty)) : undefined;
+      if (!fn && fld) {
+        const field: Expr = { k: 'field', obj: e.obj, name: e.name, nameSpan: e.nameSpan, idx: -1, span: e.nameSpan, ty: 'error' };
+        Object.assign(e, { k: 'call', callee: field });
+        return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
+      }
       if (!fn || fn.params[0] !== ot || fn.decl.params[0].name !== 'self') {
         rest.forEach(a => this.expr(a));
         const cands = owner ? [...this.fns.values()].filter(f => f.name.startsWith(owner + '$') && f.decl.params[0]?.name === 'self').map(f => f.name.slice(owner.length + 1)) : [];
@@ -855,11 +861,22 @@ class Analyzer {
     if (isBuiltin(e.name)) return this.builtin(e, e.name);
 
     // a local of function type wins over a global function with the same name
-    const local = this.scope.lookup(e.name);
+    const local = e.callee ? undefined : this.scope.lookup(e.name);
     if (local && isFn(local.ty)) {
-      const sig = fnSig(local.ty);
-      local.used = true;
-      e.via = local;
+      e.callee = { k: 'var', name: e.name, span: e.nameSpan, ty: 'error' };
+    }
+    if (e.callee) {
+      const ct = this.expr(e.callee);
+      if (ct === 'error') {
+        e.args.forEach(a => this.expr(a));
+        return 'error';
+      }
+      if (!isFn(ct)) {
+        e.args.forEach(a => this.expr(a));
+        this.err('E003', `cannot call a value of type ${ct}`, e.callee.span);
+        return 'error';
+      }
+      const sig = fnSig(ct);
       const tys = e.args.map((a, i) => this.expr(a, sig.params[i]));
       const sym: FnSym = { name: e.name, params: sig.params, ret: sig.ret, index: -1, span: e.nameSpan, used: true, decl: null as unknown as FnDecl };
       return this.checkUserCall(e, sym, tys);

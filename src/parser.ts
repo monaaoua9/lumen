@@ -518,6 +518,14 @@ class Parser {
         const idx = this.allowStruct(() => this.expr());
         const close = this.expect(']');
         e = { k: 'index', arr: e, idx, span: this.join(e.span, close.span), ty: 'error' };
+      } else if (this.at('(')) {
+        this.next();
+        const args: Expr[] = [];
+        if (!this.at(')')) {
+          do args.push(this.allowStruct(() => this.expr())); while (this.eat(','));
+        }
+        const close = this.expect(')');
+        e = { k: 'call', name: 'call', nameSpan: e.span, args, callee: e, span: this.join(e.span, close.span), ty: 'error' };
       } else if (this.at('.')) {
         this.next();
         const f = this.expect('ident', 'a field name');

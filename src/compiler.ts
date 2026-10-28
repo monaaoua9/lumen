@@ -320,8 +320,9 @@ class FnCompiler {
       case 'call': {
         e.args.forEach(a => this.expr(a));
         this.span = e.span;
-        if (e.via) {
-          this.emit(e.via.where === 'global' ? Op.LOADG : Op.LOADL, e.via.slot);
+        if (e.callee) {
+          this.expr(e.callee);
+          this.span = e.span;
           this.emit(Op.CALLI);
           return;
         }

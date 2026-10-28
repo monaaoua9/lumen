@@ -41,3 +41,11 @@ var op = pick("double");
 print(op(5));
 op = pick("other");
 print(op(5));
+
+struct Op { name: string, run: fn(int, int): int }
+
+let adder = Op { name: "add", run: fn(a: int, b: int): int { return a + b; } };
+print(adder.name);
+print(adder.run(3, 4));
+print(pick("double")(8));
+print(table[1](9));
