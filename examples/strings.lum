@@ -42,3 +42,8 @@ print(replace("a-b-c", "-", "+") + replace("xx", "x", "yy") + replace("abc", "z"
 print(starts_with("lumen", "lu"));
 print(ends_with("lumen", "men") && !ends_with("n", "men"));
 print(starts_with("a", "") && repeat("z", 0) == "");
+
+// parse_int / parse_float take a fallback for text that is not a plain number
+print(parse_int("42", -1) + parse_int(" 42", -1) + parse_int("+7", -1) + parse_int("4x", -1));
+print(parse_float("2.5e1", 0.0) + parse_float(".5", 0.0) + parse_float("abc", 1.0));
+print(parse_int("9007199254740993", 5));

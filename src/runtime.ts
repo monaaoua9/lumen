@@ -125,6 +125,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'abs': return Math.abs(a as number);
     case 'min': return (args[1] as number) < (a as number) ? args[1] : a;
     case 'max': return (args[1] as number) > (a as number) ? args[1] : a;
+    case 'parse_int': return parseIntOr(a as string, args[1] as number);
+    case 'parse_float': return parseFloatOr(a as string, args[1] as number);
     case 'upper': return upperOf(a as string);
     case 'lower': return lowerOf(a as string);
     case 'replace': return replaceOf(a as string, args[1] as string, args[2] as string, span);
@@ -172,6 +174,19 @@ function stdinLines(): string[] {
     pending = pending.map(l => l.replace(/\r$/, '')).reverse();
   }
   return pending;
+}
+
+// plain decimal text only, anything else (spaces, hex, 1e5 for ints, overflow) gives the fallback
+export function parseIntOr(s: string, fallback: number): number {
+  if (!/^[+-]?[0-9]+$/.test(s)) return fallback;
+  const v = Number(s);
+  return Number.isSafeInteger(v) ? v : fallback;
+}
+
+export function parseFloatOr(s: string, fallback: number): number {
+  if (!/^[+-]?([0-9]+\.?[0-9]*|\.[0-9]+)([eE][+-]?[0-9]+)?$/.test(s)) return fallback;
+  const v = Number(s);
+  return Number.isFinite(v) ? v : fallback;
 }
 
 // ascii only, other letters pass through untouched

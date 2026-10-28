@@ -1314,7 +1314,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error', upper: 'string', lower: 'string', replace: 'string', starts_with: 'bool', ends_with: 'bool', repeat: 'string' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error', upper: 'string', lower: 'string', replace: 'string', starts_with: 'bool', ends_with: 'bool', repeat: 'string', parse_int: 'int', parse_float: 'float' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1414,6 +1414,13 @@ class Analyzer {
         if (!isNumeric(t0)) { bad('expects int or float'); return 'error'; }
         if (t1 !== t0) { this.mismatch(t0, t1, e.args[1].span, `in argument 2 of '${name}'`); return t0; }
         return t0;
+      case 'parse_int':
+      case 'parse_float': {
+        const num = name === 'parse_int' ? 'int' : 'float';
+        if (t0 !== 'error' && t0 !== 'string') this.mismatch('string', t0, e.args[0].span, `in argument 1 of '${name}'`);
+        if (t1 !== 'error' && t1 !== num) this.mismatch(num, t1, e.args[1].span, `in argument 2 of '${name}'`);
+        return ret;
+      }
       case 'upper':
       case 'lower':
       case 'replace':

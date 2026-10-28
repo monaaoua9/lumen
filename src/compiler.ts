@@ -406,6 +406,8 @@ class FnCompiler {
           case 'starts_with': this.emit(Op.STARTS); break;
           case 'ends_with': this.emit(Op.ENDS); break;
           case 'repeat': this.emit(Op.REPEAT); break;
+          case 'parse_int': this.emit(Op.PARSEI); break;
+          case 'parse_float': this.emit(Op.PARSEF); break;
           case 'read_line': this.emit(Op.READLN); break;
           case 'at_eof': this.emit(Op.ATEOF); break;
           case 'join': this.emit(Op.JOIN); break;
