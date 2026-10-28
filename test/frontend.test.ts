@@ -452,6 +452,11 @@ test('for with an index variable', () => {
   assert.deepEqual(diagCodes('for i, x in 0..3 { print(x); }'), ['P001']);
 });
 
+test('array slice syntax', () => {
+  assert.deepEqual(errs('let a = [1, 2, 3]; let b: int[] = a[0..2]; print(b);'), []);
+  assert.deepEqual(errs('print("abc"[0..1]);'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

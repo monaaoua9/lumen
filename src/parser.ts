@@ -866,6 +866,14 @@ class Parser {
       if (this.at('[')) {
         this.next();
         const idx = this.allowStruct(() => this.expr());
+        if (this.eat('..')) {
+          // a[lo..hi] is slice(a, lo, hi - lo); lo is written twice, so keep it free of side effects
+          const hi = this.allowStruct(() => this.expr());
+          const end = this.expect(']');
+          const count: Expr = { k: 'binary', op: '-', l: hi, r: structuredClone(idx), span: hi.span, ty: 'error' };
+          e = { k: 'call', name: 'slice', nameSpan: idx.span, args: [e, idx, count], span: this.join(e.span, end.span), ty: 'error' };
+          continue;
+        }
         const close = this.expect(']');
         e = { k: 'index', arr: e, idx, span: this.join(e.span, close.span), ty: 'error' };
       } else if (this.at('(')) {
