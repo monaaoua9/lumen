@@ -990,7 +990,8 @@ class Analyzer {
       this.err('E019', `cannot access field '${name}' on a value of type ${ot}`, objSpan);
       return null;
     }
-    const decl = this.structs.get(structName(ot))!;
+    const decl = this.structs.get(structName(ot));
+    if (!decl) return null; // unknown type, already reported where it was written
     const idx = decl.fields.findIndex(f => f.name === name);
     if (idx < 0) {
       this.err('E019', `struct '${decl.name}' has no field '${name}'`, nameSpan, closestHint(name, decl.fields.map(f => f.name)));
