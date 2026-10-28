@@ -438,6 +438,12 @@ test('generics: type parameters from the expected result type', () => {
   assert.deepEqual(errs(G + 'let b: Box<int> = empty(); let c: Box<string> = b; print(c);'), ['E003']);
 });
 
+test('lambda parameter inference', () => {
+  assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) => v + 1, 2));'), []);
+  assert.deepEqual(errs('let f = fn(x) => x + 1;'), ['E030']);
+  assert.deepEqual(errs('fn ap(f: fn(int): int, x: int): int { return f(x); } print(ap(fn(v) => "s", 2));'), ['E003']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

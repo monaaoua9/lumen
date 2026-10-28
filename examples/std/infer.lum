@@ -1,0 +1,13 @@
+import "std/list.lum"
+
+let nums = [1, 2, 3, 4, 5];
+let sq = list.map(nums, fn(x) => x * x);
+print(sq);
+print(len(list.filter(sq, fn(x) => x > 5)));
+print(list.fold(nums, 0, fn(a, b) => a + b));
+let names = list.map(nums, fn(n) => "n" + str(n));
+print(names[4]);
+let k = 10;
+print(list.map(nums, fn(x) => x + k));
+let twice: fn(int): int = fn(x) => x * 2;
+print(twice(21));

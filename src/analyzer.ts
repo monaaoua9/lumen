@@ -620,6 +620,7 @@ class Analyzer {
     });
 
     f.nlocals = this.ctx.nlocals;
+    if (f.ret === '?') f.ret = this.ctx.ret === '?' ? 'void' : this.ctx.ret;
     this.ctx = savedCtx;
     this.loops = savedLoops;
   }
@@ -766,9 +767,10 @@ class Analyzer {
           this.err('E009', "'return' outside of a function", s.span);
           return { diverges: true, returns: true };
         }
-        const want = this.ctx.ret;
+        let want = this.ctx.ret;
         if (s.value) {
-          const t = this.expr(s.value, want);
+          const t = this.expr(s.value, want === '?' ? undefined : want);
+          if (want === '?' && t !== 'void' && t !== 'error') want = this.ctx.ret = t;
           if (want === 'void') this.err('E003', `function '${this.ctx.name}' returns nothing, but a value is returned`, s.value.span);
           else if (t === 'void') this.err('E010', 'a function that returns nothing cannot be used as a value', s.value.span);
           else if (t !== 'error' && t !== want) this.mismatch(want, t, s.value.span, `in the return value of '${this.ctx.name}'`);
@@ -1087,7 +1089,7 @@ class Analyzer {
       case 'bool': return 'bool';
       case 'enumval': return ('#' + e.enumName) as Type;
       case 'fnref': return e.ty; // only produced by the 'var' case below
-      case 'lambda': return this.lambda(e);
+      case 'lambda': return this.lambda(e, want);
       case 'matchx': return this.matchExpr(e, want);
       case 'blockx': {
         // break and continue may only target loops inside the block
@@ -1160,7 +1162,7 @@ class Analyzer {
         for (const x of e.elems) {
           const t = this.expr(x, w);
           tys.push(t);
-          if (!w && t !== 'error' && t !== 'void') w = t;
+          if (!w && t !== 'error' && t !== 'void' && t !== '?') w = t;
         }
         const first = tys.find(t => t !== 'error');
         if (!first) return 'error';
@@ -1451,9 +1453,17 @@ class Analyzer {
     }
   }
 
-  lambda(e: Extract<Expr, { k: 'lambda' }>): Type {
+  lambda(e: Extract<Expr, { k: 'lambda' }>, want?: Type): Type {
     const f = e.fn;
-    const ty = fnType(f.params.map(p => p.ty), f.ret);
+    if (want && isFn(want)) {
+      const sig = fnSig(want);
+      if (sig.params.length === f.params.length) f.params.forEach((p, i) => { if (p.ty === '?') p.ty = sig.params[i]; });
+    }
+    const open = f.params.find(p => p.ty === '?');
+    if (open) {
+      this.err('E030', `cannot infer the type of parameter '${open.name}'`, open.span, `write it out: fn(${open.name}: int) ...`);
+      return 'error';
+    }
     const used = new Set<string>();
     const declared = new Set<string>();
     for (const p of f.params) declared.add(p.name);
@@ -1477,6 +1487,7 @@ class Analyzer {
     this.scope = this.globals;
     this.analyzeFn(f);
     this.scope = saved;
+    const ty = fnType(f.params.slice(0, f.params.length - e.caps.length).map(p => p.ty), f.ret);
     for (const p of f.params.slice(f.params.length - e.caps.length)) if (p.sym) p.sym.used = true;
     if (f.sym) f.sym.used = true;
     return ty;
@@ -1641,16 +1652,26 @@ class Analyzer {
   }
 
   genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl, want?: Type): Type {
-    const tys = e.args.map(a => this.expr(a));
+    // lambdas that leave types out wait until the other arguments have bound the type parameters
+    const late = (a: Expr) => a.k === 'lambda' && (a.fn.ret === '?' || a.fn.params.some(p => p.ty === '?'));
+    const tys = e.args.map(a => late(a) ? ('error' as Type) : this.expr(a));
     if (e.args.length !== gen.params.length) {
       this.err('E004', `'${e.name}' takes ${gen.params.length} argument${gen.params.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
       return 'error';
     }
-    if (tys.includes('error')) return 'error';
-    this.calledGenerics.add(gen.name);
     const names = gen.typeParams!;
     const binds = new Map<string, Type>();
     gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds, this.structInst));
+    e.args.forEach((a, i) => {
+      if (!late(a)) return;
+      const w = replaceVars(gen.params[i].ty, binds);
+      // parameter types still open stay unknown, the lambda reports them
+      const open = names.some(n => w.includes(`(@${n}`) || w.includes(`,@${n}`));
+      tys[i] = this.expr(a, open ? undefined : (w as Type));
+      unify(gen.params[i].ty, tys[i], new Set(names), binds, this.structInst);
+    });
+    if (tys.includes('error')) return 'error';
+    this.calledGenerics.add(gen.name);
     // whatever the arguments left open can still come from the type the result is expected to have
     if (want && want !== 'error' && names.some(n => !binds.has(n))) unify(gen.ret, want, new Set(names), binds, this.structInst);
     const missing = names.find(n => !binds.has(n));

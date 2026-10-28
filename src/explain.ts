@@ -47,6 +47,7 @@ export const EXPLAIN: Record<string, Entry> = {
   E026: { title: 'impl does not match its trait', text: 'An impl block lacks a method the trait declares, or the signature differs.' },
   E027: { title: 'private item', text: 'Only items declared pub can be used from another file.', fix: 'pub fn helper() { }' },
   E029: { title: 'control flow out of a block expression', text: 'A block expression produces a value, so return cannot leave it. break and continue may only target loops written inside the block.', bad: 'let x = { return 1; 2 };' },
+  E030: { title: 'cannot infer a parameter type', text: 'A function value may leave its parameter types out only where the expected type is known, for example as an argument of a function that takes <fn(int):int>.', bad: 'let f = fn(x) => x + 1;' },
   E028: { title: 'bad qualified name', text: 'module.item names a module without that item, or the item lives in another file.' },
 
   W001: { title: 'unused variable', text: 'The variable is declared and never read. Prefix it with _ to silence the warning.' },

@@ -701,13 +701,20 @@ class Parser {
         if (!this.at(')')) {
           do {
             const p = this.vn(this.expect('ident', 'a parameter name'));
-            this.expect(':');
-            params.push({ name: p.text, span: p.span, ty: this.type() });
+            // no annotation: the analyzer fills it in from the expected function type
+            params.push({ name: p.text, span: p.span, ty: this.eat(':') ? this.type() : ('?' as Type) });
           } while (this.eat(',') && !this.at(')'));
         }
         this.expect(')');
-        const ret: Type = this.eat(':') ? this.type() : 'void';
-        const body = this.allowStruct(() => this.block());
+        let ret: Type = this.eat(':') ? this.type() : 'void';
+        let body: Stmt[];
+        if (this.eat('=>')) {
+          if (ret === 'void') ret = '?' as Type;
+          const value = this.allowStruct(() => this.expr());
+          body = [{ k: 'return', span: value.span, value }];
+        } else {
+          body = this.allowStruct(() => this.block());
+        }
         const name = `lambda$${this.lambdas++}`;
         const fn: FnDecl = { k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 };
         this.fns.push(fn);

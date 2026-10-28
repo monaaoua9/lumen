@@ -4,7 +4,7 @@ export type EnumType = `#${string}`; // enum values are ordinals at runtime
 export type ArrayType = `${string}[]`;
 export type FnType = `<${string}>`; // <fn(int,int):int>, the angle brackets keep it apart from arrays
 export type Elem = Scalar | StructType | EnumType | ArrayType | FnType;
-export type Type = Elem | 'void' | 'error';
+export type Type = Elem | 'void' | 'error' | '?'; // '?' only lives in a lambda until the analyzer fills it in
 
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
 export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
