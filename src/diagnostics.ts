@@ -17,6 +17,7 @@ export interface Segment {
   name: string;
   start: number;
   end: number;
+  std?: boolean; // part of the bundled standard library, its warnings are not shown
 }
 
 export class Source {

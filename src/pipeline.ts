@@ -24,7 +24,9 @@ export function frontend(text: string, name = '<input>', segments: Segment[] = [
   const source = new Source(text, name, segments);
   const { program, diags } = parse(text, segments);
   const parseFailed = diags.some(d => d.severity === 'error');
-  const diagnostics = parseFailed ? diags : [...diags, ...analyze(program, segments)];
+  const all = parseFailed ? diags : [...diags, ...analyze(program, segments)];
+  const inStd = (d: Diagnostic) => segments.some(s => s.std && d.span.start >= s.start && d.span.start <= s.end);
+  const diagnostics = all.filter(d => d.severity === 'error' || !inStd(d));
   return { source, program, diagnostics, ok: !diagnostics.some(d => d.severity === 'error') };
 }
 

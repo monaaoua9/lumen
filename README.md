@@ -135,6 +135,20 @@ Semantics worth knowing:
 - Structs are references too (`let q = p;` aliases) and print as `Point { x: 1.0, y: 2.0 }`. Literal fields run in the order written. A struct cannot contain itself by value; use an array field (`kids: Node[]`).
 - `Name {` after `if` / `while` is a block, wrap a struct literal in parentheses there.
 
+## Standard library
+
+`lib/` holds modules written in Lumen itself, imported with an `std/` prefix. Diagnostics inside them are not reported unless they are errors.
+
+```
+import "std/map.lum"
+
+let ages: map.Map<int> = map.Map { keys: [], vals: [] };
+map.set(ages, "ada", 36);
+print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
+```
+
+`std/map.lum`: a string-keyed `Map<V>` with `set`, `get(m, key, fallback)`, `has`, `delete` and `size`. It is two parallel arrays, so lookups are linear.
+
 ## Static analysis
 
 Errors (block execution): `E001` unknown variable, `E002` unknown function, `E003` type mismatch,

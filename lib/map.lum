@@ -1,0 +1,40 @@
+// string-keyed map, kept as two parallel arrays. lookups are linear, which is fine for small tables
+pub struct Map<V> { keys: string[], vals: V[] }
+
+fn slot<V>(m: Map<V>, key: string): int {
+  for i in 0..len(m.keys) {
+    if m.keys[i] == key { return i; }
+  }
+  return -1;
+}
+
+pub fn set<V>(m: Map<V>, key: string, value: V) {
+  let at = slot(m, key);
+  if at < 0 {
+    push(m.keys, key);
+    push(m.vals, value);
+  } else {
+    m.vals[at] = value;
+  }
+}
+
+pub fn get<V>(m: Map<V>, key: string, fallback: V): V {
+  let at = slot(m, key);
+  return if at < 0 { fallback } else { m.vals[at] };
+}
+
+pub fn has<V>(m: Map<V>, key: string): bool {
+  return slot(m, key) >= 0;
+}
+
+pub fn delete<V>(m: Map<V>, key: string): bool {
+  let at = slot(m, key);
+  if at < 0 { return false; }
+  remove(m.keys, at);
+  remove(m.vals, at);
+  return true;
+}
+
+pub fn size<V>(m: Map<V>): int {
+  return len(m.keys);
+}

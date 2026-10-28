@@ -1198,7 +1198,7 @@ class Analyzer {
           for (const f of e.fields) {
             const fd = tmpl.fields.find(d => d.name === f.name);
             if (!fd) continue;
-            const t = this.expr(f.value, fd.ty.includes('@') && info ? this.canon(replaceVars(fd.ty, binds), f.nameSpan) as Type : undefined);
+            const t = this.expr(f.value, info ? this.canon(replaceVars(fd.ty, binds), f.nameSpan) as Type : undefined);
             pre.set(f, t);
             unify(fd.ty, t, params, binds, this.structInst);
           }
