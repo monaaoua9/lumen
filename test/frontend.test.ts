@@ -1,0 +1,114 @@
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { lex } from '../src/lexer.ts';
+import { parse } from '../src/parser.ts';
+import { diagCodes } from './helpers.ts';
+
+test('lexer: tokens, comments, escapes', () => {
+  const { tokens, diags } = lex('let s = "a\\n\\"b"; // note\n1.5 += x');
+  assert.equal(diags.length, 0);
+  assert.deepEqual(tokens.map(t => t.kind), ['let', 'ident', '=', 'string', ';', 'float', '+=', 'ident', 'eof']);
+  assert.equal(tokens[3].value, 'a\n"b');
+});
+
+test('lexer: reports bad input', () => {
+  assert.equal(lex('"abc').diags[0].code, 'L001');
+  assert.equal(lex('let a = @;').diags[0].code, 'L000');
+  assert.equal(lex('99999999999999999999').diags[0].code, 'L003');
+});
+
+test('parser: precedence and associativity', () => {
+  const { program, diags } = parse('1 + 2 * 3 - 4;');
+  assert.equal(diags.length, 0);
+  const s = program.body[0];
+  assert.equal(s.k, 'expr');
+  if (s.k !== 'expr' || s.e.k !== 'binary') throw new Error('shape');
+  assert.equal(s.e.op, '-'); // (1 + (2*3)) - 4
+  assert.equal(s.e.l.k, 'binary');
+});
+
+test('parser: compound assignment desugars', () => {
+  const { program } = parse('var x = 1; x *= 3;');
+  const s = program.body[1];
+  if (s.k !== 'assign' || s.value.k !== 'binary') throw new Error('shape');
+  assert.equal(s.value.op, '*');
+});
+
+test('parser: recovers and reports several errors', () => {
+  const { diags } = parse('let a = ;\nlet b = 2\nlet c = 3;\nfn f( { }');
+  assert.ok(diags.length >= 3, `got ${diags.length}`);
+  assert.ok(diags.every(d => d.severity === 'error'));
+});
+
+test('parser: stray closing brace does not hang', () => {
+  const { diags } = parse('} } let x = 1;');
+  assert.ok(diags.length >= 1);
+});
+
+test('parser: nested functions are rejected', () => {
+  assert.ok(parse('fn a() { fn b() {} }').diags.some(d => d.code === 'P002'));
+});
+
+test('analyzer: type errors', () => {
+  assert.deepEqual(diagCodes('let x: int = "s"; print(x);'), ['E003']);
+  assert.deepEqual(diagCodes('print(1 + 1.5);'), ['E003']);
+  assert.deepEqual(diagCodes('print("a" + 1);'), ['E003']);
+  assert.deepEqual(diagCodes('if 1 { }'), ['E011']);
+  assert.deepEqual(diagCodes('print(5 % 2.0);'), ['E003']);
+});
+
+test('analyzer: names and calls', () => {
+  assert.deepEqual(diagCodes('print(nope);'), ['E001']);
+  assert.deepEqual(diagCodes('nope(1);'), ['E002']);
+  assert.deepEqual(diagCodes('fn f(a: int): int { return a; } print(f(1, 2));'), ['E004']);
+  assert.deepEqual(diagCodes('fn f(a: int): int { return a; } print(f("x"));'), ['E003']);
+  assert.deepEqual(diagCodes('fn f() {} fn f() {}').filter(c => c === 'E006'), ['E006']);
+  assert.deepEqual(diagCodes('fn print(a: int) {}').includes('E006'), true);
+});
+
+test('analyzer: mutability, scopes, control flow', () => {
+  assert.ok(diagCodes('let x = 1; x = 2; print(x);').includes('E005'));
+  assert.ok(diagCodes('let x = 1; let x = 2; print(x);').includes('E006'));
+  assert.ok(diagCodes('break;').includes('E008'));
+  assert.ok(diagCodes('return 1;').includes('E009'));
+  assert.ok(diagCodes('fn f(): int { if true { return 1; } }').includes('E007'));
+  assert.ok(!diagCodes('fn f(): int { if true { return 1; } else { return 2; } } print(f());').includes('E007'));
+  assert.ok(!diagCodes('fn f(): int { while true { } } print(f());').includes('E007'));
+  assert.ok(diagCodes('fn f(): int { while true { break; } } print(f());').includes('E007'));
+  assert.ok(diagCodes('print(1 / 0);').includes('E012'));
+});
+
+test('analyzer: void values cannot be used', () => {
+  assert.ok(diagCodes('fn f() {} let x = f(); print(x);').includes('E010'));
+  assert.ok(diagCodes('print(print(1));').includes('E010'));
+});
+
+test('analyzer: lints', () => {
+  assert.ok(diagCodes('let a = 1;').includes('W001'));
+  assert.ok(!diagCodes('let _a = 1;').includes('W001'));
+  assert.ok(diagCodes('fn f(a: int) {} f(1);').includes('W002'));
+  assert.ok(diagCodes('let a = 1; { let a = 2; print(a); } print(a);').includes('W003'));
+  assert.ok(diagCodes('fn f(): int { return 1; print(2); } print(f());').includes('W004'));
+  assert.ok(diagCodes('if true { print(1); }').includes('W004'));
+  assert.ok(!diagCodes('var i = 0; while true { i += 1; if i > 3 { break; } }').includes('W004'));
+  assert.ok(diagCodes('fn f() {}').includes('W005'));
+  assert.ok(diagCodes('let a = 1; print(a == a);').includes('W006'));
+  assert.ok(diagCodes('var a = 1; print(a);').includes('W007'));
+  assert.ok(diagCodes('1 + 2;').includes('W008'));
+});
+
+test('analyzer: a clean program has no diagnostics', () => {
+  const src = `
+    fn sq(x: int): int { return x * x; }
+    var acc = 0;
+    var i = 0;
+    while i < 5 { acc += sq(i); i += 1; }
+    print(acc);
+  `;
+  assert.deepEqual(diagCodes(src), []);
+});
+
+test('analyzer: errors do not cascade', () => {
+  // one bad name should give one error, not one per use
+  assert.deepEqual(diagCodes('print(zz + 1); print(zz * 2.5);'), ['E001', 'E001']);
+});

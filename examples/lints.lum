@@ -1,0 +1,29 @@
+fn helper(a: int, unused_arg: int): int {
+  return a * 2;
+}
+
+fn never_called(): int {
+  return 1;
+}
+
+let x = 10;
+var y = 5;
+let leftover = 3;
+
+if x == x { print("always"); }
+if true { print("constant"); }
+
+{
+  let x = 99;
+  print(x);
+}
+
+fn early(): int {
+  return 1;
+  print("dead");
+}
+
+x + 1;
+print(helper(x, 2));
+print(early());
+print(y);

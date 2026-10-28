@@ -1,0 +1,20 @@
+fn is_prime(n: int): bool {
+  if n < 2 { return false; }
+  var d = 2;
+  while d * d <= n {
+    if n % d == 0 { return false; }
+    d += 1;
+  }
+  return true;
+}
+
+var count = 0;
+var n = 0;
+while n < 200 {
+  if is_prime(n) {
+    count += 1;
+    if count % 5 == 0 { print(n); }
+  }
+  n += 1;
+}
+print("primes below 200: " + str(count));

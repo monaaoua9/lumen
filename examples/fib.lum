@@ -1,0 +1,11 @@
+// recursion, a global, and a loop
+fn fib(n: int): int {
+  if n < 2 { return n; }
+  return fib(n - 1) + fib(n - 2);
+}
+
+var i = 0;
+while i <= 15 {
+  print("fib(" + str(i) + ") = " + str(fib(i)));
+  i += 1;
+}

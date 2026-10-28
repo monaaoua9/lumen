@@ -1,0 +1,41 @@
+// floats, strings, short-circuit, break/continue, side effects in args
+fn noisy(tag: string, v: int): int {
+  print("eval " + tag);
+  return v;
+}
+
+fn gcd(a: int, b: int): int {
+  if b == 0 { return a; }
+  return gcd(b, a % b);
+}
+
+fn average(total: float, n: int): float {
+  return total / float(n);
+}
+
+print(gcd(1071, 462));
+print(average(10.0, 4));
+print(average(7.5, 3));
+print(0.1 + 0.2);
+print(1.0 / 3.0);
+print(int(9.99));
+print(len("héllo"));
+
+// left to right, and && must not evaluate the right side
+print(noisy("a", 1) + noisy("b", 2) * noisy("c", 3));
+if false && noisy("never", 1) > 0 { print("unreachable"); }
+if true || noisy("never", 1) > 0 { print("short-circuit ok"); }
+
+var total = 0;
+var k = 0;
+while true {
+  k += 1;
+  if k % 2 == 0 { continue; }
+  if k > 9 { break; }
+  total += k;
+}
+print("odd sum: " + str(total));
+{
+  let s = "block";
+  print(s + "!");
+}

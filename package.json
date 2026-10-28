@@ -1,0 +1,18 @@
+{
+  "name": "lumen",
+  "version": "0.1.0",
+  "description": "Lumen: a small statically-typed language with a static analyzer, tree-walking interpreter, bytecode VM and C backend",
+  "type": "module",
+  "private": true,
+  "bin": { "lumen": "src/cli.ts" },
+  "scripts": {
+    "lumen": "node src/cli.ts",
+    "test": "node --test \"test/*.test.ts\"",
+    "typecheck": "tsc -p ."
+  },
+  "engines": { "node": ">=22.18" },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}

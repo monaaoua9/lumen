@@ -1,0 +1,13 @@
+fn fib(n: int): int {
+  if n < 2 { return n; }
+  return fib(n - 1) + fib(n - 2);
+}
+
+var sum = 0;
+var i = 0;
+while i < 2000000 {
+  sum += i % 7;
+  i += 1;
+}
+print(sum);
+print(fib(27));

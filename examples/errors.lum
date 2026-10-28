@@ -1,0 +1,15 @@
+fn area(w: float, h: float): float {
+  return w * h;
+}
+
+let count: int = "three";
+let ratio = 1 / 0;
+var total = 0;
+total = total + 1.5;
+print(area(2, 3.0));
+print(coutn);
+area(1.0);
+if count { print("yes"); }
+fn broken(x: int): int {
+  if x > 0 { return 1; }
+}
