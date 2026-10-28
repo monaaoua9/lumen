@@ -24,7 +24,7 @@ export function frontend(text: string, name = '<input>', segments: Segment[] = [
   const source = new Source(text, name, segments);
   const { program, diags } = parse(text);
   const parseFailed = diags.some(d => d.severity === 'error');
-  const diagnostics = parseFailed ? diags : [...diags, ...analyze(program)];
+  const diagnostics = parseFailed ? diags : [...diags, ...analyze(program, segments)];
   return { source, program, diagnostics, ok: !diagnostics.some(d => d.severity === 'error') };
 }
 

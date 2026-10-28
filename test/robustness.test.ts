@@ -83,6 +83,13 @@ test('modules: imports are bundled and errors point at the right file', () => {
     assert.equal(missing.status, 1);
     assert.ok(missing.stderr.includes('P004'), missing.stderr);
 
+    // only `pub` items cross file boundaries
+    writeFileSync(join(dir, 'priv.lum'), 'fn hidden(): int { return 1; }\npub fn shown(): int { return hidden(); }\n');
+    writeFileSync(join(dir, 'use_priv.lum'), 'import "priv.lum";\nprint(shown());\nprint(hidden());\n');
+    const priv = cli('check', join(dir, 'use_priv.lum'));
+    assert.equal(priv.status, 1);
+    assert.ok(priv.stdout.includes('E027') && priv.stdout.includes("'hidden'") && !priv.stdout.includes("'shown'"), priv.stdout);
+
     // a cycle must not hang
     writeFileSync(join(dir, 'a.lum'), 'import "b.lum";\nfn a(): int { return 1; }\n');
     writeFileSync(join(dir, 'b.lum'), 'import "a.lum";\nfn b(): int { return 2; }\nprint(b());\n');

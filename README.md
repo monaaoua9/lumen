@@ -111,7 +111,7 @@ Traits: `trait Shape { fn area(self): float; }` declares method signatures and `
 - **Static**, through a bound: `fn total<T: Shape>(xs: T[])`. Calling it with a type that has no impl is `E025`. Generics are monomorphized, so `s.area()` is resolved per instance at no runtime cost.
 - **Dynamic**, through `dyn Shape`: `let shapes: dyn Shape[] = [Shape.from(Circle { r: 1.0 }), Shape.from(Rect { w: 2.0, h: 3.0 })];` and `s.area()` on each element. `dyn Shape` is a closed-world enum the analyzer builds from every `impl Shape for X` in the program (one variant per impl, dispatch is a `match`), so it works unchanged on all three backends. A value of an implementing type is accepted wherever a `dyn Shape` is expected (arguments, `let` with a type, returns, array elements); `Shape.from(x)` does the same explicitly. A `dyn Shape` also satisfies `T: Shape` bounds.
 
-Modules: `import "geometry.lum";` on its own line pulls in another file (path relative to the importing file). Imports are resolved before lexing: each file is read once, dependencies come first, and the result is one program, so every top-level name is global and a clash is the usual `E006`. Diagnostics still point at the right file and line. A missing file is `P004`; import cycles are tolerated. See `examples/modules/`.
+Modules: `import "geometry.lum";` on its own line pulls in another file (path relative to the importing file). Imports are resolved before lexing: each file is read once, dependencies come first, and the result is one program, so every top-level name is global and a clash is the usual `E006`. Diagnostics still point at the right file and line. Visibility is per file: a top-level `fn`, `struct` or `enum` can be used from another file only when declared `pub` (`E027` otherwise); inside its own file everything is visible. A missing file is `P004`; import cycles are tolerated. See `examples/modules/`.
 
 Semantics worth knowing:
 
@@ -182,6 +182,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- A generic function body is only checked when it is instantiated; modules are textual (no namespaces or visibility).
+- A generic function body is only checked when it is instantiated; modules are textual (one global namespace, `pub` is the only visibility rule).
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

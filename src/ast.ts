@@ -67,6 +67,7 @@ export interface StructField {
 
 export interface StructDecl {
   k: 'struct';
+  pub?: boolean;
   span: Span;
   name: string;
   nameSpan: Span;
@@ -77,6 +78,7 @@ export interface StructDecl {
 
 export interface EnumDecl {
   k: 'enum';
+  pub?: boolean;
   span: Span;
   name: string;
   nameSpan: Span;
@@ -107,6 +109,7 @@ export interface Param {
 
 export interface FnDecl {
   k: 'fn';
+  pub?: boolean;
   span: Span;
   name: string;
   nameSpan: Span;

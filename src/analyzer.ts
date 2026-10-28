@@ -1,4 +1,4 @@
-import type { Diagnostic, Severity, Span } from './diagnostics.ts';
+import type { Diagnostic, Segment, Severity, Span } from './diagnostics.ts';
 import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
 import { BUILTINS, arrayOf, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Elem, FnType, Type } from './types.ts';
@@ -206,6 +206,7 @@ class Analyzer {
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
   ninst = 0;
+  segments: Segment[] = [];
   traits = new Map<string, TraitDecl>();
   dynByEnum = new Map<string, { enumName: string; variants: { variant: string; type: Type; implType: string }[] }>();
   dynTraits = new Map<string, { enumName: string; variants: { variant: string; type: Type; implType: string }[] }>();
@@ -374,7 +375,7 @@ class Analyzer {
     this.structInst.set(inst, { tmpl: name, args });
     const map = new Map<string, Type>(tmpl.typeParams!.map((p, i) => [p, args[i]]));
     const decl: StructDecl = {
-      k: 'struct', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, shown: name,
+      k: 'struct', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, shown: name, pub: tmpl.pub,
       fields: tmpl.fields.map(f => ({ name: f.name, span: f.span, ty: this.canon(replaceVars(f.ty, map), f.span) as Type })),
     };
     this.structs.set(inst, decl);
@@ -404,7 +405,7 @@ class Analyzer {
     this.structInst.set(inst, { tmpl: name, args });
     const map = new Map<string, Type>(tmpl.typeParams!.map((p, i) => [p, args[i]]));
     const decl: EnumDecl = {
-      k: 'enum', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan,
+      k: 'enum', span: tmpl.span, name: inst, nameSpan: tmpl.nameSpan, pub: tmpl.pub,
       variants: tmpl.variants.map(v => ({ name: v.name, span: v.span, payload: v.payload.map(p => this.canon(replaceVars(p, map), v.span) as Type) })),
     };
     this.enums.set(inst, decl);
@@ -479,6 +480,19 @@ class Analyzer {
     }
   }
 
+  // with imports, a top-level fn/struct/enum is only usable from other files when it is `pub`
+  fileOf(span: Span): string | undefined {
+    return this.segments.find(s => span.start >= s.start && span.start <= s.end)?.name;
+  }
+
+  access(kind: string, name: string, decl: { pub?: boolean; nameSpan: Span } | undefined, use: Span) {
+    if (!decl || decl.pub || !this.segments.length) return;
+    const home = this.fileOf(decl.nameSpan);
+    if (home && home !== this.fileOf(use)) {
+      this.err('E027', `${kind} '${name}' is private to ${home}`, use, `declare it with 'pub ${kind === 'function' ? 'fn' : kind}' to use it from other files`);
+    }
+  }
+
   // struct names are only known after parsing, so every written type goes through here
   checkType(t: Type, span: Span) {
     let base: Type = t;
@@ -487,9 +501,13 @@ class Analyzer {
       const sig = fnSig(base);
       for (const p of sig.params) this.checkType(p, span);
       this.checkType(sig.ret, span);
-    } else if (isEnum(base) && !this.enums.has(base.slice(1))) {
+    } else if (isEnum(base) && this.enums.has(base.slice(1))) {
+      this.access('enum', base.slice(1), this.enums.get(base.slice(1)), span);
+    } else if (isStruct(base) && this.structs.has(structName(base))) {
+      this.access('struct', structName(base), this.structs.get(structName(base)), span);
+    } else if (isEnum(base)) {
       this.err('E016', `unknown type '${base.slice(1)}'`, span);
-    } else if (isStruct(base) && !this.structs.has(structName(base))) {
+    } else if (isStruct(base)) {
       const sug = closest(structName(base), this.structs.keys());
       this.err('E016', `unknown type '${structName(base)}'`, span, sug ? `did you mean '${sug}'?` : 'valid types: int, float, bool, string, or a declared struct');
     }
@@ -1145,6 +1163,7 @@ class Analyzer {
           e.name = inst;
         }
         const decl = this.structs.get(e.name);
+        this.access('struct', e.name, decl, e.nameSpan);
         if (!decl) {
           const sug = closest(e.name, this.structs.keys());
           this.err('E016', `unknown struct '${e.name}'`, e.nameSpan, sug ? `did you mean '${sug}'?` : undefined);
@@ -1566,6 +1585,7 @@ class Analyzer {
   checkUserCall(e: Extract<Expr, { k: 'call' }>, fn: FnSym, argTys: Type[]): Type {
     e.fn = fn;
     fn.used = true;
+    if (fn.index >= 0 && !fn.name.includes('$')) this.access('function', fn.name, fn.decl, e.nameSpan);
     if (e.args.length !== fn.params.length) {
       this.err('E004', `'${e.name}' takes ${fn.params.length} argument${fn.params.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
     } else {
@@ -1579,8 +1599,9 @@ class Analyzer {
   }
 }
 
-export function analyze(prog: Program): Diagnostic[] {
+export function analyze(prog: Program, segments: Segment[] = []): Diagnostic[] {
   const a = new Analyzer();
+  a.segments = segments;
   a.run(prog);
   return a.diags;
 }

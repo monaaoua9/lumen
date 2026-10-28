@@ -108,7 +108,7 @@ class Parser {
   }
 
   sync() {
-    const starts = new Set(['fn', 'impl', 'trait', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
+    const starts = new Set(['fn', 'impl', 'trait', 'pub', 'struct', 'enum', 'match', 'for', 'let', 'var', 'if', 'while', 'return', 'break', 'continue']);
     while (!this.at('eof')) {
       if (this.at(';')) { this.next(); return; }
       if (this.at('}')) return;
@@ -179,6 +179,13 @@ class Parser {
     }
     switch (t.kind) {
       case 'fn': return this.fnDecl();
+      case 'pub': {
+        this.next();
+        const d = this.statement();
+        if (d.k === 'fn' || d.k === 'struct' || d.k === 'enum') d.pub = true;
+        else this.diags.push({ severity: 'error', code: 'P005', message: "'pub' applies to fn, struct and enum declarations", span: t.span });
+        return d;
+      }
       case 'impl': return this.implDecl();
       case 'trait': return this.traitDecl();
       case 'struct': return this.structDecl();
