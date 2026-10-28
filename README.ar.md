@@ -34,6 +34,7 @@ node src/cli.ts check examples/errors.lum
 node src/cli.ts disasm examples/fib.lum
 node src/cli.ts build examples/bench.lum -o bench
 node src/cli.ts repl
+node src/cli.ts explain E003
 npm test
 ```
 

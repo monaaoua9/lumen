@@ -10,6 +10,7 @@ import { checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
 import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
+import { EXPLAIN, explain } from './explain.ts';
 import { createInterface } from 'node:readline';
 
 const USAGE = `lumen <command> <file.lum> [options]
@@ -23,6 +24,7 @@ commands
   ast      dump the typed AST as JSON
   bench    run on both engines and compare timings
   repl     interactive prompt (no file)
+  explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
 options
   -O          constant folding / dead branch removal before codegen
@@ -42,6 +44,14 @@ const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 function main(): number | Promise<number> {
   const cmd = args[0];
   if (cmd === 'repl') return repl();
+  if (cmd === 'explain') {
+    const code = args[1];
+    const text = code ? explain(code) : null;
+    if (text) process.stdout.write(text);
+    else if (!code) process.stdout.write(Object.entries(EXPLAIN).map(([c, e]) => `${c}  ${e.title}`).join('\n') + '\n');
+    else process.stderr.write(`no explanation for '${code}'\n`);
+    return code && !text ? 1 : 0;
+  }
   const file = args.find((a, i) => i > 0 && !a.startsWith('-') && args[i - 1] !== '-o' && args[i - 1] !== '--engine');
   if (!cmd || cmd === '-h' || cmd === '--help' || !file) {
     process.stderr.write(USAGE);

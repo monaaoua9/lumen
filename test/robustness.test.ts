@@ -248,3 +248,16 @@ test('run --engine c compiles and runs natively', { skip: !['gcc', 'clang', 'cc'
   assert.equal(r.stdout.replace(/\r\n/g, '\n'), '2\n5\n');
   assert.equal(cli('run', 'examples/overflow.lum', '--engine', 'c').status, 1);
 });
+
+test('explain: every diagnostic code the compiler can emit has an entry', () => {
+  const used = new Set<string>();
+  for (const f of ['lexer', 'parser', 'analyzer', 'modules']) {
+    const text = readFileSync(new URL(`../src/${f}.ts`, import.meta.url), 'utf8');
+    for (const m of text.matchAll(/'([ELPW]\d{3})'/g)) used.add(m[1]);
+  }
+  const r = cli('explain');
+  const listed = new Set(r.stdout.split(/\r?\n/).map(l => l.split(' ')[0]));
+  for (const code of used) assert.ok(listed.has(code), `${code} has no explanation`);
+  assert.ok(cli('explain', 'E003').stdout.includes('type mismatch'));
+  assert.equal(cli('explain', 'E999').status, 1);
+});
