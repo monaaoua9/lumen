@@ -313,6 +313,13 @@ test('strings: ordering', () => {
   assert.deepEqual(errs('print(true < false);'), ['E003']);
 });
 
+test('if expressions', () => {
+  assert.deepEqual(errs('print(if 1 < 2 { "a" } else if true { "b" } else { "c" });'), []);
+  assert.deepEqual(errs('print(if 1 { 1 } else { 2 });'), ['E003']);
+  assert.deepEqual(errs('print(if true { 1 } else { "a" });'), ['E003']);
+  assert.deepEqual(diagCodes('print(if true { 1 });'), ['P001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

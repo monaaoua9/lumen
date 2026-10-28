@@ -73,7 +73,7 @@ match light {
 }
 ```
 
-`match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs).
+`match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs). `if` works as an expression too, `let s = if n < 0 { "neg" } else { "pos" };`: both branches are required, `else if` chains, and it is sugar for a match on the condition.
 
 Variants can carry data, which `match` takes apart (recursive types work):
 

@@ -1,0 +1,13 @@
+// if as an expression: both branches required, only the chosen one runs
+fn sign(n: int): string {
+  return if n < 0 { "neg" } else if n == 0 { "zero" } else { "pos" };
+}
+let a = if 2 > 1 { 10 } else { 20 };
+print(a + 1);
+print(sign(-4) + sign(0) + sign(9));
+print(1 + if true { 2 } else { 3 });
+fn boom(): int {
+  print("never");
+  return 1 / len("");
+}
+print(if false { boom() } else { 7 });

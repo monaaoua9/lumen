@@ -416,6 +416,29 @@ class Parser {
     return { k: 'block', span: loop.span, body: [...setup, loop] };
   }
 
+  // `if c { a } else { b }` as a value is a match on the condition
+  ifExpr(kw: Token): Expr {
+    const cond = this.condExpr();
+    const yes = this.braced();
+    this.expect('else', "'else' (an if expression needs both branches)");
+    const no = this.at('if') ? this.ifExpr(this.next()) : this.braced();
+    const sp = this.join(kw.span, no.span);
+    return {
+      k: 'matchx', scrut: cond, tmp: -1, span: sp, ty: 'error',
+      arms: [
+        { pats: [{ k: 'lit', value: true, span: cond.span, ty: 'bool' }], value: yes, span: yes.span },
+        { pats: [{ k: 'wild', span: no.span }], value: no, span: no.span },
+      ],
+    };
+  }
+
+  braced(): Expr {
+    this.expect('{');
+    const e = this.allowStruct(() => this.expr());
+    this.expect('}');
+    return e;
+  }
+
   matchStmt(): Stmt {
     const kw = this.next();
     const scrut = this.condExpr();
@@ -751,6 +774,7 @@ class Parser {
         this.expect(')');
         return e;
       }
+      case 'if': return this.ifExpr(t);
       case 'match': {
         const scrut = this.condExpr();
         this.expect('{');
