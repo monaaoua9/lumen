@@ -190,5 +190,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 ## Known limits / next steps
 
 - A generic function body is only checked when it is instantiated; a global is private to its file, traits are namespaced per file and need `pub` to be used from another file.
+- A local function (a named `fn` inside a body) cannot call itself; a block expression cannot `return` out of its function.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).
