@@ -124,6 +124,10 @@ export class Interpreter {
 
       case 'fnref': return e.fn!.decl as unknown as Value;
 
+      case 'lambda':
+        if (e.caps.length === 0) return e.fn as unknown as Value;
+        return new Closure(e.fn, e.caps.map(c => this.eval(c, f))) as unknown as Value;
+
       case 'unary': {
         const v = this.eval(e.arg, f);
         return e.op === '!' ? !v : -(v as number);
@@ -185,7 +189,11 @@ export class Interpreter {
       case 'call': {
         if (e.builtin) return callBuiltin(e.builtin, e.args.map(a => this.eval(a, f)), e.args.map(a => a.ty), this.io, e.span);
         const args = e.args.map(a => this.eval(a, f));
-        if (e.callee) return this.callFn(this.eval(e.callee, f) as unknown as FnDecl, args, e.span);
+        if (e.callee) {
+          const c = this.eval(e.callee, f) as unknown;
+          if (c instanceof Closure) return this.callFn(c.fn, [...args, ...c.caps], e.span);
+          return this.callFn(c as FnDecl, args, e.span);
+        }
         return this.callFn(e.fn!.decl, args, e.span);
       }
     }
@@ -218,6 +226,15 @@ export class Interpreter {
     this.exec(fn.body, frame);
     this.depth--;
     return frame.ret;
+  }
+}
+
+class Closure {
+  fn: FnDecl;
+  caps: Value[];
+  constructor(fn: FnDecl, caps: Value[]) {
+    this.fn = fn;
+    this.caps = caps;
   }
 }
 

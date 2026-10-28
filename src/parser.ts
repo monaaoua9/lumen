@@ -130,7 +130,11 @@ class Parser {
 
   type(): Type {
     let out: Elem;
-    if (this.eat('fn')) {
+    if (this.eat('(')) {
+      // parentheses tell `(fn(int): int)[]` apart from `fn(int): int[]`
+      out = this.type() as Elem;
+      this.expect(')');
+    } else if (this.eat('fn')) {
       this.expect('(');
       const ps: Type[] = [];
       if (!this.at(')')) {
@@ -584,7 +588,7 @@ class Parser {
         return { k: 'array', elems, span: this.join(t.span, close.span), ty: 'error' };
       }
       case 'fn': {
-        // anonymous functions are hoisted to the top level under a made-up name, so they cannot capture locals
+        // the body becomes an ordinary function under a made-up name, the analyzer adds the captured locals as extra params
         this.expect('(');
         const params: Param[] = [];
         if (!this.at(')')) {
@@ -598,8 +602,9 @@ class Parser {
         const ret: Type = this.eat(':') ? this.type() : 'void';
         const body = this.allowStruct(() => this.block());
         const name = `lambda$${this.lambdas++}`;
-        this.fns.push({ k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 });
-        return { k: 'var', name, span: this.join(t.span, this.prevSpan()), ty: 'error' };
+        const fn: FnDecl = { k: 'fn', span: this.join(t.span, this.prevSpan()), name, nameSpan: t.span, params, ret, body, nlocals: 0 };
+        this.fns.push(fn);
+        return { k: 'lambda', fn, caps: [], span: fn.span, ty: 'error' };
       }
       case 'ident': {
         if (this.at('{') && !this.noStruct) return this.structLit(t);

@@ -276,8 +276,7 @@ test('function values: checking', () => {
   assert.deepEqual(errs(F + 'print(inc);'), ['E003']);
   assert.deepEqual(errs(F + 'print(inc == inc);'), ['E003']);
   assert.deepEqual(errs('fn f(g: fn(Nope): int) { } '), ['E016']);
-  // lambdas are hoisted, so locals of the enclosing function are not visible
-  assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { return x + k; }; }'), ['E001']);
+  assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { return x + k; }; print(g(1)); } f();'), []);
 });
 
 test('function values: calling expressions and fields', () => {
@@ -295,4 +294,19 @@ test('math builtins: checking', () => {
   assert.deepEqual(errs('print(min(1, 2.0));'), ['E003']);
   assert.deepEqual(errs('print(abs("x"));'), ['E003']);
   assert.deepEqual(errs('print(max(1));'), ['E004']);
+});
+
+test('closures: capturing', () => {
+  const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
+  assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
+  assert.deepEqual(errs('fn f() { var k = 1; let g = fn(x: int): int { return x + k; }; print(g(1)); k = 2; } f();'), ['E023']);
+  assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { k = 2; return x; }; print(g(1)); } f();'), ['E005']);
+  assert.deepEqual(errs('fn f() { let k = 1; let g = fn(x: int): int { let k = 5; return x + k; }; print(g(1)); } f();').filter(c => c !== 'W003'), []);
+  assert.deepEqual(errs('fn f(a: int) { let g = fn(): fn(): int { return fn(): int { return a; }; }; print(g()()); } f(1);'), []);
+});
+
+test('function types: arrays of functions', () => {
+  const F = 'fn inc(x: int): int { return x + 1; } ';
+  assert.deepEqual(errs(F + 'let fs: (fn(int): int)[] = [inc, inc]; print(fs[0](1));'), []);
+  assert.deepEqual(errs(F + 'let fs: fn(int): int[] = [inc];'), ['E003']);
 });

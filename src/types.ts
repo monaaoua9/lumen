@@ -9,7 +9,7 @@ export type Type = Elem | 'void' | 'error';
 export const isArray = (t: Type): t is ArrayType => t.endsWith('[]');
 export const isStruct = (t: Type): t is StructType => t.startsWith('@') && !t.endsWith('[]');
 export const isEnum = (t: Type): t is EnumType => t.startsWith('#') && !t.endsWith('[]');
-export const isFn = (t: Type): t is FnType => t.startsWith('<');
+export const isFn = (t: Type): t is FnType => t.startsWith('<') && t.endsWith('>');
 export const fnType = (params: Type[], ret: Type): FnType => `<fn(${params.join(',')}):${ret}>`;
 export const hasFn = (t: Type) => {
   while (isArray(t)) t = elemOf(t);

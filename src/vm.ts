@@ -70,9 +70,31 @@ export function run(m: Module, io: IO) {
         case Op.JFEQ: sp -= 2; if (stack[sp] !== stack[sp + 1]) pc = code[pc]; else pc++; break;
         case Op.JFNE: sp -= 2; if (stack[sp] === stack[sp + 1]) pc = code[pc]; else pc++; break;
 
+        case Op.MKCLO: {
+          const idx = code[pc++];
+          const n = code[pc++];
+          sp -= n;
+          stack[sp] = [idx, ...stack.slice(sp, sp + n)];
+          sp++;
+          break;
+        }
+
         case Op.CALL:
         case Op.CALLI: {
-          const callee = op === Op.CALL ? fns[code[pc++]] : fns[stack[--sp] as number];
+          let callee: Proto;
+          if (op === Op.CALL) {
+            callee = fns[code[pc++]];
+          } else {
+            const fv = stack[--sp];
+            if (typeof fv === 'number') {
+              callee = fns[fv];
+            } else {
+              // closure: [fn index, ...captured values], the captures follow the arguments
+              const clo = fv as Value[];
+              callee = fns[clo[0] as number];
+              for (let i = 1; i < clo.length; i++) stack[sp++] = clo[i];
+            }
+          }
           if (depth >= MAX_DEPTH || sp + callee.nlocals >= STACK_SIZE) {
             throw new RuntimeError('stack overflow');
           }

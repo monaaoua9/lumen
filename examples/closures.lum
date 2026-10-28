@@ -1,0 +1,40 @@
+fn adder(n: int): fn(int): int {
+    return fn(x: int): int { return x + n; };
+}
+
+fn compose(f: fn(int): int, g: fn(int): int): fn(int): int {
+    return fn(x: int): int { return g(f(x)); };
+}
+
+fn map(xs: int[], f: fn(int): int): int[] {
+    let out: int[] = [];
+    for x in xs { push(out, f(x)); }
+    return out;
+}
+
+let add5 = adder(5);
+let add10 = adder(10);
+print(add5(1));
+print(add10(1));
+
+let both = compose(add5, fn(x: int): int { return x * 2; });
+print(both(3));
+
+let k = 100;
+print(map([1, 2, 3], fn(x: int): int { return x + k; }));
+
+fn counter_demo() {
+    let base = 7;
+    let label = "n=";
+    let show = fn(i: int): string { return label + str(base + i); };
+    print(show(1));
+    print(show(2));
+}
+counter_demo();
+
+fn nested(a: int): fn(int): fn(int): int {
+    return fn(b: int): fn(int): int {
+        return fn(c: int): int { return a * 100 + b * 10 + c; };
+    };
+}
+print(nested(1)(2)(3));

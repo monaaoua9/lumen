@@ -36,6 +36,7 @@ export type Expr =
   | (Base & { k: 'str'; value: string })
   | (Base & { k: 'bool'; value: boolean })
   | (Base & { k: 'var'; name: string; sym?: VarSym })
+  | (Base & { k: 'lambda'; fn: FnDecl; caps: Expr[] })
   | (Base & { k: 'fnref'; name: string; fn?: FnSym })
   | (Base & { k: 'unary'; op: '-' | '!'; arg: Expr })
   | (Base & { k: 'binary'; op: BinOp; l: Expr; r: Expr })

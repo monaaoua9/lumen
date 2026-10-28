@@ -230,6 +230,15 @@ class FnCompiler {
         this.emit(e.sym!.where === 'global' ? Op.LOADG : Op.LOADL, e.sym!.slot);
         return;
 
+      case 'lambda':
+        if (e.caps.length === 0) {
+          this.emit(Op.CONST, this.poolIdx(e.fn.sym!.index));
+        } else {
+          e.caps.forEach(c => this.expr(c));
+          this.emit(Op.MKCLO, e.fn.sym!.index, e.caps.length);
+        }
+        return;
+
       case 'fnref':
         this.emit(Op.CONST, this.poolIdx(e.fn!.index));
         return;

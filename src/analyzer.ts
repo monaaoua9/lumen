@@ -18,12 +18,53 @@ class Scope {
   }
 }
 
+// every identifier a body mentions, and every name it declares itself (lets, loop vars, match bindings, nested lambda params)
+function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
+  const pat = (p: Pat) => {
+    if (p.k === 'variant') p.binds?.forEach(b => b && declared.add(b.name));
+  };
+  const ex = (e: Expr): void => {
+    switch (e.k) {
+      case 'var': used.add(e.name); return;
+      case 'unary': ex(e.arg); return;
+      case 'binary': ex(e.l); ex(e.r); return;
+      case 'call': used.add(e.name); e.args.forEach(ex); if (e.callee) ex(e.callee); return;
+      case 'array': e.elems.forEach(ex); return;
+      case 'index': ex(e.arr); ex(e.idx); return;
+      case 'field': ex(e.obj); return;
+      case 'mcall': ex(e.obj); e.args.forEach(ex); return;
+      case 'enumctor': e.args.forEach(ex); return;
+      case 'structlit': e.fields.forEach(f => ex(f.value)); return;
+      case 'matchx': ex(e.scrut); e.arms.forEach(a => { a.pats.forEach(pat); ex(a.value); }); return;
+      case 'lambda': e.fn.params.forEach(p => declared.add(p.name)); namesIn(e.fn.body, used, declared); return;
+    }
+  };
+  const st = (s: Stmt): void => {
+    switch (s.k) {
+      case 'let': declared.add(s.name); ex(s.init); return;
+      case 'assign': used.add(s.name); ex(s.value); return;
+      case 'expr': ex(s.e); return;
+      case 'if': ex(s.cond); s.then.forEach(st); s.els?.forEach(st); return;
+      case 'while': ex(s.cond); s.body.forEach(st); return;
+      case 'return': if (s.value) ex(s.value); return;
+      case 'block': s.body.forEach(st); return;
+      case 'setindex': ex(s.arr); ex(s.idx); ex(s.value); return;
+      case 'setfield': ex(s.obj); ex(s.value); return;
+      case 'match': ex(s.scrut); s.arms.forEach(a => { a.pats.forEach(pat); a.body.forEach(st); }); return;
+    }
+  };
+  body.forEach(st);
+}
+
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
 function showTypes(msg: string): string {
   let out = msg.replaceAll('@', '').replaceAll('$', '.');
   for (let prev = ''; prev !== out; ) {
     prev = out;
-    out = out.replace(/<fn\(([^<>]*)\):([^<>]*)>/g, (_, ps: string, r: string) => `fn(${ps.replace(/,(?! )/g, ', ')})` + (r === 'void' ? '' : `: ${r}`));
+    out = out.replace(/<fn\(([^<>]*)\):([^<>]*)>(\[\])?/g, (_, ps: string, r: string, arr?: string) => {
+      const text = `fn(${ps.replace(/,(?! )/g, ', ')})` + (r === 'void' ? '' : `: ${r}`);
+      return arr ? `(${text})[]` : text;
+    });
   }
   return out;
 }
@@ -95,10 +136,6 @@ class Analyzer {
     for (const f of prog.fns) this.declareFn(f);
 
     this.analyzeBlockBody(prog.body);
-    // lambdas never appear as statements, so nothing above reached them
-    for (const f of prog.fns) {
-      if (f.name.startsWith('lambda$')) this.analyzeFn(f);
-    }
 
     for (const v of this.allVars) this.lintVar(v);
     for (const f of this.fns.values()) {
@@ -649,6 +686,7 @@ class Analyzer {
       case 'bool': return 'bool';
       case 'enumval': return ('#' + e.enumName) as Type;
       case 'fnref': return e.ty; // only produced by the 'var' case below
+      case 'lambda': return this.lambda(e);
       case 'matchx': return this.matchExpr(e, want);
       case 'mcall': return this.methodCall(e);
       case 'enumctor': return ('#' + e.enumName) as Type;
@@ -878,6 +916,37 @@ class Analyzer {
         if (!isArray(t0)) { bad('expects an array'); return 'error'; }
         return elemOf(t0);
     }
+  }
+
+  lambda(e: Extract<Expr, { k: 'lambda' }>): Type {
+    const f = e.fn;
+    const ty = fnType(f.params.map(p => p.ty), f.ret);
+    const used = new Set<string>();
+    const declared = new Set<string>();
+    for (const p of f.params) declared.add(p.name);
+    namesIn(f.body, used, declared);
+
+    // captured locals are copied in when the closure is created and arrive as extra trailing params
+    for (const name of used) {
+      if (declared.has(name)) continue;
+      const outer = this.scope.lookup(name);
+      if (!outer || outer.where === 'global') continue;
+      if (outer.mutable) {
+        this.err('E023', `a function value cannot capture '${name}' because it is declared with 'var'`, f.nameSpan, `copy it first: let ${name}_copy = ${name};`);
+      }
+      const ref: Expr = { k: 'var', name, span: f.nameSpan, ty: 'error' };
+      this.expr(ref);
+      e.caps.push(ref);
+      f.params.push({ name, span: outer.span, ty: outer.ty });
+    }
+
+    const saved = this.scope;
+    this.scope = this.globals;
+    this.analyzeFn(f);
+    this.scope = saved;
+    for (const p of f.params.slice(f.params.length - e.caps.length)) if (p.sym) p.sym.used = true;
+    if (f.sym) f.sym.used = true;
+    return ty;
   }
 
   call(e: Extract<Expr, { k: 'call' }>): Type {
