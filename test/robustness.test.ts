@@ -291,7 +291,7 @@ test('fmt: re-indents by bracket depth and is idempotent', () => {
 });
 
 test('fmt: every shipped example is already formatted', () => {
-  const files = ['examples', 'examples/modules', 'examples/namespaces', 'examples/io', 'examples/std'].flatMap(d =>
+  const files = ['examples', 'examples/modules', 'examples/namespaces', 'examples/io', 'examples/std', 'lib'].flatMap(d =>
     readdirSync(new URL(`../${d}/`, import.meta.url)).filter(f => f.endsWith('.lum')).map(f => `${d}/${f}`));
   const r = cli('fmt', '--check', ...files);
   assert.equal(r.status, 0, r.stdout);
@@ -309,4 +309,16 @@ test('std/map.lum: same output on every engine, library warnings stay quiet', ()
   assert.equal(outs[2], outs[0]);
   for (const line of expected) assert.ok(outs[0].includes(line), line);
   assert.deepEqual(outs[0].trim().split('\n').slice(-5), ['3', 'true', 'true', 'false', '2']);
+});
+
+test('std/option.lum and std/math.lum run the same on every engine', () => {
+  const outs = ['interp', 'vm', 'c'].map(engine => {
+    const r = cli('run', 'examples/std/option_math.lum', '--engine', engine);
+    assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
+    assert.equal(r.stderr, '', engine);
+    return r.stdout.replace(/\r\n/g, '\n');
+  });
+  assert.equal(outs[1], outs[0]);
+  assert.equal(outs[2], outs[0]);
+  assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true']);
 });

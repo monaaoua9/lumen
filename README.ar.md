@@ -27,7 +27,7 @@ Lexer، Parser، محلل ثابت (Static Analyzer)، مفسّر (Interpreter)�
 
 ## المكتبة القياسية
 
-مجلد `lib/` فيه وحدات مكتوبة بلغة Lumen نفسها، تُستورد بالبادئة `std/`، مثل `import "std/map.lum"` الذي يوفر `Map<V>` بمفاتيح نصية مع `set` و`get` و`has` و`delete` و`size`.
+مجلد `lib/` فيه وحدات مكتوبة بلغة Lumen نفسها، تُستورد بالبادئة `std/`، مثل `import "std/map.lum"` الذي يوفر `Map<V>` بمفاتيح نصية مع `set` و`get` و`has` و`delete` و`size`. وفيها أيضاً `std/option.lum` (`Option<T>` و`Result<T>`) و`std/math.lum` (`gcd` و`lcm` و`pow` و`clamp` و`is_prime`).
 
 ## التشغيل
 

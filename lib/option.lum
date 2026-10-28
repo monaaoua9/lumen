@@ -1,0 +1,31 @@
+// Option<T> and Result<T> (the error side is always a string)
+pub enum Option<T> { Some(T), None }
+pub enum Result<T> { Ok(T), Err(string) }
+
+pub fn unwrap_or<T>(o: Option<T>, fallback: T): T {
+  return match o {
+    Some(v) => v,
+    None => fallback,
+  };
+}
+
+pub fn is_some<T>(o: Option<T>): bool {
+  return match o {
+    Some(_) => true,
+    None => false,
+  };
+}
+
+pub fn ok_or<T>(r: Result<T>, fallback: T): T {
+  return match r {
+    Ok(v) => v,
+    Err(_) => fallback,
+  };
+}
+
+pub fn is_ok<T>(r: Result<T>): bool {
+  return match r {
+    Ok(_) => true,
+    Err(_) => false,
+  };
+}
