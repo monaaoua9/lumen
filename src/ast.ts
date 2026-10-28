@@ -107,6 +107,7 @@ export interface FnDecl {
   body: Stmt[];
   sym?: FnSym;
   nlocals: number;
+  typeParams?: string[];
 }
 
 export type Stmt =

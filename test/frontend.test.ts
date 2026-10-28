@@ -310,3 +310,16 @@ test('function types: arrays of functions', () => {
   assert.deepEqual(errs(F + 'let fs: (fn(int): int)[] = [inc, inc]; print(fs[0](1));'), []);
   assert.deepEqual(errs(F + 'let fs: fn(int): int[] = [inc];'), ['E003']);
 });
+
+test('generics: inference and instantiation', () => {
+  const G = 'fn first<T>(xs: T[]): T { return xs[0]; } fn pair<A, B>(a: A, b: B): B { return b; } ';
+  assert.deepEqual(errs(G + 'print(first([1, 2]) + 1); print(first(["a"]) + "b");'), []);
+  assert.deepEqual(errs(G + 'print(first([1]) + "b");'), ['E003']);
+  assert.deepEqual(errs(G + 'print(pair(1, 2.5) + 1.0);'), []);
+  assert.deepEqual(errs(G + 'print(first(1));'), ['E024']);
+  assert.deepEqual(errs(G + 'print(first([1], 2));'), ['E004']);
+  assert.deepEqual(errs(G + 'let f = first;'), ['E024']);
+  assert.deepEqual(errs('fn mk<T>(): T[] { let e: T[] = []; return e; } let x = mk();'), ['E024']);
+  // an error inside the body shows up once per source location, not once per instance
+  assert.deepEqual(errs('fn bad<T>(x: T): T { return x + 1; } print(bad(1)); print(bad(2.5));'), ['E003']);
+});

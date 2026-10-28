@@ -424,6 +424,12 @@ class Parser {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
     }
     const name = this.expect('ident', 'a function name');
+    let typeParams: string[] | undefined;
+    if (!owner && this.eat('<')) {
+      typeParams = [];
+      do typeParams.push(this.expect('ident', 'a type parameter name').text); while (this.eat(','));
+      this.expect('>');
+    }
     this.expect('(');
     const params: Param[] = [];
     if (!this.at(')')) {
@@ -441,7 +447,7 @@ class Parser {
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
     const body = this.block();
-    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0 };
+    const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams };
     if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
     return decl;

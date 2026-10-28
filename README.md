@@ -96,6 +96,8 @@ resolved statically and compile down to plain functions named `Counter$tick` (sh
 Arrays: `[1, 2, 3]`, `a[i]`, `a[i] = x`, `a[i] += x`. Empty literals need a known type: `let xs: int[] = [];`.
 Function values: `fn(int, int): int` is a type, a function name is a value (`apply(double, 4)`), and `fn(x: int): int { return x + 1; }` is an anonymous function. Any expression of function type can be called: `f(x)`, `pick("double")(8)`, `table[1](9)`, and struct fields (`op.run(3, 4)`). Anonymous functions capture the locals they mention **by value, at the moment they are created**, so only `let` bindings and parameters can be captured (`E023` for `var`); copy a `var` into a `let` first. Function values cannot be compared or printed. An array of functions is written `(fn(int): int)[]`.
 
+Generics: `fn map<T, U>(xs: T[], f: fn(T): U): U[] { ... }`. Type arguments are always inferred from the call (`E024` when a parameter is not mentioned by any argument), and every distinct set of type arguments is checked and compiled as its own copy of the function (monomorphization), so the three backends need no special support. A generic function is only checked when it is called, and it cannot be used as a value. Functions only for now, no generic structs or methods.
+
 Modules: `import "geometry.lum";` on its own line pulls in another file (path relative to the importing file). Imports are resolved before lexing: each file is read once, dependencies come first, and the result is one program, so every top-level name is global and a clash is the usual `E006`. Diagnostics still point at the right file and line. A missing file is `P004`; import cycles are tolerated. See `examples/modules/`.
 
 Semantics worth knowing:
@@ -167,6 +169,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 
 ## Known limits / next steps
 
-- No traits/interfaces or generics yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
+- No traits/interfaces or generic types yet; modules are textual (no namespaces or visibility). Closures copy their captures, there is no shared mutable capture.
 - The VM is a straightforward switch loop (one try/catch around the whole loop); a register VM or superinstructions would be the next speed step.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).

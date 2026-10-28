@@ -1,7 +1,7 @@
 import type { Diagnostic, Severity, Span } from './diagnostics.ts';
 import type { EnumDecl, Expr, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, VarSym } from './ast.ts';
 import { BUILTINS, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
-import type { Type } from './types.ts';
+import type { FnType, Type } from './types.ts';
 
 class Scope {
   vars = new Map<string, VarSym>();
@@ -54,6 +54,48 @@ function namesIn(body: Stmt[], used: Set<string>, declared: Set<string>) {
     }
   };
   body.forEach(st);
+}
+
+// generic functions are templates: each distinct set of type arguments gets its own checked copy
+function unify(pat: string, actual: Type, params: Set<string>, binds: Map<string, Type>) {
+  if (actual === 'error' || actual === 'void') return;
+  if (pat.startsWith('@') && params.has(pat.slice(1))) {
+    if (!binds.has(pat.slice(1))) binds.set(pat.slice(1), actual);
+  } else if (pat.endsWith('[]') && isArray(actual)) {
+    unify(pat.slice(0, -2), elemOf(actual), params, binds);
+  } else if (pat.startsWith('<') && pat.endsWith('>') && isFn(actual)) {
+    const want = fnSig(pat as FnType);
+    const got = fnSig(actual);
+    want.params.forEach((p, i) => { if (got.params[i]) unify(p, got.params[i], params, binds); });
+    unify(want.ret, got.ret, params, binds);
+  }
+}
+
+function substTypes(node: unknown, map: Map<string, Type>) {
+  const sub = (v: string) => v.replace(/@([A-Za-z_][A-Za-z0-9_]*)/g, (m, n: string) => map.get(n) ?? m);
+  if (Array.isArray(node)) {
+    node.forEach(n => substTypes(n, map));
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  const o = node as Record<string, unknown>;
+  for (const k of Object.keys(o)) {
+    const v = o[k];
+    if ((k === 'ty' || k === 'annot' || k === 'ret') && typeof v === 'string') o[k] = sub(v);
+    else if (k === 'tys' && Array.isArray(v)) o[k] = v.map(x => sub(x as string));
+    else substTypes(v, map);
+  }
+}
+
+function lambdasIn(node: unknown, out: Extract<Expr, { k: 'lambda' }>[]) {
+  if (Array.isArray(node)) {
+    node.forEach(n => lambdasIn(n, out));
+    return;
+  }
+  if (!node || typeof node !== 'object') return;
+  const o = node as Record<string, unknown>;
+  if (o.k === 'lambda') out.push(o as unknown as Extract<Expr, { k: 'lambda' }>);
+  for (const k of Object.keys(o)) lambdasIn(o[k], out);
 }
 
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
@@ -120,20 +162,39 @@ class Analyzer {
   nglobals = 0;
   loops: { sawBreak: boolean }[] = [];
   allVars: VarSym[] = [];
+  ninst = 0;
+  generics = new Map<string, FnDecl>();
+  insts = new Map<string, FnSym>();
+  prog!: Program;
 
   report(severity: Severity, code: string, message: string, span: Span, hint?: string) {
-    this.diags.push({ severity, code, message: showTypes(message), span, hint });
+    // generic instances re-check the same source, report each problem once
+    const msg = showTypes(message);
+    if (this.diags.some(d => d.code === code && d.span.start === span.start && d.span.end === span.end && d.message === msg)) return;
+    this.diags.push({ severity, code, message: msg, span, hint });
   }
   err(code: string, message: string, span: Span, hint?: string) { this.report('error', code, message, span, hint); }
   warn(code: string, message: string, span: Span, hint?: string) { this.report('warning', code, message, span, hint); }
 
   run(prog: Program) {
+    this.prog = prog;
     this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
     for (const d of this.enums.values()) {
       for (const v of d.variants) v.payload.forEach(t => this.checkType(t, v.span));
     }
-    for (const f of prog.fns) this.declareFn(f);
+    // lambdas inside a generic body belong to the template, every instance gets its own copy
+    const templateLambdas = new Set<FnDecl>();
+    for (const f of prog.fns) {
+      if (!f.typeParams) continue;
+      this.generics.set(f.name, f);
+      const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+      lambdasIn(f.body, ls);
+      ls.forEach(l => templateLambdas.add(l.fn));
+    }
+    for (const f of prog.fns) {
+      if (!f.typeParams && !templateLambdas.has(f)) this.declareFn(f);
+    }
 
     this.analyzeBlockBody(prog.body);
 
@@ -142,6 +203,7 @@ class Analyzer {
       if (!f.used) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
     }
 
+    prog.fns = prog.fns.filter(f => f.sym);
     prog.nlocals = this.ctx.nlocals;
     prog.nglobals = this.nglobals;
     this.diags.sort((a, b) => a.span.start - b.span.start);
@@ -694,6 +756,10 @@ class Analyzer {
       case 'var': {
         const sym = this.scope.lookup(e.name);
         if (!sym) {
+          if (this.generics.has(e.name)) {
+            this.err('E024', `generic function '${e.name}' cannot be used as a value`, e.span, 'call it directly so the type parameters can be inferred');
+            return 'error';
+          }
           const fn = this.fns.get(e.name);
           if (fn) {
             fn.used = true;
@@ -949,8 +1015,53 @@ class Analyzer {
     return ty;
   }
 
+  genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl): Type {
+    const tys = e.args.map(a => this.expr(a));
+    if (e.args.length !== gen.params.length) {
+      this.err('E004', `'${e.name}' takes ${gen.params.length} argument${gen.params.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
+      return 'error';
+    }
+    if (tys.includes('error')) return 'error';
+    const names = gen.typeParams!;
+    const binds = new Map<string, Type>();
+    gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds));
+    const missing = names.find(n => !binds.has(n));
+    if (missing) {
+      this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it');
+      return 'error';
+    }
+
+    const key = `${e.name}<${names.map(n => binds.get(n)).join(',')}>`;
+    let sym = this.insts.get(key);
+    if (!sym) {
+      const d = structuredClone(gen);
+      d.typeParams = undefined;
+      d.name = `${gen.name}$${this.insts.size}`;
+      substTypes(d, binds);
+      const ls: Extract<Expr, { k: 'lambda' }>[] = [];
+      lambdasIn(d.body, ls);
+      ls.forEach(l => {
+        l.fn.name = `lambda$g${this.ninst++}`;
+        this.prog.fns.push(l.fn);
+        this.declareFn(l.fn);
+      });
+      this.prog.fns.push(d);
+      this.declareFn(d);
+      sym = d.sym!;
+      this.insts.set(key, sym);
+      const saved = this.scope;
+      this.scope = this.globals;
+      this.analyzeFn(d);
+      this.scope = saved;
+    }
+    return this.checkUserCall(e, sym, tys);
+  }
+
   call(e: Extract<Expr, { k: 'call' }>): Type {
     if (isBuiltin(e.name)) return this.builtin(e, e.name);
+
+    const gen = this.generics.get(e.name);
+    if (gen && !this.scope.lookup(e.name)) return this.genericCall(e, gen);
 
     // a local of function type wins over a global function with the same name
     const local = e.callee ? undefined : this.scope.lookup(e.name);
