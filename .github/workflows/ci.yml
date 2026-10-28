@@ -12,3 +12,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: node src/cli.ts check examples/fib.lum --Werror
+      - run: node src/cli.ts test examples/tests/arith.lum
+      - run: node src/cli.ts test examples/tests/text.lum --engine interp
