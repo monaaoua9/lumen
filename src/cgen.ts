@@ -21,11 +21,23 @@ static int lm_depth = 0;
 #define LM_MAXDEPTH 1000
 
 static const char *lm_pos = 0;
+/* per depth: the function entered and where it was called from, for the trap trace */
+static const char *lm_tn[LM_MAXDEPTH + 2];
+static const char *lm_tp[LM_MAXDEPTH + 2];
 
 static void lm_die(const char *msg) {
   fflush(stdout);
   fprintf(stderr, "runtime error: %s\n", msg);
   if (lm_pos) fprintf(stderr, "  --> %s\n", lm_pos);
+  int top = lm_depth > LM_MAXDEPTH ? LM_MAXDEPTH : lm_depth;
+  for (int d = top; d >= 1; d--) {
+    if (!lm_tp[d]) continue;
+    if (top > 12 && d <= top - 6 && d > 5) {
+      if (d == top - 6) fprintf(stderr, "  ... %d more calls\n", top - 11);
+      continue;
+    }
+    fprintf(stderr, "  in %s (%s)\n", d > 1 ? lm_tn[d - 1] : "<main>", lm_tp[d]);
+  }
   exit(1);
 }
 
@@ -1002,9 +1014,9 @@ class Gen {
       case 'return':
         if (s.value) {
           const v = this.expr(s.value);
-          this.line(`{ __auto_type lm_ret = ${v}; lm_depth--; return lm_ret; }`);
+          this.line(`{ __auto_type lm_ret = ${v}; lm_pos = lm_tp[lm_depth--]; return lm_ret; }`);
         } else {
-          this.line('{ lm_depth--; return; }');
+          this.line('{ lm_pos = lm_tp[lm_depth--]; return; }');
         }
         return;
 
@@ -1155,8 +1167,8 @@ export function emitC(prog: Program, locate?: (offset: number) => string): strin
     g.ind = 1;
     g.block(f.body);
     // the cap is checked on entry; every return gives the slot back, a void body falling off the end too
-    const enter = '  if (++lm_depth > LM_MAXDEPTH) lm_die("stack overflow");';
-    const leave = f.ret === 'void' ? ['  lm_depth--;'] : [];
+    const enter = ['  if (++lm_depth > LM_MAXDEPTH) lm_die("stack overflow");', `  lm_tn[lm_depth] = ${JSON.stringify(f.name.replace(/^.*\$/, ''))}; lm_tp[lm_depth] = lm_pos;`].join('\n');
+    const leave = f.ret === 'void' ? ['  lm_pos = lm_tp[lm_depth--];'] : [];
     out.push(g.fnSig(f) + ' {', enter, ...g.lines, ...leave, '}', '');
   }
 
