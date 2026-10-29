@@ -15,7 +15,7 @@ Newest first. The README has the full description of every feature.
 - Tuple pattern alternatives can bind names: `(x, 0) | (0, x) => x`, as long as each alternative binds the same ones.
 - `lumen` starts about 100 ms faster: the entry file turns on the V8 compile cache before loading the compiler.
 - New std/matrix: `new`, `identity`, `transpose`, `add`, `mul`, `pow`.
-- std/text: `wrap`, `glob`.
+- std/text: `wrap`, `glob`, `ord` (code point of a character).
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
 - New std/regex: `is_match`, `full_match`, `search`, `all_matches`, `pieces`, `sub` over a small pattern syntax (classes, `* + ? {n,m}`, anchors, `|`).
 - `chr(n)` builds any Unicode code point (UTF-8), it used to stop at 127; std/json decodes \uXXXX escapes and surrogate pairs.
