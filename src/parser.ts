@@ -352,6 +352,11 @@ class Parser {
       this.eat(';');
       return { k: 'block', span: t.span, body: [] };
     }
+    // `const N = 3;` is a let, there is no separate kind of constant
+    if (t.kind === 'ident' && t.text === 'const' && this.peek().kind === 'ident' && [':', '='].includes(this.toks[this.pos + 2]?.kind)) {
+      this.toks[this.pos] = { ...t, kind: 'let' };
+      return this.letStmt();
+    }
     switch (t.kind) {
       case 'fn': {
         if (this.depth > 0 && this.toks[this.pos + 1]?.kind === 'ident') {
