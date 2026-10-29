@@ -12,5 +12,5 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: node src/cli.ts check examples/fib.lum --Werror
-      - run: node src/cli.ts test examples/tests/arith.lum examples/tests/bits.lum examples/tests/list.lum examples/tests/json.lum examples/tests/maps.lum examples/tests/random.lum examples/tests/sets.lum examples/tests/text.lum examples/tests/options.lum examples/tests/csvs.lum
+      - run: node src/cli.ts test examples/tests/arith.lum examples/tests/bits.lum examples/tests/list.lum examples/tests/json.lum examples/tests/maps.lum examples/tests/random.lum examples/tests/sets.lum examples/tests/text.lum examples/tests/options.lum examples/tests/csvs.lum examples/tests/paths.lum
       - run: node src/cli.ts check examples/tests/arith.lum examples/tests/list.lum --Werror

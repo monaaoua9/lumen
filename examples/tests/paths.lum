@@ -1,0 +1,23 @@
+import "std/test.lum"
+import "std/path.lum"
+
+fn test_names() {
+  test.eq_str(path.basename("a/b/c.txt"), "c.txt");
+  test.eq_str(path.basename("c.txt"), "c.txt");
+  test.eq_str(path.dirname("a/b/c.txt"), "a/b");
+  test.eq_str(path.dirname("c.txt"), ".");
+  test.eq_str(path.dirname("/c.txt"), "/");
+}
+
+fn test_ext() {
+  test.eq_str(path.ext("a/b/c.tar.gz"), ".gz");
+  test.eq_str(path.ext("a.d/readme"), "");
+  test.eq_str(path.ext(".gitignore"), "");
+}
+
+fn test_combine() {
+  test.eq_str(path.combine("a", "b"), "a/b");
+  test.eq_str(path.combine("a/", "b"), "a/b");
+  test.eq_str(path.combine("a", "/b"), "/b");
+  test.eq_str(path.combine("", "b"), "b");
+}
