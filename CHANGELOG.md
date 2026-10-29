@@ -9,6 +9,7 @@ Newest first. The README has the full description of every feature.
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, open and inclusive ends (`a[1..]`, `a[..2]`, `a[2..=3]`), `s[i]` reads one character.
 - `==` and `!=` on structs, `\x41` and `\u{1F600}` string escapes, `assert(cond)` quotes its condition.
+- `print(a, b, c)` prints its values separated by spaces.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
 - An empty `[]` argument takes its type from the other arguments of a generic call (`map.get(g, n, [])`).
 - Local functions can call themselves.
