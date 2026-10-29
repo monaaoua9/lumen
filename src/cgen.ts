@@ -188,6 +188,8 @@ static long long lm_add(long long a, long long b) { long long r; int o = __built
 static long long lm_sub(long long a, long long b) { long long r; int o = __builtin_sub_overflow(a, b, &r); return lm_chk(r, o); }
 static long long lm_mul(long long a, long long b) { long long r; int o = __builtin_mul_overflow(a, b, &r); return lm_chk(r, o); }
 static long long lm_div(long long a, long long b) { if (b == 0) lm_die("division by zero"); return a / b; }
+static long long lm_shl(long long a, long long b) { long long r; if (b < 0 || b > 62) lm_die("shift count out of range"); int o = __builtin_mul_overflow(a, 1LL << b, &r); return lm_chk(r, o); }
+static long long lm_shr(long long a, long long b) { if (b < 0 || b > 62) lm_die("shift count out of range"); return a >> b; }
 static long long lm_mod(long long a, long long b) { if (b == 0) lm_die("modulo by zero"); return a % b; }
 
 static long long lm_f2i(double v) {
@@ -612,7 +614,7 @@ function elemFn(t: Type): string {
 }
 
 const OPS: Record<string, string> = { '==': '==', '!=': '!=', '<': '<', '<=': '<=', '>': '>', '>=': '>=' };
-const INT_FN: Record<string, string> = { '+': 'lm_add', '-': 'lm_sub', '*': 'lm_mul', '/': 'lm_div', '%': 'lm_mod' };
+const INT_FN: Record<string, string> = { '+': 'lm_add', '-': 'lm_sub', '*': 'lm_mul', '/': 'lm_div', '%': 'lm_mod', '<<': 'lm_shl', '>>': 'lm_shr' };
 
 // enums where some variant carries data are heap objects, the rest are plain ordinals
 const BOXED = new Set<string>();
@@ -749,6 +751,7 @@ class Gen {
         if (e.op === '!=' && ty === 'string') return `(strcmp(${l}, ${r}) != 0)`;
         if (ty === 'string' && ['<', '<=', '>', '>='].includes(e.op)) return `(strcmp(${l}, ${r}) ${e.op} 0)`;
         if (OPS[e.op]) return `(${l} ${OPS[e.op]} ${r})`;
+        if (ty === 'int' && (e.op === '&' || e.op === '|' || e.op === '^')) return `(${l} ${e.op} ${r})`;
         if (ty === 'int') return `${INT_FN[e.op]}(${l}, ${r})`;
         return `(${l} ${e.op} ${r})`;
       }
