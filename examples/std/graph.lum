@@ -1,0 +1,40 @@
+import "std/map.lum"
+import "std/set.lum"
+import "std/list.lum"
+
+fn neighbors(g: map.Map<string[]>, n: string): string[] {
+  return map.get(g, n, []);
+}
+
+fn add_edge(g: map.Map<string[]>, a: string, b: string) {
+  map.update(g, a, [], fn(xs) { push(xs, b); return xs; });
+  map.update(g, b, [], fn(xs) { push(xs, a); return xs; });
+}
+
+fn bfs(g: map.Map<string[]>, start: string): string[] {
+  let seen = set.from([start]);
+  let order: string[] = [];
+  let queue = [start];
+  var head = 0;
+  while head < len(queue) {
+    let cur = queue[head];
+    head += 1;
+    push(order, cur);
+    for nb in neighbors(g, cur) {
+      if set.add(seen, nb) { push(queue, nb); }
+    }
+  }
+  return order;
+}
+
+fn main() {
+  let g: map.Map<string[]> = map.new();
+  for (a, b) in [("a", "b"), ("a", "c"), ("b", "d"), ("c", "d"), ("d", "e")] {
+    add_edge(g, a, b);
+  }
+  print(join(bfs(g, "a"), " "));
+  let degs = list.map(map.entries(g), fn(e) => e.1.len());
+  print(degs.sum());
+  print(list.max_by(map.keys(g), fn(k) => len(neighbors(g, k))));
+}
+main();
