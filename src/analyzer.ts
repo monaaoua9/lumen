@@ -1043,24 +1043,11 @@ class Analyzer {
 
     // `Wrap(Some(n))` and `Wrap(None)` together cover `Wrap` when the inner variants add up to the whole inner enum
     if (decl) {
-      const byOuter = new Map<string, Map<number, Set<string>>>();
-      covers.forEach(c => {
-        if (!c) return;
-        const byPos = byOuter.get(c.variant) ?? new Map<number, Set<string>>();
-        byPos.set(c.pos, (byPos.get(c.pos) ?? new Set<string>()).add(c.inner));
-        byOuter.set(c.variant, byPos);
-      });
-      for (const [vname, byPos] of byOuter) {
+      const byOuter = new Map<string, RowCell[][]>();
+      covers.forEach(c => c && byOuter.set(c.variant, [...(byOuter.get(c.variant) ?? []), c.cells]));
+      for (const [vname, rs] of byOuter) {
         const oi = decl.variants.findIndex(v => v.name === vname);
-        if (oi < 0 || seen.has(`v${oi}`)) continue;
-        for (const [pos, inners] of byPos) {
-          const t = decl.variants[oi].payload[pos];
-          const inner = t && isEnum(t) ? this.enums.get(t.slice(1)) : undefined;
-          if (inner && inner.variants.every(v => inners.has(v.name))) {
-            seen.add(`v${oi}`);
-            break;
-          }
-        }
+        if (oi >= 0 && !seen.has(`v${oi}`) && this.cellsCover(rs, decl.variants[oi].payload)) seen.add(`v${oi}`);
       }
     }
     const exhaustive = wild
@@ -1074,22 +1061,23 @@ class Analyzer {
     return { tmp, out, exhaustive };
   }
 
-  // do the unguarded tuple arms between them cover every combination of the parts?
+  // do the rows between them cover every combination of the columns' variants and bools?
+  cellsCover(rs: RowCell[][], tys: Type[]): boolean {
+    if (tys.length === 0) return rs.length > 0;
+    const [t, ...rest] = tys;
+    const next = (keep: (c: RowCell) => boolean) => rs.filter(r => keep(r[0])).map(r => r.slice(1));
+    if (isEnum(t)) {
+      const e = this.enums.get(t.slice(1));
+      return !!e && e.variants.every(v => this.cellsCover(next(c => c === null || c === v.name), rest));
+    }
+    if (t === 'bool') return [true, false].every(v => this.cellsCover(next(c => c === null || c === v), rest));
+    return this.cellsCover(next(c => c === null), rest);
+  }
+
   rowsCover(st: Type, rows: (RowCell[] | undefined)[]): boolean {
     const decl = isStruct(st) ? this.structs.get(structName(st)) : undefined;
     if (!decl) return false;
-    const covers = (rs: RowCell[][], tys: Type[]): boolean => {
-      if (tys.length === 0) return rs.length > 0;
-      const [t, ...rest] = tys;
-      const next = (keep: (c: RowCell) => boolean) => rs.filter(r => keep(r[0])).map(r => r.slice(1));
-      if (isEnum(t)) {
-        const e = this.enums.get(t.slice(1));
-        return !!e && e.variants.every(v => covers(next(c => c === null || c === v.name), rest));
-      }
-      if (t === 'bool') return [true, false].every(b => covers(next(c => c === null || c === b), rest));
-      return covers(next(c => c === null), rest);
-    };
-    return covers(rows.filter((r): r is RowCell[] => !!r && r.length === decl.fields.length), decl.fields.map(f => f.ty));
+    return this.cellsCover(rows.filter((r): r is RowCell[] => !!r && r.length === decl.fields.length), decl.fields.map(f => f.ty));
   }
 
   fieldOf(ot: Type, name: string, nameSpan: Span, objSpan: Span): { ty: Type; idx: number } | null {

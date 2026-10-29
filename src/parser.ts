@@ -916,10 +916,16 @@ class Parser {
     let cover: ArmCover | undefined;
     const top = pats[0] as Extract<Pat, { k: 'variant' }>;
     const nests = this.varNested.get(top) ?? [];
-    const q = nests[0]?.pat;
-    if (!guard && nests.length === 1 && top.k === 'variant' && !this.varLits.get(top) && !this.varTuples.get(top)?.some(t => JSON.stringify(t.shape).includes('"lit"'))
-      && !this.varLits.get(q) && !this.varNested.get(q) && !this.varTuples.get(q)) {
-      cover = { variant: top.name, pos: top.binds!.findIndex(b => b?.name === nests[0].name), inner: q.name };
+    if (!guard && nests.length && top.k === 'variant' && top.binds && !this.varLits.get(top) && !this.varTuples.get(top)) {
+      const cells: RowCell[] = [];
+      let plain = true;
+      for (const b of top.binds) {
+        const q = b && nests.find(n => n.name === b.name)?.pat;
+        if (!q) cells.push(null);
+        else if (!this.varLits.get(q) && !this.varNested.get(q) && !this.varTuples.get(q)) cells.push(q.name);
+        else plain = false;
+      }
+      if (plain) cover = { variant: top.name, cells };
     }
     return { pats, guard: test && swapped ? and(test, swapped) : (test ?? swapped), binds, cover };
   }

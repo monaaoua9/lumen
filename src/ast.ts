@@ -96,8 +96,7 @@ export type Pat =
 // an arm like `Wrap(Some(n))` is guarded after desugaring; this says what the guard really tests, so that `Wrap(Some(n))` plus `Wrap(None)` can still add up to a covered `Wrap`
 export interface ArmCover {
   variant: string;
-  pos: number;
-  inner: string;
+  cells: RowCell[];
 }
 
 // one tuple pattern as a row for the exhaustiveness check: null matches anything, a string is a variant, a boolean is a bool literal
