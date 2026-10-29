@@ -1,0 +1,74 @@
+import "std/text.lum"
+
+enum Tok { Num(float), Op(string), LP, RP }
+
+fn lex(src: string): Tok[] {
+  let out: Tok[] = [];
+  var i = 0;
+  while i < len(src) {
+    let c = src[i];
+    if c == " " { i += 1; continue; }
+    if c == "(" { push(out, Tok.LP); i += 1; continue; }
+    if c == ")" { push(out, Tok.RP); i += 1; continue; }
+    if contains(["+", "-", "*", "/"], c) { push(out, Tok.Op(c)); i += 1; continue; }
+    var j = i;
+    while j < len(src) && (src[j] == "." || text.is_digits(src[j])) { j += 1; }
+    push(out, Tok.Num(parse_float(src[i..j], 0.0)));
+    i = j;
+  }
+  return out;
+}
+
+struct P { toks: Tok[], pos: int }
+
+fn peek_op(p: P): string {
+  if p.pos >= len(p.toks) { return ""; }
+  return match p.toks[p.pos] {
+    Op(s) => s,
+    _ => "",
+  };
+}
+
+fn atom(p: P): float {
+  let t = p.toks[p.pos];
+  p.pos += 1;
+  return match t {
+    Num(x) => x,
+    LP => {
+      let v = expr(p);
+      p.pos += 1;
+      v
+    }
+    _ => 0.0,
+  };
+}
+
+fn term(p: P): float {
+  var v = atom(p);
+  while peek_op(p) == "*" || peek_op(p) == "/" {
+    let op = peek_op(p);
+    p.pos += 1;
+    let r = atom(p);
+    v = if op == "*" { v * r } else { v / r };
+  }
+  return v;
+}
+
+fn expr(p: P): float {
+  var v = term(p);
+  while peek_op(p) == "+" || peek_op(p) == "-" {
+    let op = peek_op(p);
+    p.pos += 1;
+    let r = term(p);
+    v = if op == "+" { v + r } else { v - r };
+  }
+  return v;
+}
+
+fn main() {
+  for src in ["1 + 2 * 3", "(1 + 2) * 3", "10 / 4 - 1", "2 * (3 + (4 - 1))"] {
+    let p = P { toks: lex(src), pos: 0 };
+    print("{src} = {text.fixed(expr(p), 2)}");
+  }
+}
+main();
