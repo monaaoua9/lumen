@@ -560,3 +560,10 @@ test('const globals, impl methods and nested arrays agree on every engine', () =
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('local recursive functions that read enclosing locals agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/local_recursion.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '104 120 2 -1\n', engine);
+  }
+});
