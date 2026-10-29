@@ -316,6 +316,20 @@ class Parser {
       case 'if': return this.ifStmt();
       case 'while': {
         this.next();
+        if (this.eat('let')) {
+          // while let P = e { body }  is  while true { match e { P => { body } _ => { break; } } }
+          const pat = this.pattern();
+          this.expect('=');
+          const scrut = this.condExpr();
+          const body = this.block();
+          const sp = this.join(t.span, this.prevSpan());
+          const stop: Stmt = { k: 'break', span: t.span };
+          const m: Stmt = {
+            k: 'match', span: sp, scrut, tmp: -1,
+            arms: [{ pats: [pat], body, span: sp }, { pats: [{ k: 'wild', span: t.span }], body: [stop], span: sp }],
+          };
+          return { k: 'while', span: sp, cond: { k: 'bool', value: true, span: t.span, ty: 'error' }, body: [m] };
+        }
         const cond = this.condExpr();
         const body = this.block();
         return { k: 'while', span: this.join(t.span, this.prevSpan()), cond, body };

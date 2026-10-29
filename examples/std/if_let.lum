@@ -25,3 +25,17 @@ if let Err(msg) = r {
 }
 if let Ok(v) = r { print(v); }
 print("done");
+
+// pop numbers off a stack until it runs dry
+fn pop_opt(xs: int[]): option.Option<int> {
+  if len(xs) == 0 { return option.Option.None; }
+  return option.Option.Some(pop(xs));
+}
+
+let stack = [1, 2, 3];
+var total = 0;
+while let Some(v) = pop_opt(stack) {
+  if v == 2 { continue; }
+  total += v * 10;
+}
+print(total);
