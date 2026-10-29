@@ -159,6 +159,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
+`std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
+
 `std/set.lum`: a set of strings (`new`, `from`, `add`, `has`, `drop`, `size`, `items`, `union`, `intersect`, `minus`), insertion ordered, linear lookups.
 
 `std/random.lum`: a seeded Park-Miller generator, `new(seed)`, `step`, `below(r, n)`, `between(r, lo, hi)` and `shuffle(r, xs)`. The same seed gives the same numbers on every engine.
