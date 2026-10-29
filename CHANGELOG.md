@@ -30,7 +30,7 @@ Newest first. The README has the full description of every feature.
 - `print(a, b, c)` prints its values separated by spaces.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
 - An empty `[]` argument takes its type from the other arguments of a generic call (`map.get(g, n, [])`).
-- Local functions can call themselves.
+- Local functions can call themselves, and read the enclosing function's locals (copied in when the function is defined).
 - A private struct or enum can be the type argument of a generic function from another file (no more E027 inside the library).
 - Method-call syntax on any value: `xs.len()`, `s.trim().upper()`, `n.twice()` read as `len(xs)`, `upper(trim(s))`, `twice(n)`.
 - The same works for generic functions and library functions: `xs.map(fn(x) => x * 2)`, `xs.chunks(2)`, `p.area()`.
