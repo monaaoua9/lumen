@@ -54,3 +54,28 @@ pub fn find_by<T>(xs: T[], test: fn(T): bool): Option<T> {
 pub fn first<T>(xs: T[]): Option<T> {
   return if len(xs) == 0 { Option.None } else { Option.Some(xs[0]) };
 }
+
+pub fn and_then<T, U>(o: Option<T>, f: fn(T): Option<U>): Option<U> {
+  return match o {
+    Some(v) => f(v),
+    None => Option.None,
+  };
+}
+
+pub fn unwrap_or_else<T>(o: Option<T>, make: fn(): T): T {
+  return match o {
+    Some(v) => v,
+    None => make(),
+  };
+}
+
+pub fn is_err<T>(r: Result<T>): bool {
+  return !is_ok(r);
+}
+
+pub fn and_then_result<T, U>(r: Result<T>, f: fn(T): Result<U>): Result<U> {
+  return match r {
+    Ok(v) => f(v),
+    Err(m) => Result.Err(m),
+  };
+}

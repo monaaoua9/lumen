@@ -1,0 +1,32 @@
+import "std/test.lum"
+import "std/option.lum"
+
+fn half(n: int): option.Option<int> {
+  return if n % 2 == 0 { option.Option.Some(n / 2) } else { option.Option.None };
+}
+
+fn check_pos(n: int): option.Result<int> {
+  return if n > 0 { option.Result.Ok(n) } else { option.Result.Err("not positive") };
+}
+
+fn test_and_then() {
+  test.eq_int(option.unwrap_or(option.and_then(option.Option.Some(8), half), -1), 4);
+  test.eq_int(option.unwrap_or(option.and_then(option.Option.Some(7), half), -1), -1);
+  let nothing: option.Option<int> = option.Option.None;
+  test.eq_int(option.unwrap_or(option.and_then(nothing, half), -1), -1);
+}
+
+fn test_unwrap_or_else() {
+  test.eq_int(option.unwrap_or_else(first_of([5]), fn() => 0), 5);
+  test.eq_int(option.unwrap_or_else(first_of([]), fn() => 9), 9);
+}
+
+fn first_of(xs: int[]): option.Option<int> {
+  return option.first(xs);
+}
+
+fn test_results() {
+  test.eq_bool(option.is_err(check_pos(-1)), true);
+  test.eq_bool(option.is_err(option.and_then_result(check_pos(3), check_pos)), false);
+  test.eq_bool(option.is_err(option.and_then_result(check_pos(0), check_pos)), true);
+}
