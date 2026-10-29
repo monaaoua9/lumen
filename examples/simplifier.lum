@@ -1,0 +1,33 @@
+enum Expr { Num(int), Add(Expr, Expr), Mul(Expr, Expr), Neg(Expr) }
+
+fn eval(e: Expr): int {
+  return match e {
+    Num(n) => n,
+    Add(a, b) => eval(a) + eval(b),
+    Mul(Num(0), _) => 0,
+    Mul(_, Num(0)) => 0,
+    Mul(a, b) => eval(a) * eval(b),
+    Neg(Neg(x)) => eval(x),
+    Neg(x) => -eval(x),
+  };
+}
+
+fn simplify(e: Expr): Expr {
+  return match e {
+    Add(Num(0), x) => simplify(x),
+    Add(x, Num(0)) => simplify(x),
+    Mul(Num(1), x) => simplify(x),
+    Mul(x, Num(1)) => simplify(x),
+    Neg(Neg(x)) => simplify(x),
+    Add(a, b) => Expr.Add(simplify(a), simplify(b)),
+    Mul(a, b) => Expr.Mul(simplify(a), simplify(b)),
+    Neg(x) => Expr.Neg(simplify(x)),
+    Num(n) => Expr.Num(n),
+  };
+}
+
+let e = Expr.Add(Expr.Mul(Expr.Num(1), Expr.Num(7)), Expr.Neg(Expr.Neg(Expr.Num(5))));
+print(eval(e));
+print(eval(simplify(e)));
+print(eval(Expr.Mul(Expr.Num(0), Expr.Neg(Expr.Num(3)))));
+print(simplify(e));

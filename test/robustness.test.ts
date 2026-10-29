@@ -620,6 +620,13 @@ test('nested variant patterns agree on every engine', () => {
   }
 });
 
+test('an expression simplifier built on nested patterns agrees on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/simplifier.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '12\n12\n0\nAdd(Num(7), Num(5))\n', engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
