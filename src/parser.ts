@@ -217,6 +217,8 @@ class Parser {
   block(): Stmt[] {
     this.expect('{');
     this.depth++;
+    const outer = this.directBlockx;
+    this.directBlockx = false;
     const out: Stmt[] = [];
     let dest = out;
     while (!this.at('}') && !this.at('eof')) {
@@ -228,6 +230,7 @@ class Parser {
       }
     }
     this.depth--;
+    this.directBlockx = outer;
     this.expect('}');
     return out;
   }
@@ -323,6 +326,8 @@ class Parser {
   retTy: Type = 'void';
   // set by `let x = try e;`: the rest of the block moves into this array, see tryLet
   tryRest: Stmt[] | null = null;
+  // true while a statement directly inside a block expression is parsed: there `try` cannot take over the rest of the block
+  directBlockx = false;
 
   // `outer: for ...` loops that a labelled break/continue targets, see loopStmt
   loops: LoopInfo[] = [];
@@ -683,6 +688,7 @@ class Parser {
     const body: Stmt[] = [];
     let value: Expr | undefined;
     this.depth++;
+    const outerDirect = this.directBlockx;
     const startsStmt = new Set(['let', 'var', 'while', 'for', 'return', 'break', 'continue', 'fn', 'struct', 'enum', 'impl', 'trait', 'pub']);
     while (!this.at('}') && !this.at('eof')) {
       if (!startsStmt.has(this.cur.kind)) {
@@ -698,7 +704,9 @@ class Parser {
         }
         [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId, this.hoisted.length] = snap;
       }
+      this.directBlockx = true;
       const s = this.statementRecovering();
+      this.directBlockx = false;
       if (s) body.push(s, ...this.queue.splice(0));
       if (this.tryRest) {
         this.diags.push({ severity: 'error', code: 'P001', message: 'try cannot be used inside a block expression', span: s?.span ?? this.cur.span });
@@ -706,6 +714,7 @@ class Parser {
       }
     }
     this.depth--;
+    this.directBlockx = outerDirect;
     const close = this.expect('}');
     const span = this.join(open.span, close.span);
     if (!value) {
@@ -1204,6 +1213,8 @@ class Parser {
   // let v = try e;  continues with v only when e is Ok (or Some); otherwise the function returns the Err (or None):
   //   match e { Err(m) => { return Result.Err(m); } Ok(t) => { let v = t; ...rest of the block... } }
   tryLet(kw: Token, name: Token, annot: Type | undefined, annotSpan: Span | undefined): Stmt {
+    const viaQueue = this.directBlockx;
+    this.directBlockx = false;
     this.next();
     const e = this.expr();
     this.expect(';');
@@ -1218,15 +1229,29 @@ class Parser {
     const msg = `_$m${id}`;
     const v = (n: string): Expr => ({ k: 'var', name: n, span: sp, ty: 'error' });
     const variant = (vn: string, bind?: string): Pat => ({ k: 'variant', span: sp, name: vn, idx: -1, binds: bind ? [{ name: bind, span: sp }] : null, tys: [], boxed: false });
-    const rest: Stmt[] = [{ k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan, init: v(tmp) }];
     const bail: Expr = base === 'Result'
       ? { k: 'mcall', obj: v('Result'), name: 'Err', nameSpan: sp, args: [v(msg)], span: sp, ty: 'error' }
       : { k: 'field', obj: v('Option'), name: 'None', nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+    const failPat = base === 'Result' ? variant('Err', msg) : variant('None');
+    if (viaQueue) {
+      // inside a block expression the rest cannot move into an arm: test, bail out, then unwrap with a match that has no failing arm
+      const inner = `_$u${id}`;
+      this.queue.push({ k: 'match', span: sp, scrut: v(tmp), tmp: -1, arms: [
+        { pats: [failPat], body: [{ k: 'return', span: sp, value: bail }], span: sp },
+        { pats: [{ k: 'wild', span: sp }], body: [], span: sp },
+      ] });
+      if (name.text !== '_') {
+        const unwrap: Expr = { k: 'matchx', scrut: v(tmp), tmp: -1, partial: true, span: sp, ty: 'error', arms: [{ pats: [base === 'Result' ? variant('Ok', inner) : variant('Some', inner)], value: v(inner), span: sp }] };
+        this.queue.push({ k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan, init: unwrap });
+      }
+      return { k: 'let', span: sp, name: tmp, nameSpan: sp, mutable: false, init: e, quiet: true };
+    }
+    const rest: Stmt[] = [{ k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan, init: v(tmp) }];
     this.tryRest = rest;
     return {
       k: 'match', span: sp, scrut: e, tmp: -1,
       arms: [
-        { pats: [base === 'Result' ? variant('Err', msg) : variant('None')], body: [{ k: 'return', span: sp, value: bail }], span: sp },
+        { pats: [failPat], body: [{ k: 'return', span: sp, value: bail }], span: sp },
         { pats: [base === 'Result' ? variant('Ok', tmp) : variant('Some', tmp)], body: rest, span: sp },
       ],
     };
@@ -1283,6 +1308,7 @@ class Parser {
       // the picks go after the unwrapped value, inside the Ok arm
       const m = this.tryLet({ ...kw, kind: 'let' }, { ...kw, kind: 'ident', text: tmp }, undefined, undefined);
       const rest = this.tryRest;
+      if (!rest) for (const p of picks) this.queue.push({ k: 'let', span: sp, name: p.name.text, nameSpan: p.name.span, mutable: kw.kind === 'var', init: p.at({ ...ref }) });
       if (rest) for (const p of picks) rest.push({ k: 'let', span: sp, name: p.name.text, nameSpan: p.name.span, mutable: kw.kind === 'var', init: p.at({ ...ref }) });
       return m;
     }
