@@ -1,0 +1,27 @@
+trait Animal {
+  fn name(self): string;
+  fn sound(self): string;
+  fn speak(self): string { return self.name() + " says " + self.sound(); }
+}
+struct Dog { n: string }
+struct Cat { n: string }
+impl Animal for Dog {
+  fn name(self): string { return self.n; }
+  fn sound(self): string { return "woof"; }
+}
+impl Animal for Cat {
+  fn name(self): string { return self.n; }
+  fn sound(self): string { return "meow"; }
+  fn speak(self): string { return "the cat " + self.n + " ignores you"; }
+}
+fn chorus<T: Animal>(xs: T[]): string {
+  var out = "";
+  for x in xs { out += x.speak() + ". "; }
+  return out;
+}
+fn main() {
+  let zoo: dyn Animal[] = [Dog { n: "rex" }, Cat { n: "tom" }];
+  for a in zoo { print(a.speak()); }
+  print(chorus([Dog { n: "a" }, Dog { n: "b" }]));
+}
+main();
