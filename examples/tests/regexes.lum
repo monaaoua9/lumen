@@ -1,0 +1,65 @@
+import "std/regex.lum";
+import "std/test.lum";
+
+fn test_literals_and_dot() {
+  test.eq_bool(regex.is_match("abc", "xxabcxx"), true);
+  test.eq_bool(!regex.is_match("abd", "xxabcxx"), true);
+  test.eq_bool(regex.full_match("a.c", "abc"), true);
+  test.eq_bool(!regex.full_match("a.c", "abcd"), true);
+}
+
+fn test_quantifiers() {
+  test.eq_bool(regex.full_match("ab*c", "ac"), true);
+  test.eq_bool(regex.full_match("ab*c", "abbbc"), true);
+  test.eq_bool(!regex.full_match("ab+c", "ac"), true);
+  test.eq_bool(regex.full_match("ab+c", "abc"), true);
+  test.eq_bool(regex.full_match("colou?r", "color"), true);
+  test.eq_bool(regex.full_match("colou?r", "colour"), true);
+  test.eq_bool(regex.full_match(".*end", "the end"), true);
+}
+
+fn test_classes() {
+  test.eq_bool(regex.full_match("[a-c]+", "abcabc"), true);
+  test.eq_bool(!regex.full_match("[a-c]+", "abcd"), true);
+  test.eq_bool(regex.full_match("[^0-9]+", "abc"), true);
+  test.eq_bool(!regex.full_match("[^0-9]+", "ab1"), true);
+  test.eq_bool(regex.full_match("\\d+", "2024"), true);
+  test.eq_bool(regex.full_match("\\w+@\\w+\\.com", "max_1@site.com"), true);
+  test.eq_bool(!regex.full_match("\\w+@\\w+\\.com", "max@site.org"), true);
+  test.eq_bool(regex.full_match("a\\.b", "a.b"), true);
+  test.eq_bool(!regex.full_match("a\\.b", "axb"), true);
+}
+
+fn test_anchors_and_alternatives() {
+  test.eq_bool(regex.is_match("^abc", "abcdef"), true);
+  test.eq_bool(!regex.is_match("^abc", "xabc"), true);
+  test.eq_bool(regex.is_match("def$", "abcdef"), true);
+  test.eq_bool(!regex.is_match("def$", "defg"), true);
+  test.eq_bool(regex.full_match("cat|dog", "dog"), true);
+  test.eq_bool(!regex.full_match("cat|dog", "bird"), true);
+  test.eq_bool(regex.is_match("^a|b$", "xxb"), true);
+}
+
+fn test_search_and_all() {
+  let r = regex.search("\\d+", "abc 123 def 45");
+  test.eq_int(r.0, 4);
+  test.eq_int(r.1, 7);
+  let ms = regex.all_matches("\\d+", "abc 123 def 45");
+  test.eq_int(len(ms), 2);
+  test.eq_str(ms[1], "45");
+  test.eq_int(regex.search("z", "abc").0, -1);
+}
+
+fn test_sub() {
+  test.eq_str(regex.sub("\\s+", "a   b \t c", " "), "a b c");
+  test.eq_str(regex.sub("[aeiou]", "education", "_"), "_d_c_t__n");
+  test.eq_str(regex.sub("x*", "abc", "-"), "-a-b-c-");
+}
+
+fn test_utf8() {
+  test.eq_bool(regex.full_match("...", "ابت"), true);
+  test.eq_str(regex.sub("ب+", "أببب", "x"), "أx");
+  test.eq_int(len(regex.all_matches(".", "مرحبا")), 5);
+  test.eq_bool(regex.is_match("ب", "أ"), false);
+  test.eq_bool(regex.is_match("ab", "aأ"), false);
+}
