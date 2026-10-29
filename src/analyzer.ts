@@ -637,7 +637,10 @@ class Analyzer {
         p.sym.origin = p.from;
       }
       const flow = this.withScope(() => this.block(f.body));
-      if (f.ret !== 'void' && !flow.returns) {
+      // another error inside the function already explains a path that looks like it falls off the end
+      const end = f.body.length ? f.body[f.body.length - 1].span.end : f.nameSpan.end;
+      const broken = this.diags.some(d => d.severity === 'error' && d.span.start >= f.nameSpan.start && d.span.start <= end);
+      if (f.ret !== 'void' && f.ret !== 'error' && !flow.returns && !broken) {
         this.err('E007', `function '${f.name}' does not return a value on every path`, f.nameSpan, `add a 'return' at the end or in the missing branch`);
       }
     });
@@ -949,7 +952,8 @@ class Analyzer {
     for (const p of pats) {
       if (p.k !== 'variant' || !p.binds) continue;
       p.binds.forEach((b, j) => {
-        if (b && p.tys[j]) b.sym = this.declareVar(b.name, p.tys[j], false, b.span);
+        // an unresolved variant leaves the types empty: still declare the names so uses of them do not pile up errors
+        if (b) b.sym = this.declareVar(b.name, p.tys[j] ?? 'error', false, b.span);
       });
     }
   }
