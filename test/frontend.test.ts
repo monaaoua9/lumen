@@ -711,3 +711,9 @@ test('try: bails out of Result and Option functions, errors elsewhere', () => {
   assert.deepEqual(diagCodes(R + 'fn f(): Result<int> { let x = try p("ab"); return Result.Ok(x); } print(str(f()));'), []);
   assert.deepEqual(diagCodes(R + 'fn f(): int { let x = try p("ab"); return x; } print(f());'), ['P001']);
 });
+
+test('generic enum instantiated with a struct declared in the same file', () => {
+  const S = 'struct Task { name: string } enum Res<T> { Ok(T), Err(string) } ';
+  assert.deepEqual(diagCodes(S + 'fn mk(): Res<Task> { return Res.Ok(Task { name: "a" }); } print(str(mk()));'), []);
+  assert.deepEqual(diagCodes(S + 'fn mk(): Res<Nope> { return Res.Err("x"); } print(1);').filter(c => c === 'E016'), ['E016']);
+});
