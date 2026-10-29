@@ -507,7 +507,13 @@ test('tuple patterns', () => {
   assert.deepEqual(errs('let n = 4; print(match (n % 2, n) { (0, 4) => 1 });'), ['E020']);
   assert.ok(diagCodes('fn f(): int { return 1; } print(match (f(), 2) { (1, 2) => 1, _ => 0 });').includes('P001'));
   assert.ok(diagCodes('let n = 1; print(match (n, n) { (1, 2, 3) => 1, _ => 0 });').includes('P001'));
-  assert.ok(diagCodes('let n = 1; print(match (n, n) { (Some, 2) => 1, _ => 0 });').includes('P001'));
+  assert.ok(diagCodes('let n = 1; print(match (n, n) { (Some(1), 2) => 1, _ => 0 });').includes('P001'));
+});
+
+test('tuple patterns bind names', () => {
+  assert.deepEqual(errs('let t = (1, 2); print(match t { (0, y) => y, (x, _) => x });'), []);
+  assert.deepEqual(errs('let t = (1, 2); print(match t { (x, y) => x + y });'), []);
+  assert.ok(diagCodes('let t = (1, 2); print(match t { (0, 1) | (x, _) => 1, _ => 2 });').includes('P001'));
 });
 
 test('named arguments', () => {
