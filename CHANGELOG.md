@@ -4,7 +4,7 @@ Newest first. The README has the full description of every feature.
 
 ## Language
 
-- Default argument values, named arguments (`box(height: 5, width: 4)`), also on generic functions, struct update `P { x: 1, ..base }`.
+- Default argument values, named arguments (`box(height: 5, width: 4)`), also on generic functions and methods, struct update `P { x: 1, ..base }`.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, `s[i]` reads one character.
