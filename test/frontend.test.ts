@@ -441,6 +441,15 @@ test('explicit type arguments on a struct literal', () => {
   assert.deepEqual(errs('let a = 1; let B = 2; print(a < B);'), []);
 });
 
+test('nested variant patterns', () => {
+  const E = 'enum O { S(int), N } enum W { A(O), B } ';
+  assert.deepEqual(errs(E + 'let w = W.A(O.S(1)); match w { A(S(x)) => print(x), A(_) => print(0), B => print(2) }'), []);
+  assert.deepEqual(errs(E + 'let w = W.A(O.S(1)); match w { A(S(x)) => print(x), B => print(2) }'), ['E020']);
+  assert.deepEqual(errs(E + 'let w = W.A(O.S(1)); match w { A(Q(x)) => print(x), _ => print(2) }').length > 0, true);
+  assert.deepEqual(diagCodes(E + 'let w = W.A(O.S(1)); match w { A(S(x)) | A(N) => print(1), _ => print(2) }'), ['P001']);
+  assert.deepEqual(errs(E + 'let w = W.A(O.S(1)); if let A(S(x)) = w { print(x); }'), []);
+});
+
 test('block expressions', () => {
   assert.deepEqual(errs('let a = { let x = 1; x + 1 }; print(a);'), []);
   assert.deepEqual(errs('let a: int = { 1 }; print(a);'), []);

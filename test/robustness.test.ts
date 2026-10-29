@@ -612,6 +612,14 @@ test('try inside block expressions agrees on every engine', () => {
   }
 });
 
+test('nested variant patterns agree on every engine', () => {
+  const want = 'wrapped zero\nwrapped big 42\nwrapped 3\nwrapped nothing\nboth 3\nleft 5\nother pair\nsum 5\ndiff 5\nempty\nvalue 4\nno value\nno value\nitem 1\nzero\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/nested_patterns.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);

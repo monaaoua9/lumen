@@ -1,0 +1,43 @@
+enum Op { Add, Sub }
+enum Opt { Some(int), None }
+enum Box { Wrap(Opt), Pair(Opt, Opt), Bin(Op, int, int), Empty }
+
+fn show(b: Box): string {
+  return match b {
+    Wrap(Some(0)) => "wrapped zero",
+    Wrap(Some(n)) if n > 10 => "wrapped big {n}",
+    Wrap(Some(n)) => "wrapped {n}",
+    Wrap(_) => "wrapped nothing",
+    Pair(Some(a), Some(c)) => "both {a + c}",
+    Pair(Some(a), None) => "left {a}",
+    Pair(_, _) => "other pair",
+    Bin(Add, x, y) => "sum {x + y}",
+    Bin(_, x, y) => "diff {x - y}",
+    Empty => "empty",
+  };
+}
+
+let all = [
+  Box.Wrap(Opt.Some(0)), Box.Wrap(Opt.Some(42)), Box.Wrap(Opt.Some(3)), Box.Wrap(Opt.None),
+  Box.Pair(Opt.Some(1), Opt.Some(2)), Box.Pair(Opt.Some(5), Opt.None), Box.Pair(Opt.None, Opt.None),
+  Box.Bin(Op.Add, 2, 3), Box.Bin(Op.Sub, 9, 4), Box.Empty,
+];
+for b in all {
+  print(show(b));
+}
+
+enum Res { Ok(Opt), Err(string) }
+
+fn f(r: Res) {
+  if let Ok(Some(v)) = r { print("value", v); } else { print("no value"); }
+}
+f(Res.Ok(Opt.Some(4)));
+f(Res.Ok(Opt.None));
+f(Res.Err("x"));
+let items = [Res.Ok(Opt.Some(1)), Res.Ok(Opt.None), Res.Ok(Opt.Some(3))];
+var i = 0;
+while let Ok(Some(n)) = items[i] {
+  print("item", n);
+  i += 1;
+}
+if let Ok(Some(0)) = Res.Ok(Opt.Some(0)) { print("zero"); }
