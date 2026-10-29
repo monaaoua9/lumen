@@ -38,7 +38,7 @@ export const EXPLAIN: Record<string, Entry> = {
   E017: { title: 'struct contains itself', text: 'A struct field of its own type would have infinite size. Use an array field to break the cycle.', bad: 'struct Node { next: Node }', fix: 'struct Node { next: Node[] }' },
   E018: { title: 'unknown struct field', text: 'The literal names a field the struct does not have.' },
   E019: { title: 'bad field or method access', text: 'The value has no such field or method, or it is not a struct or enum at all.' },
-  E020: { title: 'non-exhaustive match', text: 'Some enum variants, or the rest of an int or string, are not covered. Add the missing arms or a _ arm.' },
+  E020: { title: 'non-exhaustive match', text: 'Some enum variants, or the rest of an int or string, are not covered. Add the missing arms or a _ arm. Arms with literals, guards or tuples in their parts do not count, only plain names do (nested variants count when together they name every inner variant).' },
   E021: { title: 'unknown enum variant', text: 'The enum has no variant with that name.' },
   E022: { title: 'variant needs arguments', text: 'A variant that carries data must be written with its values.', bad: 'Shape.Circle', fix: 'Shape.Circle(1.0)' },
   E023: { title: 'internal closure capture', text: 'A closure could not capture this variable. Copy it into a let first.' },
