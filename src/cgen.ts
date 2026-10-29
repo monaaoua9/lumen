@@ -415,6 +415,30 @@ static void lm_assert(int ok, const char *msg) {
   fprintf(stderr, "runtime error: assertion failed: %s\n", msg);
   exit(1);
 }
+static const char *lm_read_file(const char *path) {
+  FILE *f = fopen(path, "rb");
+  if (!f) { fflush(stdout); fprintf(stderr, "runtime error: cannot read '%s'\n", path); exit(1); }
+  size_t cap = 4096, n = 0;
+  char *buf = (char *)lm_alloc(cap, 1);
+  for (;;) {
+    size_t got = fread(buf + n, 1, cap - n - 1, f);
+    n += got;
+    if (n < cap - 1) break;
+    char *bigger = (char *)lm_alloc(cap * 2, 1);
+    memcpy(bigger, buf, n);
+    buf = bigger;
+    cap *= 2;
+  }
+  fclose(f);
+  buf[n] = 0;
+  return buf;
+}
+static void lm_write_file(const char *path, const char *text) {
+  FILE *f = fopen(path, "wb");
+  if (!f) { fflush(stdout); fprintf(stderr, "runtime error: cannot write '%s'\n", path); exit(1); }
+  fwrite(text, 1, strlen(text), f);
+  fclose(f);
+}
 static int lm_argc;
 static char **lm_argv;
 static lm_arr *lm_args(void) {
@@ -792,6 +816,8 @@ class Gen {
         case 'read_line': text = 'lm_read_line()'; break;
         case 'at_eof': text = 'lm_at_eof()'; break;
         case 'args': text = 'lm_args()'; break;
+        case 'read_file': text = `lm_read_file(${a})`; break;
+        case 'write_file': text = `lm_write_file(${a}, ${args[1]})`; break;
         case 'sort': text = `lm_sort_${slot(elemOf(aty as ArrayType))}(${a})`; break;
         case 'reverse': text = `lm_reverse(${a})`; break;
         case 'contains': text = `lm_contains_${slot(elemOf(aty as ArrayType))}(${a}, ${args[1]})`; break;

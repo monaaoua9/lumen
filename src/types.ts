@@ -52,7 +52,7 @@ export function typeFromName(name: string): Type | null {
   return NAMED[name] ?? null;
 }
 
-export type BuiltinName = 'args' | 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split' | 'byte' | 'chr' | 'join' | 'trim' | 'assert' | 'read_line' | 'at_eof' | 'exit' | 'sort' | 'reverse' | 'contains' | 'slice' | 'floor' | 'ceil' | 'insert' | 'remove' | 'upper' | 'lower' | 'replace' | 'starts_with' | 'ends_with' | 'repeat' | 'parse_int' | 'parse_float';
+export type BuiltinName = 'read_file' | 'write_file' | 'args' | 'print' | 'str' | 'int' | 'float' | 'len' | 'push' | 'pop' | 'sqrt' | 'abs' | 'min' | 'max' | 'substr' | 'find' | 'split' | 'byte' | 'chr' | 'join' | 'trim' | 'assert' | 'read_line' | 'at_eof' | 'exit' | 'sort' | 'reverse' | 'contains' | 'slice' | 'floor' | 'ceil' | 'insert' | 'remove' | 'upper' | 'lower' | 'replace' | 'starts_with' | 'ends_with' | 'repeat' | 'parse_int' | 'parse_float';
 
 // arity only, argument types are checked in the analyzer because several builtins are generic over arrays
 export const BUILTINS: Record<BuiltinName, { arity: number }> = {
@@ -86,6 +86,8 @@ export const BUILTINS: Record<BuiltinName, { arity: number }> = {
   read_line: { arity: 0 },
   at_eof: { arity: 0 },
   args: { arity: 0 },
+  read_file: { arity: 1 },
+  write_file: { arity: 2 },
   assert: { arity: 2 },
   join: { arity: 2 },
   trim: { arity: 1 },

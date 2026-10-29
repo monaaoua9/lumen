@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { ExitSignal, RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
 import type { BuiltinName, Type } from './types.ts';
@@ -116,6 +116,8 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
     case 'read_line': return readLine();
     case 'at_eof': return atEof();
+    case 'read_file': return readFileOf(a as string, span);
+    case 'write_file': writeFileOf(a as string, args[1] as string, span); return null;
     case 'args': return [...programArgs];
     case 'sort': sortArr(a as Value[]); return null;
     case 'reverse': (a as Value[]).reverse(); return null;
@@ -230,6 +232,22 @@ export function readLine(): string {
 }
 
 // ascii whitespace only, like the C side
+export function readFileOf(path: string, span?: Span): string {
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    throw new RuntimeError(`cannot read '${path}'`, span);
+  }
+}
+
+export function writeFileOf(path: string, text: string, span?: Span) {
+  try {
+    writeFileSync(path, text);
+  } catch {
+    throw new RuntimeError(`cannot write '${path}'`, span);
+  }
+}
+
 export function trimOf(s: string): string {
   return s.replace(/^[ \t\n\r]+|[ \t\n\r]+$/g, '');
 }

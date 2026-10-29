@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, sep } from 'node:path';
 import { frontend } from '../src/pipeline.ts';
 import { format } from '../src/fmt.ts';
 
@@ -409,4 +409,22 @@ test('args() sees what follows -- on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '2\n0=one\n1=two words\n', engine);
   }
   assert.equal(cli('run', 'examples/io/args.lum').stdout.trim(), '0');
+});
+
+test('read_file and write_file agree on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-files-'));
+  try {
+    const target = join(dir, 'note.txt').split(sep).join('/');
+    const prog = join(dir, 'f.lum');
+    writeFileSync(prog, `write_file("${target}", "one\\ntwo");\nprint(len(read_file("${target}")));\nprint(read_file("${target}/nope"));\n`);
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', prog, '--engine', engine);
+      assert.equal(r.status, 1, engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), '7\n', engine);
+      assert.ok(r.stderr.includes('cannot read'), engine + r.stderr);
+    }
+    assert.equal(readFileSync(join(dir, 'note.txt'), 'utf8'), 'one\ntwo');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
 });

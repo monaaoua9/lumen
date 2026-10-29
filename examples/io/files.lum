@@ -1,0 +1,15 @@
+let path = "lumen_files_demo.txt";
+write_file(path, "alpha\nbeta\ngamma\n");
+let text = read_file(path);
+print(len(text));
+let lines = split(trim(text), "\n");
+print(len(lines));
+write_file(path, join(reverse_copy(lines), ","));
+print(read_file(path));
+print(read_file("definitely/missing.txt"));
+
+fn reverse_copy(xs: string[]): string[] {
+  let out = slice(xs, 0, len(xs));
+  reverse(out);
+  return out;
+}
