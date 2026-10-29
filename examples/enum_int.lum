@@ -1,0 +1,13 @@
+enum Color { Red, Green, Blue }
+fn name(c: Color): string {
+  return match c { Red => "red", Green => "green", Blue => "blue" };
+}
+fn main() {
+  let all = [Color.Red, Color.Green, Color.Blue];
+  for c in all { print(name(c)); }
+  print(int(Color.Blue));
+  print(Color.Green == Color.Green);
+  print(Color.Green);
+  print(all);
+}
+main();
