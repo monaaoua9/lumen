@@ -16,6 +16,7 @@ Newest first. The README has the full description of every feature.
 - A private struct or enum can be the type argument of a generic function from another file (no more E027 inside the library).
 - Method-call syntax on any value: `xs.len()`, `s.trim().upper()`, `n.twice()` read as `len(xs)`, `upper(trim(s))`, `twice(n)`.
 - Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
+- Diagnostics and `:type` show tuple types as `(int, string)`.
 - `match` on tuples: `(0, _) => ...`, `(x, 0) => x`, literals, names and `_` as parts (`match (n % 3, n % 5)`).
 - `for (a, b) in pairs` and `for i, (a, b) in xs` take tuples apart in the loop head.
 - Nested tuple patterns (`let ((a, b), c) = t;`) and chained access (`t.0.1`).
