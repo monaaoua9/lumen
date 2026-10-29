@@ -159,6 +159,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/list.lum`: `map`, `filter`, `fold`, `any`, `all`, `count`, `find_index`, `take`, `drop`, `zip_with`, `sort_by` (stable, takes a `before(a, b)` function), `flatten`, `flat_map`, `unique`, `max_of`, `min_of`, `equal`, `index_of`, `reversed`, `take_while`, `drop_while`, `chunks`, and with tuples `zip`, `enumerate`, `partition` over any element type (they take function values, so `list.map(xs, fn(x) => x * 2)`), plus `range(lo, hi)` and `sum`.
 
+`std/list.lum` also has `product`, `rotate(xs, k)` and `count_by(xs, key)` (a `Map<int>`).
+
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
