@@ -10,6 +10,7 @@ Newest first. The README has the full description of every feature.
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, `s[i]` reads one character.
 - `==` and `!=` on structs, `\x41` and `\u{1F600}` string escapes, `assert(cond)` quotes its condition.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
+- An empty `[]` argument takes its type from the other arguments of a generic call (`map.get(g, n, [])`).
 - Local functions can call themselves.
 - Method-call syntax on any value: `xs.len()`, `s.trim().upper()`, `n.twice()` read as `len(xs)`, `upper(trim(s))`, `twice(n)`.
 - Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
