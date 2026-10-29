@@ -489,35 +489,86 @@ static void lm_append_file(const char *path, const char *text) {
 static void lm_remove_file(const char *path) {
   if (remove(path) != 0) { fflush(stdout); fprintf(stderr, "runtime error: cannot remove '%s'\n", path); exit(1); }
 }
-static const char *lm_http_get(const char *url) {
+static int lm_url_ok(const char *url) {
   const char *ok = "-._~:/?#@!&=+,;%*()[]'";
   int scheme = !strncmp(url, "http://", 7) || !strncmp(url, "https://", 8) || !strncmp(url, "file://", 7);
   size_t n = strlen(url);
-  int clean = scheme && n > 7;
-  for (size_t i = 0; clean && i < n; i++) {
+  if (!scheme || n <= 7) return 0;
+  for (size_t i = 0; i < n; i++) {
     unsigned char c = (unsigned char)url[i];
-    if (!isalnum(c) && !strchr(ok, c)) clean = 0;
+    if (!isalnum(c) && !strchr(ok, c)) return 0;
   }
-  if (!clean) { fflush(stdout); fprintf(stderr, "runtime error: bad url '%s'\n", url); exit(1); }
-  char *cmd = (char *)malloc(n + 64);
-  sprintf(cmd, "curl -sSLf --max-time 30 -- \"%s\" 2>%s", url, LM_NULLDEV);
+  return 1;
+}
+static int lm_header_ok(const char *h) {
+  const char *colon = strchr(h, ':');
+  if (!colon || colon == h) return 0;
+  for (const char *p = h; p < colon; p++) if (!isalnum((unsigned char)*p) && *p != '-') return 0;
+  for (const char *p = colon; *p; p++) if (*p == '\r' || *p == '\n') return 0;
+  return 1;
+}
+static void lm_tmp_name(char *out, size_t cap, const char *ext) {
+  static int seq = 0;
+  const char *dir = getenv("TEMP");
+  if (!dir) dir = getenv("TMPDIR");
+  if (!dir) dir = "/tmp";
+  snprintf(out, cap, "%s/lm_http_%ld_%d.%s", dir, (long)time(NULL), seq++, ext);
+}
+static const char *lm_http_request(const char *method, const char *url, lm_arr *headers, const char *body) {
+  if (!lm_url_ok(url)) { fflush(stdout); fprintf(stderr, "runtime error: bad url '%s'\n", url); exit(1); }
+  size_t ml = strlen(method);
+  int mok = ml >= 3 && ml <= 7;
+  for (size_t i = 0; mok && i < ml; i++) if (method[i] < 'A' || method[i] > 'Z') mok = 0;
+  if (!mok) { fflush(stdout); fprintf(stderr, "runtime error: bad http method '%s'\n", method); exit(1); }
+  /* header values and the body go through temp files so no user text ever reaches the shell */
+  char hfile[600] = "", bfile[600] = "";
+  long long nh = headers ? headers->len : 0;
+  if (nh > 0) {
+    lm_tmp_name(hfile, sizeof hfile, "h");
+    FILE *hf = fopen(hfile, "wb");
+    if (!hf) { fflush(stdout); fprintf(stderr, "runtime error: request failed: %s\n", url); exit(1); }
+    for (long long i = 0; i < nh; i++) {
+      const char *h = headers->d[i].s;
+      if (!lm_header_ok(h)) { fclose(hf); remove(hfile); fflush(stdout); fprintf(stderr, "runtime error: bad http header '%s'\n", h); exit(1); }
+      fprintf(hf, "%s\n", h);
+    }
+    fclose(hf);
+  }
+  if (body[0]) {
+    lm_tmp_name(bfile, sizeof bfile, "b");
+    FILE *bf = fopen(bfile, "wb");
+    if (!bf) { if (hfile[0]) remove(hfile); fflush(stdout); fprintf(stderr, "runtime error: request failed: %s\n", url); exit(1); }
+    fwrite(body, 1, strlen(body), bf);
+    fclose(bf);
+  }
+  size_t cap = strlen(url) + 1500;
+  char *cmd = (char *)malloc(cap);
+  int w = snprintf(cmd, cap, "curl -sSLf --max-time 30 -X %s", method);
+  if (hfile[0]) w += snprintf(cmd + w, cap - w, " -H \"@%s\"", hfile);
+  if (bfile[0]) w += snprintf(cmd + w, cap - w, " --data-binary \"@%s\"", bfile);
+  snprintf(cmd + w, cap - w, " -- \"%s\" 2>%s", url, LM_NULLDEV);
   FILE *p = popen(cmd, "r");
   free(cmd);
-  if (!p) { fflush(stdout); fprintf(stderr, "runtime error: request failed: %s\n", url); exit(1); }
-  size_t cap = 4096, used = 0;
-  char *buf = (char *)malloc(cap);
-  size_t got;
-  while ((got = fread(buf + used, 1, cap - used, p)) > 0) {
-    used += got;
-    if (used == cap) { cap *= 2; buf = (char *)realloc(buf, cap); }
+  size_t bcap = 4096, used = 0;
+  char *buf = (char *)malloc(bcap);
+  int st = -1;
+  if (p) {
+    size_t got;
+    while ((got = fread(buf + used, 1, bcap - used, p)) > 0) {
+      used += got;
+      if (used == bcap) { bcap *= 2; buf = (char *)realloc(buf, bcap); }
+    }
+    st = pclose(p);
   }
-  int st = pclose(p);
+  if (hfile[0]) remove(hfile);
+  if (bfile[0]) remove(bfile);
   if (st != 0) { free(buf); fflush(stdout); fprintf(stderr, "runtime error: request failed: %s\n", url); exit(1); }
   char *r = (char *)lm_alloc(used + 1, 1);
   memcpy(r, buf, used);
   free(buf);
   return r;
 }
+static const char *lm_http_get(const char *url) { return lm_http_request("GET", url, NULL, ""); }
 static int lm_file_exists(const char *path) {
   FILE *f = fopen(path, "rb");
   if (f) { fclose(f); return 1; }
@@ -959,6 +1010,7 @@ class Gen {
         case 'list_dir': text = `lm_list_dir(${a})`; break;
         case 'remove_file': text = `lm_remove_file(${a})`; break;
         case 'http_get': text = `lm_http_get(${a})`; break;
+        case 'http_request': text = `lm_http_request(${a}, ${args[1]}, ${args[2]}, ${args[3]})`; break;
         case 'env': text = `lm_env(${a})`; break;
         case 'write_file': text = `lm_write_file(${a}, ${args[1]})`; break;
         case 'sort': text = `lm_sort_${slot(elemOf(aty as ArrayType))}(${a})`; break;

@@ -999,3 +999,44 @@ test('lumen init writes a manifest once', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('http_request sends method, headers and body on every engine', async () => {
+  const { spawn } = await import('node:child_process');
+  const srv = spawn(process.execPath, ['-e', `
+    require('http').createServer((req, res) => {
+      let b = '';
+      req.on('data', c => b += c);
+      req.on('end', () => res.end(req.method + '|' + req.headers['x-test'] + '|' + b));
+    }).listen(0, '127.0.0.1', function () { console.log(this.address().port); });
+  `], { stdio: ['ignore', 'pipe', 'ignore'] });
+  try {
+    const port = await new Promise<string>(ok => srv.stdout.once('data', d => ok(String(d).trim())));
+    const dir = mkdtempSync(join(tmpdir(), 'lumen-req-'));
+    try {
+      const src = `print(http_request("POST", "http://127.0.0.1:${port}/x", ["X-Test: yes"], "payload"));\nprint(http_request("GET", "http://127.0.0.1:${port}/", ["X-Test: g"], ""));`;
+      writeFileSync(join(dir, 'r.lum'), src);
+      writeFileSync(join(dir, 'bad.lum'), `let h: string[] = [];
+print(http_request("post", "http://127.0.0.1:${port}/", h, ""));`);
+      writeFileSync(join(dir, 'badh.lum'), `print(http_request("GET", "http://127.0.0.1:${port}/", ["no colon here"], ""));`);
+      for (const engine of ['interp', 'vm', 'c']) {
+        const r = await new Promise<{ out: string; err: string; code: number | null }>(ok => {
+          const p = spawn(process.execPath, ['src/cli.ts', 'run', join(dir, 'r.lum'), '--engine', engine]);
+          let out = '', err = '';
+          p.stdout.on('data', d => out += d);
+          p.stderr.on('data', d => err += d);
+          p.on('close', code => ok({ out, err, code }));
+        });
+        assert.equal(r.out.replace(/\r\n/g, '\n'), 'POST|yes|payload\nGET|g|\n', engine + r.err);
+        for (const [f, msg] of [['bad.lum', 'bad http method'], ['badh.lum', 'bad http header']]) {
+          const b = cli('run', join(dir, f), '--engine', engine);
+          assert.equal(b.status, 1, engine);
+          assert.ok(b.stderr.includes(msg), engine + b.stderr);
+        }
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  } finally {
+    srv.kill();
+  }
+});

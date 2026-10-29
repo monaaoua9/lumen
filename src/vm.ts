@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { BIT_OPS, MAX_DEPTH, bitOp, bytesOf, byteLen, programArgs, readFileOf, writeFileOf, appendFileOf, removeFileOf, httpGet, fileExists, listDir, envOf, byteAt, parseFloatOr, parseIntOr, lowerOf, repeatOf, replaceOf, upperOf, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
+import { BIT_OPS, MAX_DEPTH, bitOp, bytesOf, byteLen, programArgs, readFileOf, writeFileOf, appendFileOf, removeFileOf, httpGet, httpRequest, fileExists, listDir, envOf, byteAt, parseFloatOr, parseIntOr, lowerOf, repeatOf, replaceOf, upperOf, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -160,6 +160,7 @@ export function run(m: Module, io: IO) {
         case Op.FEXISTS: stack[sp - 1] = fileExists(stack[sp - 1] as string); break;
         case Op.LISTDIR: stack[sp - 1] = listDir(stack[sp - 1] as string); break;
         case Op.RMFILE: removeFileOf(stack[--sp] as string); break;
+        case Op.HTTPREQ: sp -= 3; stack[sp - 1] = httpRequest(stack[sp - 1] as string, stack[sp] as string, stack[sp + 1] as unknown as string[], stack[sp + 2] as string); break;
         case Op.HTTPGET: stack[sp - 1] = httpGet(stack[sp - 1] as string); break;
         case Op.ENV: stack[sp - 1] = envOf(stack[sp - 1] as string); break;
         case Op.CLOCK: stack[sp++] = Date.now(); break;

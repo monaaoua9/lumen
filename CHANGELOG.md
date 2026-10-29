@@ -2,6 +2,10 @@
 
 Newest first. The README has the full description of every feature.
 
+## Unreleased
+
+- `http_request(method, url, headers, body)`.
+
 ## 1.1.0
 
 - File and environment builtins: `append_file`, `file_exists`, `list_dir`, `remove_file`, `env`.

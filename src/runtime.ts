@@ -141,6 +141,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'list_dir': return listDir(a as string, span);
     case 'remove_file': removeFileOf(a as string, span); return null;
     case 'http_get': return httpGet(a as string, span);
+    case 'http_request': return httpRequest(a as string, args[1] as string, args[2] as unknown as string[], args[3] as string, span);
     case 'env': return envOf(a as string);
     case 'args': return [...programArgs];
     case 'clock': return Date.now();
@@ -318,9 +319,23 @@ export function removeFileOf(path: string, span?: Span) {
 const URL_OK = /^(https?|file):\/\/[A-Za-z0-9\-._~:\/?#@!&=+,;%*()\[\]']+$/;
 
 export function httpGet(url: string, span?: Span): string {
+  return httpRequest('GET', url, [], '', span);
+}
+
+const METHOD_OK = /^[A-Z]{3,7}$/;
+
+export function httpRequest(method: string, url: string, headers: string[], body: string, span?: Span): string {
   if (!URL_OK.test(url)) throw new RuntimeError(`bad url '${url}'`, span);
+  if (!METHOD_OK.test(method)) throw new RuntimeError(`bad http method '${method}'`, span);
+  for (const h of headers) {
+    if (!/^[A-Za-z0-9-]+:[^\r\n]*$/.test(h)) throw new RuntimeError(`bad http header '${h}'`, span);
+  }
+  const argv = ['-sSLf', '--max-time', '30', '-X', method];
+  for (const h of headers) argv.push('-H', h);
+  if (body !== '') argv.push('--data-binary', '@-');
+  argv.push('--', url);
   try {
-    return execFileSync('curl', ['-sSLf', '--max-time', '30', '--', url], { encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'ignore'] });
+    return execFileSync('curl', argv, { encoding: 'utf8', input: body, maxBuffer: 1 << 28, stdio: ['pipe', 'pipe', 'ignore'] });
   } catch {
     throw new RuntimeError(`request failed: ${url}`, span);
   }

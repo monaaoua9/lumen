@@ -438,6 +438,7 @@ class FnCompiler {
           case 'env': this.emit(Op.ENV); break;
           case 'remove_file': this.emit(Op.RMFILE); break;
           case 'http_get': this.emit(Op.HTTPGET); break;
+          case 'http_request': this.emit(Op.HTTPREQ); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;
