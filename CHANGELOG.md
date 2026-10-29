@@ -2,6 +2,10 @@
 
 Newest first. The README has the full description of every feature.
 
+## 1.0.0
+
+First stable release: everything below is part of it.
+
 ## Language
 
 - Explicit type arguments on generic calls: `zero<int>()`, `map.new<string>()`.
