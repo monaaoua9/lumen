@@ -1088,6 +1088,46 @@ class Analyzer {
     this.err('E003', `type mismatch${ctx ? ' ' + ctx : ''}: expected ${want}, found ${got}`, span, hint);
   }
 
+  // `fn walk(i) { ... walk(i + 1) ... limit ... }` inside another function is lifted to the top level by the parser.
+  // the first call (from the closure standing in for it) is where the enclosing locals it reads become leading parameters
+  liftedRec = new Set<string>();
+
+  liftCaptures(fn: FnSym, first: Extract<Expr, { k: 'call' }>) {
+    const d = fn.decl;
+    const inner = new Set<string>([d.name]);
+    const used = new Set<string>();
+    const walk = (o: unknown) => {
+      if (Array.isArray(o)) return o.forEach(walk);
+      if (!o || typeof o !== 'object') return;
+      const n = o as Record<string, unknown>;
+      if (n.k === 'let') inner.add(n.name as string);
+      if ((n.k === 'var' || n.k === 'call') && typeof n.name === 'string') used.add(n.name);
+      if (Array.isArray(n.params)) for (const p of n.params) inner.add((p as { name: string }).name);
+      if (Array.isArray(n.binds)) for (const b of n.binds) if (b && typeof b === 'object') inner.add((b as { name: string }).name);
+      for (const [key, v] of Object.entries(n)) if (key !== 'span' && key !== 'ty') walk(v);
+    };
+    d.params.forEach(p => inner.add(p.name));
+    walk(d.body);
+    const caps: { name: string; ty: Type }[] = [];
+    for (const n of used) {
+      const sym = inner.has(n) ? null : this.scope.lookup(n);
+      if (sym && sym.where === 'local') caps.push({ name: n, ty: sym.ty });
+    }
+    if (caps.length === 0) return;
+    const vars = (span: Span): Expr[] => caps.map(c => ({ k: 'var', name: c.name, span, ty: 'error' }));
+    const selfCalls = (o: unknown) => {
+      if (Array.isArray(o)) return o.forEach(selfCalls);
+      if (!o || typeof o !== 'object') return;
+      const n = o as Record<string, unknown>;
+      if (n.k === 'call' && n.name === d.name) (n.args as Expr[]).unshift(...vars(n.span as Span));
+      for (const [key, v] of Object.entries(n)) if (key !== 'span' && key !== 'ty') selfCalls(v);
+    };
+    selfCalls(d.body);
+    d.params.unshift(...caps.map(c => ({ name: c.name, span: d.nameSpan, ty: c.ty })));
+    fn.params.unshift(...caps.map(c => c.ty));
+    first.args.unshift(...vars(first.span));
+  }
+
   // an uncalled generic is never type checked, but a name that is declared nowhere is wrong whatever T is
   unknownNames(g: FnDecl) {
     const declared = new Set<string>(g.params.map(p => p.name));
@@ -1568,6 +1608,14 @@ class Analyzer {
     if (open) {
       this.err('E030', `cannot infer the type of parameter '${open.name}'`, open.span, `write it out: fn(${open.name}: int) ...`);
       return 'error';
+    }
+    // the closure a local recursive fn is bound to: its call to the real function gets the locals that one reads
+    const st = f.body[0];
+    const fwd = st && (st.k === 'return' ? st.value : st.k === 'expr' ? st.e : undefined);
+    if (fwd && fwd.k === 'call' && /\$r\d+$/.test(fwd.name) && !this.liftedRec.has(fwd.name)) {
+      this.liftedRec.add(fwd.name);
+      const rec = this.fns.get(fwd.name);
+      if (rec) this.liftCaptures(rec, fwd);
     }
     const used = new Set<string>();
     const declared = new Set<string>();
