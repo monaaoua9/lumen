@@ -658,6 +658,14 @@ test('chr builds any code point as UTF-8 on every engine', () => {
   }
 });
 
+test('absurdly deep nesting is a diagnostic, not a crash', () => {
+  const code = 'print(' + '('.repeat(6000) + '1' + ')'.repeat(6000) + ');';
+  const r = cli('check', '-e', code);
+  assert.equal(r.status, 1);
+  assert.ok((r.stdout + r.stderr).includes('nests'));
+  assert.ok(!(r.stderr).includes('RangeError'));
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
