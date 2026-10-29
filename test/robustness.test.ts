@@ -597,3 +597,12 @@ test('std/matrix gives the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('a private struct inside the library Map works on every engine', () => {
+  const want = 'ok 100\nok 50\nok 30\nerr unknown gear\nerr bad qty for nut\nerr not enough nut\nok 0\nitem  qty  value\nbolt  70   210,000\nnut   50   100,000\n\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/stock_commands.lum', '--engine', engine);
+    assert.equal(r.stderr, '', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
