@@ -889,6 +889,12 @@ class Analyzer {
           cands.length ? closestHint(e.name, cands) : undefined);
         return 'error';
       }
+      for (let i = e.args.length + 1; i < fn.decl.params.length; i++) {
+        const d = fn.decl.params[i].def;
+        if (!d) break;
+        e.args.push(structuredClone(d));
+        rest.push(e.args[e.args.length - 1]);
+      }
       const argTys = [ot, ...rest.map((a, i) => this.expr(a, fn.params[i + 1]))];
       const call = e as unknown as Extract<Expr, { k: 'call' }>;
       Object.assign(e, { k: 'call', name: fn.name, args: [e.obj, ...e.args] });
