@@ -17,6 +17,7 @@ Newest first. The README has the full description of every feature.
 - New std/matrix: `new`, `identity`, `transpose`, `add`, `mul`, `pow`.
 - std/text: `wrap`, `glob`.
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
+- Statement `match` arms may be a bare expression: `Ok(b) => print(b),`.
 - `return` inside a block expression now leaves the function (it used to be E029, which is gone).
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
 - std/math: `lerp`, `hypot`, `fpow`; std/text: `truncate`, `title`.

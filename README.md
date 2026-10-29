@@ -80,6 +80,8 @@ match light {
 }
 ```
 
+A statement arm needs no braces when it is a single expression, `Line(n) => print("line", n),`.
+
 `match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs). `if` works as an expression too, `let s = if n < 0 { "neg" } else { "pos" };`: both branches are required, `else if` chains, and it is sugar for a match on the condition. `if let Some(x) = opt { ... } else { ... }` matches one pattern and ignores the rest (sugar for a match with a `_` arm); `while let Some(x) = next() { ... }` loops until the pattern stops matching.
 
 A block can be a value: `let n = { let a = 20; a + 22 };`, as a `match` arm (`Add(n) => { total += n; "added" }`) or an `if` branch. The last item is the result; `return` leaves the whole function (`let v = { if n < 0 { return -1; } n * 2 };`) and `break`/`continue` only reach loops inside the block. An arm may carry a guard, `Circle(r) if r > 1.0 => ...`; the guard runs after the pattern bound its names, and if it is false the next arm is tried. A guarded arm does not count towards exhaustiveness (`E020`) or reachability (`W010`).
