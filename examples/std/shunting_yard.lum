@@ -1,0 +1,66 @@
+import "std/option.lum"
+
+enum Tok { Num(int), Op(string), LP, RP }
+
+fn lex(s: string): Tok[] {
+  let out: Tok[] = [];
+  var i = 0;
+  while i < len(s) {
+    let c = s[i];
+    if c == " " { i += 1; continue; }
+    if c == "(" { push(out, Tok.LP); i += 1; continue; }
+    if c == ")" { push(out, Tok.RP); i += 1; continue; }
+    if c >= "0" && c <= "9" {
+      var n = 0;
+      while i < len(s) && s[i] >= "0" && s[i] <= "9" { n = n * 10 + parse_int(s[i], 0); i += 1; }
+      push(out, Tok.Num(n));
+      continue;
+    }
+    push(out, Tok.Op(c));
+    i += 1;
+  }
+  return out;
+}
+
+fn prec(op: string): int { return if op == "+" || op == "-" { 1 } else { 2 }; }
+
+fn eval(toks: Tok[]): Result<int> {
+  let nums: int[] = [];
+  let ops: string[] = [];
+  let apply = fn(): Result<int> {
+    let op = pop(ops);
+    let b = pop(nums);
+    let a = pop(nums);
+    if op == "+" { push(nums, a + b); }
+    else if op == "-" { push(nums, a - b); }
+    else if op == "*" { push(nums, a * b); }
+    else {
+      if b == 0 { return Result.Err("divide by zero"); }
+      push(nums, a / b);
+    }
+    return Result.Ok(0);
+  };
+  for t in toks {
+    match t {
+      Num(n) => push(nums, n),
+      LP => push(ops, "("),
+      RP => {
+        while len(ops) > 0 && ops[len(ops) - 1] != "(" { try apply(); }
+        pop(ops);
+      }
+      Op(o) => {
+        while len(ops) > 0 && ops[len(ops) - 1] != "(" && prec(ops[len(ops) - 1]) >= prec(o) { try apply(); }
+        push(ops, o);
+      }
+    }
+  }
+  while len(ops) > 0 { try apply(); }
+  return Result.Ok(nums[0]);
+}
+
+for e in ["1 + 2 * 3", "(1 + 2) * 3", "10 / (5 - 5)", "2 * (3 + 4) - 5"] {
+  match eval(lex(e)) {
+    Ok(v) => print("{e} = {v}"),
+    Err(m) => print("{e}: {m}"),
+  }
+}
