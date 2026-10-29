@@ -796,3 +796,29 @@ test('names may be written in Arabic and agree on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'المعدل: 87\nعلي: ناجح\nزينب: ناجح\n', engine);
   }
 });
+
+test('bitwise operators agree on every engine', () => {
+  const want = '8 1 true false\n2 7 5 -6 -4\n14900230 13489600\n5 false true\n3\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/bit_ops.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+  const folded = cli('run', 'examples/bit_ops.lum', '-O');
+  assert.equal(folded.stdout.replace(/\r\n/g, '\n'), want, '-O');
+});
+
+test('bad shifts trap the same way on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-shift-'));
+  try {
+    writeFileSync(join(dir, 'a.lum'), 'let n = 70;\nprint(1 << n);\n');
+    writeFileSync(join(dir, 'b.lum'), 'let n = 60;\nprint(1 << n);\n');
+    for (const engine of ['interp', 'vm', 'c']) {
+      const a = cli('run', join(dir, 'a.lum'), '--engine', engine);
+      assert.ok((a.stdout + a.stderr).includes('shift count out of range'), engine);
+      const b = cli('run', join(dir, 'b.lum'), '--engine', engine);
+      assert.ok((b.stdout + b.stderr).includes('integer overflow'), engine);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

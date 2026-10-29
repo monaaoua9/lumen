@@ -799,3 +799,10 @@ test('redefining a builtin reports it once, not at every call', () => {
   const src = 'fn find(xs: int[], id: int): int { return id; } print(find([1], 2)); print(find([3], 4) + 1);';
   assert.deepEqual(diagCodes(src).filter(c => c.startsWith('E')), ['E006']);
 });
+
+test('bitwise operators: int only, precedence like Rust, >> still closes generics', () => {
+  assert.deepEqual(diagCodes('print(1.5 | 2);'), ['E003']);
+  assert.deepEqual(diagCodes('print(1 & (2 == 2));'), ['E003']);
+  assert.deepEqual(diagCodes('print(1 | 2 ^ 3 & 4 << 1 + 1);'), []);
+  assert.deepEqual(diagCodes('struct B<T> { v: T } let x: B<B<int>> = B<B<int>> { v: B<int> { v: 1 } }; print(x.v.v >> 0);'), []);
+});
