@@ -1,0 +1,9 @@
+import "std/regex.lum";
+
+let log = "2024-03-05 ERROR disk full; 2024-03-06 WARN slow; 2024-03-07 ERROR timeout";
+for d in regex.all_matches("\\d+-\\d+-\\d+ ERROR", log) { print(d); }
+print(regex.sub("\\d+", log, "#"));
+print(regex.is_match("^\\d+$", "12345"), regex.is_match("^\\d+$", "12a45"));
+let r = regex.search("W[A-Z]+", log);
+print(r.0, r.1);
+print(regex.sub("ب+", "أببب جيد", "-"));

@@ -627,6 +627,14 @@ test('an expression simplifier built on nested patterns agrees on every engine',
   }
 });
 
+test('std/regex gives the same output on every engine', () => {
+  const want = '2024-03-05 ERROR\n2024-03-07 ERROR\n#-#-# ERROR disk full; #-#-# WARN slow; #-#-# ERROR timeout\ntrue false\n39 43\nأ- جيد\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/regex_demo.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
