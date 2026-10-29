@@ -536,3 +536,11 @@ test('std/format gives the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('std/date gives the same output on every engine', () => {
+  const want = '0 11017 -1\n2024-03-01\n0 1 3\nfalse true 28\n1969-12-31\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/date_demo.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
