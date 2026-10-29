@@ -1,0 +1,20 @@
+const W = 5;
+const H = 4;
+
+fn flood(grid: string[], sx: int, sy: int): int {
+  let seen: bool[] = [];
+  for _i in 0..W * H { push(seen, false); }
+  fn fill(x: int, y: int): int {
+    if x < 0 || y < 0 || x >= W || y >= H { return 0; }
+    if seen[y * W + x] || grid[y][x] == "#" { return 0; }
+    seen[y * W + x] = true;
+    return 1 + fill(x + 1, y) + fill(x - 1, y) + fill(x, y + 1) + fill(x, y - 1);
+  }
+  return fill(sx, sy);
+}
+
+fn main() {
+  let g = ["..#..", ".##..", "..#.#", "..#.."];
+  print(flood(g, 0, 0), flood(g, 4, 0), flood(g, 2, 0));
+}
+main();
