@@ -6,3 +6,5 @@ print(math.fpow(2.0, 10), math.fpow(2.0, -2));
 print(text.truncate("hello world", 8), text.truncate("short", 8));
 print(text.title("the quick brown fox"));
 print(text.truncate("مرحبا بالعالم", 11));
+for l in text.wrap("the quick brown fox jumps over the lazy dog", 15) { print(l); }
+print(text.glob("*.lum", "a.lum"), text.glob("a?c", "abc"), text.glob("a*b*c", "aXXbYc"), text.glob("*.lum", "a.txt"), text.glob("", ""));
