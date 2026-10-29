@@ -1,0 +1,20 @@
+import "std/test.lum"
+import "std/bits.lum"
+
+fn test_logic() {
+  test.eq_int(bits.band(12, 10), 8);
+  test.eq_int(bits.bor(12, 10), 14);
+  test.eq_int(bits.bxor(12, 10), 6);
+  test.eq_int(bits.bxor(5, 5), 0);
+}
+
+fn test_shifts() {
+  test.eq_int(bits.shl(3, 4), 48);
+  test.eq_int(bits.shr(48, 4), 3);
+  test.eq_int(bits.shr(1, 5), 0);
+}
+
+fn test_popcount() {
+  test.eq_int(bits.popcount(255), 8);
+  test.eq_int(bits.popcount(0), 0);
+}

@@ -1,0 +1,7 @@
+import "std/bits.lum"
+
+print(bits.band(0xF0, 0x3C));
+print(bits.bor(0xF0, 0x0F));
+print(bits.bxor(1000, 24));
+print(bits.shl(1, 20));
+print(bits.popcount(1_000_000));
