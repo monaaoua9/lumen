@@ -530,6 +530,14 @@ test('loop statement', () => {
   assert.deepEqual(errs('var loop = 1; loop = loop + 1; print(loop);'), []);
 });
 
+test('tuples', () => {
+  assert.deepEqual(errs('let t = (1, "a"); print(t.0 + 1); print(t.1);'), []);
+  assert.deepEqual(errs('fn f(): (int, bool) { return (1, true); } let (a, b) = f(); print(a); print(b);'), []);
+  assert.deepEqual(errs('let t = (1, 2); print(t.5);'), ['E019']);
+  assert.deepEqual(errs('let t: (int, int) = (1, "x");'), ['E003']);
+  assert.deepEqual(errs('print((1, 2) == (1, 2));'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

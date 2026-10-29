@@ -11,6 +11,7 @@ Newest first. The README has the full description of every feature.
 - `==` and `!=` on structs, `\x41` and `\u{1F600}` string escapes, `assert(cond)` quotes its condition.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
 - Local functions can call themselves.
+- Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
 
 ## Builtins
 

@@ -226,8 +226,13 @@ class Parser {
       this.next();
       out = enumType(`${this.traitRef().text}__dyn`);
     } else if (this.eat('(')) {
-      // parentheses tell `(fn(int): int)[]` apart from `fn(int): int[]`
+      // parentheses tell `(fn(int): int)[]` apart from `fn(int): int[]`; a comma makes it a tuple type
       out = this.type() as Elem;
+      if (this.at(',')) {
+        const parts: Type[] = [out];
+        while (this.eat(',') && !this.at(')')) parts.push(this.type());
+        out = structType(`${this.ensureTuple(parts.length)}<${parts.join(',')}>`) as Elem;
+      }
       this.expect(')');
     } else if (this.eat('fn')) {
       this.expect('(');
@@ -681,6 +686,19 @@ class Parser {
     this.fail(`expected a pattern, found '${t.text}'`, t.span, 'patterns are: Variant, _, an int, string or bool literal');
   }
 
+  // tuples are generic structs Tuple2<A, B> { _0: A, _1: B }, declared the first time one is written
+  ensureTuple(n: number): string {
+    const name = `Tuple${n}`;
+    if (this.structs.some(s => s.name === name)) return name;
+    const params = Array.from({ length: n }, (_, i) => String.fromCharCode(65 + i));
+    const span = this.prevSpan();
+    this.structs.push({
+      k: 'struct', span, name, nameSpan: span, typeParams: params,
+      fields: params.map((p, i) => ({ name: `_${i}`, ty: structType(p), span })),
+    });
+    return name;
+  }
+
   structDecl(): StructDecl {
     const kw = this.next();
     if (this.depth > 0) {
@@ -877,7 +895,7 @@ class Parser {
 
   letStmt(): Stmt {
     const kw = this.next();
-    if (this.at('[') || (this.cur.kind === 'ident' && this.peek().kind === '{')) return this.destructure(kw);
+    if (this.at('[') || this.at('(') || (this.cur.kind === 'ident' && this.peek().kind === '{')) return this.destructure(kw);
     const name = this.vn(this.expect('ident', 'a variable name'));
     let annot: Type | undefined;
     let annotSpan: Span | undefined;
@@ -900,7 +918,16 @@ class Parser {
     const tmp = `_$d${id}`;
     const picks: { name: Token; at: (obj: Expr) => Expr }[] = [];
     const mk = (obj: Expr, e: Omit<Extract<Expr, { k: 'index' }>, 'k' | 'arr' | 'span' | 'ty'>): Expr => ({ k: 'index', arr: obj, ...e, span: obj.span, ty: 'error' });
-    if (this.eat('[')) {
+    if (this.eat('(')) {
+      // let (a, b) = e;  reads _0, _1, ...
+      let i = 0;
+      do {
+        const n = this.vn(this.expect('ident', 'a variable name'));
+        const at = i++;
+        if (n.text !== '_') picks.push({ name: n, at: obj => ({ k: 'field', obj, name: `_${at}`, nameSpan: n.span, idx: -1, span: n.span, ty: 'error' }) });
+      } while (this.eat(',') && !this.at(')'));
+      this.expect(')');
+    } else if (this.eat('[')) {
       let i = 0;
       do {
         const n = this.vn(this.expect('ident', 'a variable name'));
@@ -1034,7 +1061,8 @@ class Parser {
         e = { k: 'call', name: 'call', nameSpan: e.span, args, callee: e, span: this.join(e.span, close.span), ty: 'error' };
       } else if (this.at('.')) {
         this.next();
-        const f = this.expect('ident', 'a field name');
+        // t.0 reads a tuple element
+        const f = this.cur.kind === 'int' ? (tok => ({ ...tok, text: `_${tok.text}` }))(this.next()) : this.expect('ident', 'a field name');
         if (this.at('(')) {
           this.next();
           const args: Expr[] = [];
@@ -1068,6 +1096,15 @@ class Parser {
       case 'false': return { k: 'bool', value: t.kind === 'true', span: t.span, ty: 'error' };
       case '(': {
         const e = this.allowStruct(() => this.expr());
+        if (this.at(',')) {
+          // (a, b) is a Tuple2 { _0: a, _1: b }
+          const items = [e];
+          while (this.eat(',') && !this.at(')')) items.push(this.allowStruct(() => this.expr()));
+          const close = this.expect(')');
+          const name = this.ensureTuple(items.length);
+          const fields = items.map((value, i) => ({ name: `_${i}`, nameSpan: value.span, value, idx: -1 }));
+          return { k: 'structlit', name, nameSpan: t.span, fields, span: this.join(t.span, close.span), ty: 'error' };
+        }
         this.expect(')');
         return e;
       }

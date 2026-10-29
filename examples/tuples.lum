@@ -1,0 +1,39 @@
+fn min_max(xs: int[]): (int, int) {
+  var lo = xs[0];
+  var hi = xs[0];
+  for v in xs {
+    if v < lo { lo = v; }
+    if v > hi { hi = v; }
+  }
+  return (lo, hi);
+}
+
+let pair = min_max([4, 9, 2, 7]);
+print(pair.0);
+print(pair.1);
+print(pair);
+
+let (lo, hi) = min_max([5, 1, 8]);
+print(hi - lo);
+
+let named: (string, int, bool) = ("ana", 30, true);
+print(named.0 + str(named.1));
+print(named);
+
+fn swap(p: (int, string)): (string, int) {
+  return (p.1, p.0);
+}
+print(swap((1, "one")));
+print((1, 2) == (1, 2));
+print((1, 2) != (2, 1));
+let rows = [(1, "a"), (2, "b")];
+for r in rows { print(r.1 + str(r.0)); }
+
+fn first_of<T>(p: (T, int)): T { return p.0; }
+print(first_of(("x", 1)) + str(first_of((5, 2))));
+let nested = ((1, 2), (3, 4));
+let (left, right) = nested;
+print(left.0 + left.1 + right.0 + right.1);
+var counter = (0, "n");
+counter = (counter.0 + 1, counter.1 + "!");
+print(counter);

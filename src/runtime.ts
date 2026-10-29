@@ -71,6 +71,7 @@ export function format(v: Value, ty: Type): string {
   }
   const info = layouts.get(ty.slice(1))!;
   const vals = v as Value[];
+  if (/^Tuple\d+$/.test(info.shown ?? info.name)) return `(${info.fields.map((f, i) => formatInner(vals[i], f.ty)).join(', ')})`;
   return `${info.shown ?? info.name} { ${info.fields.map((f, i) => `${f.name}: ${formatInner(vals[i], f.ty)}`).join(', ')} }`;
 }
 

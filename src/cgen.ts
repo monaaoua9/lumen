@@ -1092,6 +1092,16 @@ export function emitC(prog: Program): string {
     out.push(`static const char *lm_se_S_${d.name}(lm_val v) { return lm_str_S_${d.name}((S_${d.name} *)v.p); }`);
   }
   for (const d of prog.structs) {
+    if (/^Tuple\d+$/.test(d.shown ?? d.name)) {
+      // tuples print as (a, b)
+      out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, '  const char *r = "(";');
+      d.fields.forEach((f, i) => {
+        if (i) out.push('  r = lm_cat(r, ", ");');
+        out.push(`  r = lm_cat(r, ${strIn(f.ty, `p->f_${f.name}`)});`);
+      });
+      out.push('  return lm_cat(r, ")");', '}');
+      continue;
+    }
     out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, `  const char *r = "${d.shown ?? d.name} { ";`);
     d.fields.forEach((f, i) => {
       out.push(`  r = lm_cat(r, "${i ? ', ' : ''}${f.name}: ");`);
