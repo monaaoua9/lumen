@@ -789,3 +789,10 @@ test('a missing item in a module lists what the module has', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('names may be written in Arabic and agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/arabic_names.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'المعدل: 87\nعلي: ناجح\nزينب: ناجح\n', engine);
+  }
+});
