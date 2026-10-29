@@ -477,6 +477,13 @@ test('destructuring lets', () => {
   assert.deepEqual(errs('struct P { x: int } let P { z } = P { x: 1 }; print(z);'), ['E019']);
 });
 
+test('struct update syntax', () => {
+  const S = 'struct P { x: int, y: int } struct Q { z: int } let a = P { x: 1, y: 2 }; ';
+  assert.deepEqual(errs(S + 'let b = P { x: 5, ..a }; print(b);'), []);
+  assert.deepEqual(errs(S + 'let b = P { ..P { x: 1, y: 2 } };'), ['E018', 'E018']);
+  assert.deepEqual(errs(S + 'let c = Q { z: 1 }; let b = P { x: 5, ..c };'), ['E003', 'E019']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

@@ -910,8 +910,14 @@ class Parser {
   structLit(nameTok: Token): Expr {
     this.expect('{');
     const fields: FieldInit[] = [];
+    let base: Expr | undefined;
     this.allowStruct(() => {
       while (!this.at('}') && !this.at('eof')) {
+        // `P { x: 1, ..other }` copies the fields that are not listed
+        if (this.eat('..')) {
+          base = this.postfix();
+          break;
+        }
         const f = this.expect('ident', 'a field name');
         // `P { x, y }` is `P { x: x, y: y }`
         const value: Expr = !this.at(':') && (this.at(',') || this.at('}'))
@@ -922,7 +928,7 @@ class Parser {
       }
     });
     const close = this.expect('}');
-    return { k: 'structlit', name: nameTok.text, nameSpan: nameTok.span, fields, span: this.join(nameTok.span, close.span), ty: 'error' };
+    return { k: 'structlit', name: nameTok.text, nameSpan: nameTok.span, fields, base, span: this.join(nameTok.span, close.span), ty: 'error' };
   }
 
   postfix(): Expr {

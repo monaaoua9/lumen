@@ -1,0 +1,15 @@
+struct Config { name: string, width: int, height: int, debug: bool }
+
+let base = Config { name: "default", width: 80, height: 24, debug: false };
+let wide = Config { width: 120, ..base };
+let dbg = Config { name: "dev", debug: true, ..wide };
+print(wide);
+print(dbg);
+print(base.width);
+
+struct Pair { left: Config, n: int }
+let p = Pair { left: base, n: 1 };
+let q = Pair { n: 2, ..p };
+print(q.left.name + str(q.n));
+let w2 = Config { height: 50, ..q.left };
+print(w2.height + w2.width);

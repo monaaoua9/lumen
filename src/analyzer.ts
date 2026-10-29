@@ -1225,6 +1225,21 @@ class Analyzer {
           e.fields.forEach(f => this.expr(f.value));
           return 'error';
         }
+        if (e.base) {
+          // the base is read once per copied field, so it has to be a plain variable or a field path
+          const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
+          if (!plain(e.base)) this.err('E018', "the value after '..' must be a variable or a field path", e.base.span, 'bind it to a let first');
+          else {
+            const given = new Set(e.fields.map(f => f.name));
+            for (const d of decl.fields) {
+              if (given.has(d.name)) continue;
+              const obj = structuredClone(e.base);
+              e.fields.push({ name: d.name, nameSpan: e.base.span, idx: -1, value: { k: 'field', obj, name: d.name, nameSpan: e.base.span, idx: -1, span: e.base.span, ty: 'error' } });
+            }
+          }
+          const bt = this.expr(structuredClone(e.base));
+          if (bt !== 'error' && bt !== ('@' + e.name)) this.mismatch(('@' + e.name) as Type, bt, e.base.span, "after '..'");
+        }
         const seen = new Set<string>();
         for (const f of e.fields) {
           const idx = decl.fields.findIndex(d => d.name === f.name);
