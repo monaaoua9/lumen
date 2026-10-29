@@ -4,6 +4,7 @@ Newest first. The README has the full description of every feature.
 
 ## Language
 
+- Names may be written with any letters, Arabic included (`struct طالب { اسم: string }`).
 - Arms like `Wrap(Some(n))` and `Wrap(None)` together count as covering `Wrap`, so the match no longer needs a `_` arm (plain bindings only, one nested variant per arm).
 - Default argument values, named arguments (`box(height: 5, width: 4)`), also on generic functions and methods, struct update `P { x: 1, ..base }`.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
