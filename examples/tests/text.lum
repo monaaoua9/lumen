@@ -55,3 +55,11 @@ fn test_char_widths() {
   test.eq_str(text.pad_left("ب", 3, "*"), "**ب");
   test.eq_str(text.pad_right("بب", 4, "-"), "بب--");
 }
+
+fn test_ord() {
+  test.eq_int(text.ord("A"), 65);
+  test.eq_int(text.ord("ا"), 1575);
+  test.eq_int(text.ord("€"), 8364);
+  test.eq_int(text.ord("😀"), 128512);
+  test.eq_str(chr(text.ord("ب")), "ب");
+}
