@@ -1,0 +1,19 @@
+enum Color { Red, Green }
+struct Pt { x: int, y: int }
+struct Dot { at: Pt, color: Color, name: string, w: float }
+
+let a = Dot { at: Pt { x: 1, y: 2 }, color: Color.Red, name: "a", w: 0.5 };
+let b = Dot { at: Pt { x: 1, y: 2 }, color: Color.Red, name: "a", w: 0.5 };
+let c = Dot { at: Pt { x: 1, y: 3 }, color: Color.Red, name: "a", w: 0.5 };
+print(a == b);
+print(a != b);
+print(a == c);
+print(a != c);
+print(a.at == Pt { x: 1, y: 2 });
+let pts = [Pt { x: 0, y: 0 }, Pt { x: 5, y: 5 }];
+var hits = 0;
+for p in pts {
+  if p == (Pt { x: 5, y: 5 }) { hits += 1; }
+}
+print(hits);
+print(a == b && !(c == a));

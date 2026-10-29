@@ -91,7 +91,7 @@ let area = match s { Circle(r) => 3.0 * r * r, Rect(w, h) => w * h, Unit => 1.0 
 ```
 
 Patterns bind names (`Rect(w, _)`), `Circle` alone ignores the data. An arm with several patterns cannot bind names (`E022`).
-Enums with data are references and cannot be compared with `==`; use `match`.
+Enums with data are references and cannot be compared with `==`; use `match`. Structs compare field by field with `==` and `!=` when every field is a scalar, a plain enum or another such struct (a generated `Name$eq` function does it); arrays and structs holding arrays or data enums still cannot be compared.
 
 Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive
 (`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose

@@ -1307,6 +1307,14 @@ class Analyzer {
         if (a === b && isEnum(a) && this.isBoxed(a)) return opErr('enums with data cannot be compared with == or !=', 'use match');
         if (isFn(a) && a === b) return opErr('functions cannot be compared');
         if (a === b && a !== 'void' && !isRef(a)) return 'bool';
+        if (a === b && isStruct(a) && this.eqComparable(a)) {
+          // structs compare field by field through a generated function
+          const sym = this.eqFn(a);
+          const call: Expr = { k: 'call', name: sym.name, nameSpan: e.span, args: [e.l, e.r], fn: sym, span: e.span, ty: 'bool' };
+          if (e.op === '==') Object.assign(e, call);
+          else Object.assign(e, { k: 'unary', op: '!', arg: call });
+          return 'bool';
+        }
         if (a === b && isRef(a)) return opErr('arrays and structs cannot be compared with == or !=', 'compare the elements or fields one by one');
         return opErr(`cannot compare ${a} with ${b}`, sameHint);
       case '&&': case '||':
@@ -1642,6 +1650,44 @@ class Analyzer {
       const home = this.fileOf(decl.nameSpan);
       if (home && home !== `${q.module}.lum`) this.err('E028', `'${q.name}' is declared in ${home}, not in module '${q.module}'`, q.span);
     }
+  }
+
+  // every field is a scalar, a plain enum or another comparable struct
+  eqComparable(t: Type, seen = new Set<string>()): boolean {
+    if (!isStruct(t)) return true;
+    if (seen.has(t)) return false;
+    seen.add(t);
+    const d = this.structs.get(t.slice(1));
+    return !!d && d.fields.every(f => (isStruct(f.ty) ? this.eqComparable(f.ty, seen) : isEnum(f.ty) ? !this.isBoxed(f.ty) : !isRef(f.ty) && !isFn(f.ty)));
+  }
+
+  eqFn(t: Type): FnSym {
+    const name = `${t.slice(1)}$eq`;
+    const have = this.fns.get(name);
+    if (have) return have;
+    const sp = this.structs.get(t.slice(1))!.nameSpan;
+    const v = (n: string): Expr => ({ k: 'var', name: n, span: sp, ty: 'error' });
+    let chain: Expr | undefined;
+    this.structs.get(t.slice(1))!.fields.forEach((f, i) => {
+      const side = (who: string): Expr => ({ k: 'field', obj: v(who), name: f.name, nameSpan: sp, idx: i, span: sp, ty: 'error' });
+      const same: Expr = isStruct(f.ty)
+        ? { k: 'call', name: this.eqFn(f.ty).name, nameSpan: sp, args: [side('a'), side('b')], span: sp, ty: 'error' }
+        : { k: 'binary', op: '==', l: side('a'), r: side('b'), span: sp, ty: 'error' };
+      chain = chain ? { k: 'binary', op: '&&', l: chain, r: same, span: sp, ty: 'error' } : same;
+    });
+    const d: FnDecl = {
+      k: 'fn', span: sp, name, nameSpan: sp, ret: 'bool', nlocals: 0,
+      params: [{ name: 'a', span: sp, ty: t }, { name: 'b', span: sp, ty: t }],
+      body: [{ k: 'return', span: sp, value: chain ?? { k: 'bool', value: true, span: sp, ty: 'error' } }],
+    };
+    this.prog.fns.push(d);
+    this.declareFn(d);
+    d.sym!.used = true;
+    const saved = this.scope;
+    this.scope = this.globals;
+    this.analyzeFn(d);
+    this.scope = saved;
+    return d.sym!;
   }
 
   registerLambdas(d: FnDecl) {

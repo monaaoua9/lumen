@@ -155,7 +155,8 @@ test('structs: type checking', () => {
   assert.deepEqual(diagCodes(P + 'let p = P { x: 1, y: 2.0 }; p.x = 2.5;'), ['E003']);
   assert.deepEqual(diagCodes('let p = Q { x: 1 }; print(p);'), ['E016']);
   assert.deepEqual(diagCodes('fn f(a: Nope) {} f(1);').slice(0, 1), ['E016']);
-  assert.deepEqual(diagCodes(P + 'let a = P { x: 1, y: 1.0 }; let b = P { x: 1, y: 1.0 }; print(a == b);'), ['E003']);
+  assert.deepEqual(diagCodes(P + 'let a = P { x: 1, y: 1.0 }; let b = P { x: 1, y: 1.0 }; print(a == b);'), []);
+  assert.deepEqual(diagCodes('struct B { v: int[] } let a = B { v: [1] }; let b = B { v: [1] }; print(a == b);'), ['E003']);
 });
 
 test('structs: declarations', () => {
