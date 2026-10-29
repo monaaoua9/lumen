@@ -1,0 +1,25 @@
+enum Found { Hit((int, string)), Deep(int, ((int, int), string)), Miss }
+enum Opt { Some((int, int)), None }
+enum Pairs { Many(Opt) }
+
+fn show(f: Found): string {
+  return match f {
+    Hit((0, _)) => "hit at the start",
+    Hit((i, name)) if i > 100 => "far hit {name}",
+    Hit((i, name)) => "{name} at {i}",
+    Deep(n, ((a, b), tag)) => "{tag}: {n + a + b}",
+    Miss => "miss",
+  };
+}
+
+print(show(Found.Hit((0, "q"))));
+print(show(Found.Hit((3, "ab"))));
+print(show(Found.Hit((500, "zz"))));
+print(show(Found.Deep(1, ((2, 3), "deep"))));
+print(show(Found.Miss));
+
+match Pairs.Many(Opt.Some((4, 5))) {
+  Many(Some((x, y))) => print("pair", x + y),
+  Many(_) => print("nothing"),
+}
+if let Some((a, _)) = Opt.Some((8, 9)) { print("first", a); }

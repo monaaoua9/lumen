@@ -450,6 +450,14 @@ test('nested variant patterns', () => {
   assert.deepEqual(errs(E + 'let w = W.A(O.S(1)); if let A(S(x)) = w { print(x); }'), []);
 });
 
+test('tuple parts inside variant patterns', () => {
+  const E = 'enum O { S((int, string)), N } ';
+  assert.deepEqual(errs(E + 'let o = O.S((1, "a")); match o { S((i, s)) => print(i, s), N => print(0) }'), []);
+  assert.deepEqual(errs(E + 'let o = O.S((1, "a")); match o { S((1, s)) => print(s), _ => print(0) }'), []);
+  assert.deepEqual(errs(E + 'let o = O.S((1, "a")); match o { S((i, s)) => print(i + s), N => print(0) }'), ['E003']);
+  assert.deepEqual(errs(E + 'let o = O.S((1, "a")); if let S((i, _)) = o { print(i); }'), []);
+});
+
 test('block expressions', () => {
   assert.deepEqual(errs('let a = { let x = 1; x + 1 }; print(a);'), []);
   assert.deepEqual(errs('let a: int = { 1 }; print(a);'), []);

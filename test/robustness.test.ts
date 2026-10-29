@@ -635,6 +635,21 @@ test('std/regex gives the same output on every engine', () => {
   }
 });
 
+test('tuples inside variant patterns agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/tuple_payloads.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'hit at the start\nab at 3\nfar hit zz\ndeep: 6\nmiss\npair 9\nfirst 8\n', engine);
+  }
+});
+
+test('a lexer written with std/regex and tuple patterns agrees on every engine', () => {
+  const want = 'id let\nid x1\nsym =\nnum 42\nsym +\nid foo_bar\nsym *\nnum 7\nsym ;\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/regex_lexer.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
