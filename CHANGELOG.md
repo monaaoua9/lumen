@@ -12,6 +12,7 @@ Newest first. The README has the full description of every feature.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
 - An empty `[]` argument takes its type from the other arguments of a generic call (`map.get(g, n, [])`).
 - Local functions can call themselves.
+- A private struct or enum can be the type argument of a generic function from another file (no more E027 inside the library).
 - Method-call syntax on any value: `xs.len()`, `s.trim().upper()`, `n.twice()` read as `len(xs)`, `upper(trim(s))`, `twice(n)`.
 - Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
 - `for (a, b) in pairs` and `for i, (a, b) in xs` take tuples apart in the loop head.
@@ -31,4 +32,4 @@ Newest first. The README has the full description of every feature.
 ## Standard library
 
 - New: `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
-- Extended: `std/list` (max_by, min_by, last, sum_by, zip, enumerate, partition, take_while, drop_while, chunks, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (trim_start, trim_end, split_once, lines, chars, center, fixed, ...), `std/set` (is_subset, equal), `std/random` (pick), `std/map` (keys, values, entries, from_entries, merge, update), `std/option` (and_then, unwrap_or_else, is_err, and_then_result, map_option, find_by, first, ...), `std/math` (mod_pow, fib, isqrt, factorial, ...).
+- Extended: `std/list` (max_by, min_by, last, sum_by, zip, enumerate, partition, take_while, drop_while, chunks, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (pad_left and pad_right default to spaces, trim_start, trim_end, split_once, lines, chars, center, fixed, ...), `std/set` (is_subset, equal), `std/random` (pick), `std/map` (keys, values, entries, from_entries, merge, update), `std/option` (and_then, unwrap_or_else, is_err, and_then_result, map_option, find_by, first, ...), `std/math` (mod_pow, fib, isqrt, factorial, ...).
