@@ -783,10 +783,6 @@ class Analyzer {
       }
 
       case 'return': {
-        if (this.ctx.exprBlocks > 0) {
-          this.err('E029', "'return' cannot leave a block expression", s.span, 'compute the value in the block and return it after');
-          return { diverges: true, returns: false };
-        }
         if (this.ctx.isMain) {
           this.err('E009', "'return' outside of a function", s.span);
           return { diverges: true, returns: true };

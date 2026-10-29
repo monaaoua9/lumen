@@ -163,7 +163,7 @@ export class Interpreter {
       case 'array': return e.elems.map(x => this.eval(x, f));
 
       case 'blockx':
-        this.exec(e.body, f);
+        if (this.exec(e.body, f) === RETURN) throw new EarlyReturn();
         return this.eval(e.value, f);
 
       case 'matchx': {
@@ -237,6 +237,10 @@ export class Interpreter {
     try {
       this.exec(fn.body, frame);
     } catch (e) {
+      if (e instanceof EarlyReturn) {
+        this.depth = d;
+        return frame.ret;
+      }
       // unwinding: each level adds the call it was in, same shape as the vm trace
       if (e instanceof RuntimeError) (e.trace ??= []).push({ fn: d > 0 ? this.names[d - 1] : '<main>', span });
       throw e;
@@ -245,6 +249,8 @@ export class Interpreter {
     return frame.ret;
   }
 }
+
+class EarlyReturn {}
 
 class Closure {
   fn: FnDecl;
