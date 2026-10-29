@@ -320,6 +320,22 @@ class FnCompiler {
         return;
 
       case 'matchx': {
+        // `if c { a } else { b }` arrives as a match on a bool: jump on the condition directly
+        if (e.scrut.ty === 'bool' && e.arms.length === 2 && !e.arms[0].guard && !e.arms[1].guard
+          && e.arms.every(a => a.pats.length === 1 && (a.pats[0].k === 'wild' || (a.pats[0].k === 'lit' && typeof a.pats[0].value === 'boolean')))) {
+          const p0 = e.arms[0].pats[0];
+          const first = p0.k === 'lit' && p0.value === false ? e.arms[1] : e.arms[0];
+          const second = first === e.arms[0] ? e.arms[1] : e.arms[0];
+          if (first.pats[0].k === 'lit' && first.pats[0].value === true) {
+            const toElse = this.condJump(e.scrut);
+            this.expr(first.value);
+            const toEnd = this.jump(Op.JMP);
+            this.patch(toElse);
+            this.expr(second.value);
+            this.patch(toEnd);
+            return;
+          }
+        }
         this.expr(e.scrut);
         this.span = e.span;
         this.emit(Op.STOREL, e.tmp);
