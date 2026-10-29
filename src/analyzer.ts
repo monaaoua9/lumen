@@ -323,7 +323,9 @@ class Analyzer {
     for (const v of this.allVars) this.lintVar(v);
     for (const f of this.fns.values()) {
       // `lumen test` calls test_ functions itself
-      if (!f.used && !f.name.startsWith('test_')) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
+      // a pub function of an imported file is that file's interface, the program using it decides
+      const library = f.decl.pub && this.segments.length > 1 && this.fileOf(f.decl.nameSpan) !== this.segments[this.segments.length - 1].name;
+      if (!f.used && !f.name.startsWith('test_') && !library) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
     }
 
     for (const g of this.generics.values()) {
