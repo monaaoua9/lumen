@@ -1,0 +1,11 @@
+import "std/json.lum"
+fn main() {
+  let parts: string[] = [];
+  for i in 0..3000 { push(parts, "\{\"id\":" + str(i) + ",\"name\":\"item" + str(i) + "\"\}"); }
+  let s = "[" + join(parts, ",") + "]";
+  let r = json.parse(s);
+  print(r.ok, len(s));
+  let out = json.stringify(r.json);
+  print(len(out));
+}
+main();
