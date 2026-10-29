@@ -614,3 +614,10 @@ test('scheduler with csv, heap and queue agrees on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('--version prints the package version and cli.ts keeps its shebang', () => {
+  const r = cli('--version');
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /^lumen \d+\.\d+\.\d+/);
+  assert.ok(readFileSync(new URL('../src/cli.ts', import.meta.url), 'utf8').startsWith('#!/usr/bin/env node'));
+});
