@@ -130,11 +130,13 @@ pub fn split_once(s: string, sep: string): (string, string) {
 
 // cuts to at most `width` bytes of whole characters and marks the cut with "..."
 pub fn truncate(s: string, width: int): string {
-  if len(s) <= width { return s; }
+  if char_count(s) <= width { return s; }
   var out = "";
+  var n = 0;
   for ch in s {
-    if len(out) + len(ch) + 3 > width { break; }
+    if n + 3 >= width { break; }
     out += ch;
+    n += 1;
   }
   return out + "...";
 }
