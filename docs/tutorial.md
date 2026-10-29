@@ -211,3 +211,35 @@ fig 2
 apple 1
 15
 ```
+
+
+## 9. Errors without exceptions
+
+A function that can fail returns `Result<T>` (or `Option<T>`). `let n = try f();` unwraps the `Ok`; on an `Err` the enclosing function returns that error right away, so the happy path stays flat.
+
+```lum
+import "std/option.lum"
+
+fn port(s: string): option.Result<int> {
+  let n = parse_int(s, -1);
+  if n < 1 || n > 65535 { return option.Result.Err("bad port " + s); }
+  return option.Result.Ok(n);
+}
+
+fn address(host: string, p: string): option.Result<string> {
+  let n = try port(p);
+  return option.Result.Ok(host + ":" + str(n));
+}
+
+for p in ["8080", "99999"] {
+  match address("localhost", p) {
+    Ok(a) => { print(a); }
+    Err(m) => { print("error:", m); }
+  }
+}
+```
+
+```output
+localhost:8080
+error: bad port 99999
+```
