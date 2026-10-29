@@ -1,0 +1,33 @@
+// forward-slash paths as text, nothing touches the disk
+fn last_slash(p: string): int {
+  var i = len(p) - 1;
+  while i >= 0 && p[i] != "/" { i -= 1; }
+  return i;
+}
+
+pub fn basename(p: string): string {
+  return p[last_slash(p) + 1..];
+}
+
+pub fn dirname(p: string): string {
+  let at = last_slash(p);
+  if at < 0 { return "."; }
+  if at == 0 { return "/"; }
+  return p[..at];
+}
+
+// "" when there is no dot after the last slash, or the dot starts the name (.gitignore)
+pub fn ext(p: string): string {
+  let name = basename(p);
+  var i = len(name) - 1;
+  while i > 0 && name[i] != "." { i -= 1; }
+  if i <= 0 { return ""; }
+  return name[i..];
+}
+
+pub fn combine(a: string, b: string): string {
+  if len(a) == 0 { return b; }
+  if starts_with(b, "/") { return b; }
+  if ends_with(a, "/") { return a + b; }
+  return a + "/" + b;
+}
