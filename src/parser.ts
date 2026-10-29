@@ -781,10 +781,16 @@ class Parser {
         continue;
       }
       const b = this.vn(this.expect('ident', 'a binding name'));
+      this.notVariant(b);
       out.push(b.text === '_' ? null : b.text);
     } while (this.eat(',') && !this.at(')'));
     this.expect(')');
     return out;
+  }
+
+  // a capitalised name in a tuple pattern would silently bind and match everything, which is never what `(0, Red)` means
+  notVariant(t: Token) {
+    if (/^[A-Z]/.test(t.text)) this.fail(`'${t.text}' looks like a variant, but tuple patterns only hold literals, names and _`, t.span, 'match on the variant in its own arm, or use a lowercase name to bind');
   }
 
   tupleLets(base: Expr, shape: TupleShape, sp: Span): Stmt[] {
@@ -1107,6 +1113,7 @@ class Parser {
         do {
           if (this.cur.kind === 'ident' && this.cur.text !== '_' && this.peek().kind !== '(') {
             const b = this.vn(this.next());
+            this.notVariant(b);
             parts.push({ bind: b.text, span: b.span });
             continue;
           }
