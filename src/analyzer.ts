@@ -311,7 +311,8 @@ class Analyzer {
 
     for (const v of this.allVars) this.lintVar(v);
     for (const f of this.fns.values()) {
-      if (!f.used) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
+      // `lumen test` calls test_ functions itself
+      if (!f.used && !f.name.startsWith('test_')) this.warn('W005', `function '${f.name}' is never called`, f.decl.nameSpan);
     }
 
     for (const g of this.generics.values()) {
