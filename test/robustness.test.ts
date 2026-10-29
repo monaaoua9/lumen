@@ -589,3 +589,11 @@ test('tuple pattern alternatives binding the same name agree on every engine', (
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '50 70 0 -1\n', engine);
   }
 });
+
+test('std/matrix gives the same output on every engine', () => {
+  const want = '[[1, 2], [3, 4]]\n[[1, 4], [2, 5], [3, 6]]\n[[2, 4], [6, 8]]\n832040\n[[7, 7, 7], [7, 7, 7]]\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/matrix_lib.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
