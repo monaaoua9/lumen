@@ -1,0 +1,24 @@
+import "std/heap.lum"
+
+// edges as (from, to, cost)
+fn shortest(n: int, edges: (int, int, int)[], start: int): int[] {
+  let dist: int[] = [];
+  for _i in 0..n { push(dist, 1000000); }
+  dist[start] = 0;
+  let todo = heap.new(fn(a: (int, int), b: (int, int)): bool { return a.0 < b.0; });
+  heap.add(todo, (0, start));
+  while heap.size(todo) > 0 {
+    let (d, u) = heap.take(todo);
+    if d > dist[u] { continue; }
+    for (from, to, cost) in edges {
+      if from == u && d + cost < dist[to] {
+        dist[to] = d + cost;
+        heap.add(todo, (dist[to], to));
+      }
+    }
+  }
+  return dist;
+}
+
+let edges = [(0, 1, 4), (0, 2, 1), (2, 1, 2), (1, 3, 1), (2, 3, 5)];
+print(shortest(4, edges, 0));
