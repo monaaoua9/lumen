@@ -1,0 +1,26 @@
+import "std/option.lum"
+import "std/text.lum"
+import "std/map.lum"
+
+fn parse_line(line: string): option.Result<(string, int)> {
+  let parts = split(line, "=");
+  if len(parts) != 2 { return option.Result.Err("bad line: " + line); }
+  let n = parse_int(trim(parts[1]), -1);
+  if n < 0 { return option.Result.Err("bad value in: " + line); }
+  return option.Result.Ok((trim(parts[0]), n));
+}
+
+fn load(lines: string[]): option.Result<map.Map<int>> {
+  let m: map.Map<int> = map.new();
+  for l in lines {
+    let (k, v) = try parse_line(l);
+    map.set(m, k, v);
+  }
+  return option.Result.Ok(m);
+}
+
+fn main() {
+  match load(["a = 1", "b = 22"]) { Ok(m) => { print(map.get(m, "b", 0)); } Err(e) => { print(e); } }
+  match load(["a = 1", "b ="]) { Ok(m) => { print(len(m.keys)); } Err(e) => { print(e); } }
+}
+main();
