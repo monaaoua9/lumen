@@ -240,6 +240,23 @@ apple 1
 15
 ```
 
+أنماط النصوص في `std/regex.lum`: النقطة والأصناف و`\d \w \s` و`* + ? {n,m}` والمراسي و`|`. تُكتب الشرطة المائلة مضاعفة داخل النص، والقوس الحرفي `\{`.
+
+```lum
+import "std/regex.lum"
+
+let line = "order 66 shipped on 2024-03-05, order 7 pending";
+print(regex.all_matches("order \\d+", line));
+print(regex.sub("\\d\{4}-\\d\{2}-\\d\{2}", line, "<date>"));
+print(regex.is_match("^order", line), regex.full_match("[a-z]+", line));
+```
+
+```output
+["order 66", "order 7"]
+order 66 shipped on <date>, order 7 pending
+true false
+```
+
 
 ## 9. الأخطاء بدون استثناءات
 
