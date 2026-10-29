@@ -143,3 +143,43 @@ pub fn title(s: string): string {
   for p in parts { push(out, capitalize(p)); }
   return join(out, " ");
 }
+
+// greedy word wrap, a word longer than the width gets a line of its own
+pub fn wrap(s: string, width: int): string[] {
+  let out: string[] = [];
+  var line = "";
+  for w in words(s) {
+    if len(line) == 0 {
+      line = w;
+    } else if char_count(line) + 1 + char_count(w) <= width {
+      line += " " + w;
+    } else {
+      push(out, line);
+      line = w;
+    }
+  }
+  if len(line) > 0 { push(out, line); }
+  return out;
+}
+
+// `*` matches any run of characters, `?` exactly one
+pub fn glob(pattern: string, s: string): bool {
+  let p = chars(pattern);
+  let t = chars(s);
+  // ok[j] is whether the first i pattern characters match the first j text characters
+  var ok: bool[] = [true];
+  for _j in 0..len(t) { push(ok, false); }
+  for i in 0..len(p) {
+    let next: bool[] = [];
+    push(next, ok[0] && p[i] == "*");
+    for j in 1..len(t) + 1 {
+      if p[i] == "*" {
+        push(next, ok[j] || next[j - 1]);
+      } else {
+        push(next, ok[j - 1] && (p[i] == "?" || p[i] == t[j - 1]));
+      }
+    }
+    ok = next;
+  }
+  return ok[len(t)];
+}
