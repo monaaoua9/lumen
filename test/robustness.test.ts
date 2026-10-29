@@ -528,3 +528,11 @@ test('list extras give the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('std/format gives the same output on every engine', () => {
+  const want = '1,234,567 -1,000 999 0\n33% 0%\nname   qty\napple  12\nمشمش   7\n\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/format_demo.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
