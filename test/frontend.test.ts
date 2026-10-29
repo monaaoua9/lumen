@@ -748,3 +748,7 @@ test('E024 hint names the type to annotate', () => {
   const d = frontend('fn mk<T>(): T[] { let a: T[] = []; return a; } let x = mk(); print(len(x));').diagnostics;
   assert.ok(d.some(x => x.code === 'E024' && x.hint?.includes('let x: int[] = ...')), JSON.stringify(d));
 });
+
+test('a generic enum can hold itself', () => {
+  assert.deepEqual(diagCodes('enum T<A> { Leaf, Node(T<A>, A, T<A>) } fn main() { let t: T<int> = T.Leaf; print(str(t)); } main();'), []);
+});

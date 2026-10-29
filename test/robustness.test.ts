@@ -621,3 +621,13 @@ test('--version prints the package version and cli.ts keeps its shebang', () => 
   assert.match(r.stdout, /^lumen \d+\.\d+\.\d+/);
   assert.ok(readFileSync(new URL('../src/cli.ts', import.meta.url), 'utf8').startsWith('#!/usr/bin/env node'));
 });
+
+test('generic types that mention themselves agree on every engine', () => {
+  const want: Record<string, string> = { generic_tree: '[1, 2, 3, 5, 8, 9]\none 1\n', generic_nodes: '4 y\n' };
+  for (const [name, out] of Object.entries(want)) {
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', `examples/${name}.lum`, '--engine', engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), out, `${name} on ${engine}`);
+    }
+  }
+});
