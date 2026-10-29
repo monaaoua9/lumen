@@ -1,0 +1,63 @@
+// set of strings, kept in insertion order. lookups are linear like std/map
+pub struct Set { items: string[] }
+
+pub fn new(): Set {
+  return Set { items: [] };
+}
+
+pub fn from(xs: string[]): Set {
+  let s = new();
+  for x in xs { add(s, x); }
+  return s;
+}
+
+pub fn has(s: Set, x: string): bool {
+  return contains(s.items, x);
+}
+
+// true when x was not there before
+pub fn add(s: Set, x: string): bool {
+  if has(s, x) { return false; }
+  push(s.items, x);
+  return true;
+}
+
+pub fn drop(s: Set, x: string): bool {
+  for i in 0..len(s.items) {
+    if s.items[i] == x {
+      remove(s.items, i);
+      return true;
+    }
+  }
+  return false;
+}
+
+pub fn size(s: Set): int {
+  return len(s.items);
+}
+
+pub fn items(s: Set): string[] {
+  return slice(s.items, 0, len(s.items));
+}
+
+pub fn union(a: Set, b: Set): Set {
+  let out = from(a.items);
+  for x in b.items { add(out, x); }
+  return out;
+}
+
+pub fn intersect(a: Set, b: Set): Set {
+  let out = new();
+  for x in a.items {
+    if has(b, x) { add(out, x); }
+  }
+  return out;
+}
+
+pub fn minus(a: Set, b: Set): Set {
+  let out = new();
+  for x in a.items {
+    if !has(b, x) { add(out, x); }
+  }
+  return out;
+}

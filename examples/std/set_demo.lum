@@ -1,0 +1,12 @@
+import "std/set.lum"
+import "std/text.lum"
+
+let seen = set.new();
+var dupes = 0;
+for w in text.words("the cat saw the other cat and the dog") {
+  if !set.add(seen, w) { dupes += 1; }
+}
+print(set.size(seen));
+print(dupes);
+print(set.items(set.intersect(seen, set.from(["dog", "cow", "cat"]))));
+print(set.items(set.minus(set.from(["a", "b", "c"]), set.from(["b"]))));

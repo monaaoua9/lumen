@@ -1,0 +1,25 @@
+import "std/test.lum"
+import "std/set.lum"
+
+fn test_add_has() {
+  let s = set.new();
+  test.is_true(set.add(s, "a"), "first add");
+  test.is_true(!set.add(s, "a"), "second add is a no-op");
+  test.eq_int(set.size(s), 1);
+  test.is_true(set.has(s, "a") && !set.has(s, "b"), "membership");
+}
+
+fn test_drop() {
+  let s = set.from(["x", "y", "z"]);
+  test.is_true(set.drop(s, "y"), "drop existing");
+  test.is_true(!set.drop(s, "y"), "drop missing");
+  test.eq_str(join(set.items(s), ""), "xz");
+}
+
+fn test_algebra() {
+  let a = set.from(["1", "2", "3"]);
+  let b = set.from(["3", "4"]);
+  test.eq_str(join(set.items(set.union(a, b)), ""), "1234");
+  test.eq_str(join(set.items(set.intersect(a, b)), ""), "3");
+  test.eq_str(join(set.items(set.minus(a, b)), ""), "12");
+}
