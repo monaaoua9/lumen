@@ -12,6 +12,7 @@ import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
 import { EXPLAIN, explain } from './explain.ts';
 import { format } from './fmt.ts';
+import { serve } from './lsp.ts';
 import { programArgs } from './runtime.ts';
 import { createInterface } from 'node:readline';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
@@ -30,6 +31,7 @@ commands
   bench    run on both engines and compare timings
   repl     interactive prompt (no file)
   fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
+  lsp      language server on stdin/stdout (diagnostics, formatting)
   explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
 options
@@ -69,6 +71,10 @@ function main(): number | Promise<number> {
   }
   if (cmd === 'repl') return repl();
   if (cmd === 'fmt') return fmtFiles();
+  if (cmd === 'lsp') {
+    serve();
+    return new Promise<number>(() => {}); // runs until the editor sends exit
+  }
   if (cmd === 'explain') {
     const code = args[1];
     const text = code ? explain(code) : null;
