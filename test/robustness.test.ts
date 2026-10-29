@@ -584,6 +584,12 @@ test('statement match arms may be plain expressions', () => {
   }
 });
 
+test('using Result without the import says which file to add', () => {
+  const r = cli('check', '-e', 'fn f(): Result<int> { return 1; }');
+  assert.equal(r.status, 1);
+  assert.ok((r.stdout + r.stderr).includes('std/option.lum'));
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
