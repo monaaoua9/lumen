@@ -53,6 +53,9 @@ const opt = (n: string) => {
 
 const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 
+// mingw defaults to a 2MB stack, not enough for 10000 nested calls
+const stackFlag = process.platform === 'win32' ? ['-Wl,--stack,67108864'] : [];
+
 function main(): number | Promise<number> {
   const cmd = args[0];
   // lumen run -e 'print(1 + 2);' writes the code to a scratch file and runs that (any command that takes a file)
@@ -287,7 +290,7 @@ function build(csrc: string, out: string): number {
   const cfile = out.replace(/(\.exe)?$/, '') + '.c';
   writeFileSync(cfile, csrc);
   for (const cc of ['gcc', 'clang', 'cc']) {
-    const r = spawnSync(cc, ['-O2', '-o', out, cfile, '-lm'], { stdio: 'inherit' });
+    const r = spawnSync(cc, ['-O2', '-o', out, cfile, '-lm', ...stackFlag], { stdio: 'inherit' });
     if (r.error) continue; // not installed
     if (r.status === 0) {
       process.stdout.write(`built ${out} (via ${cc}, source kept in ${cfile})\n`);
@@ -308,7 +311,7 @@ function runNative(csrc: string): number {
     const cfile = join(dir, 'prog.c');
     writeFileSync(cfile, csrc);
     for (const cc of ['gcc', 'clang', 'cc']) {
-      const r = spawnSync(cc, ['-O2', '-o', exe, cfile, '-lm'], { stdio: ['ignore', 'inherit', 'inherit'] });
+      const r = spawnSync(cc, ['-O2', '-o', exe, cfile, '-lm', ...stackFlag], { stdio: ['ignore', 'inherit', 'inherit'] });
       if (r.error) continue;
       if (r.status !== 0) {
         process.stderr.write(`error: ${cc} failed${r.status === null ? ` (${r.signal ?? 'crashed'})` : ` with exit code ${r.status}`}\n`);

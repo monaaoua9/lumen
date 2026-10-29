@@ -5,7 +5,7 @@ import type { BuiltinName, Type } from './types.ts';
 
 export type Value = number | string | boolean | null | Value[];
 
-export const MAX_DEPTH = 1000;
+export const MAX_DEPTH = 10000;
 
 // what follows `--` on the command line, read by args()
 export const programArgs: string[] = [];
