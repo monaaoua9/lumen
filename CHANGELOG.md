@@ -32,7 +32,7 @@ Newest first. The README has the full description of every feature.
 
 ## Tools
 
-- `docs/tutorial.md`: a short tour whose examples are run by `test/docs.test.ts`.
+- `docs/tutorial.md` and `docs/tutorial.ar.md`: a short tour (English and Arabic) whose examples are run by `test/docs.test.ts`.
 - `lumen test` runs every `fn test_*()` in one or more files (`--only` filters), `lumen check` takes several files.
 - A failing `lumen test` case shows the file, line and column of the assertion (or of the call inside the test that failed).
 - REPL commands `:type`, `:reset`, `:help`.
