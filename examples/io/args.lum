@@ -1,0 +1,5 @@
+let a = args();
+print(len(a));
+for i, s in a {
+  print(str(i) + "=" + s);
+}

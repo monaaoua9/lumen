@@ -401,3 +401,12 @@ test('the call depth cap is the same on every engine', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('args() sees what follows -- on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/io/args.lum', '--engine', engine, '--', 'one', 'two words');
+    assert.equal(r.status, 0, engine + r.stderr);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '2\n0=one\n1=two words\n', engine);
+  }
+  assert.equal(cli('run', 'examples/io/args.lum').stdout.trim(), '0');
+});

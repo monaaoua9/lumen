@@ -410,6 +410,7 @@ class FnCompiler {
           case 'parse_float': this.emit(Op.PARSEF); break;
           case 'read_line': this.emit(Op.READLN); break;
           case 'at_eof': this.emit(Op.ATEOF); break;
+          case 'args': this.emit(Op.ARGS); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;

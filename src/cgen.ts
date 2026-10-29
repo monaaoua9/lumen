@@ -415,6 +415,18 @@ static void lm_assert(int ok, const char *msg) {
   fprintf(stderr, "runtime error: assertion failed: %s\n", msg);
   exit(1);
 }
+static int lm_argc;
+static char **lm_argv;
+static lm_arr *lm_args(void) {
+  lm_arr *out = lm_arr_new(0);
+  for (int i = 1; i < lm_argc; i++) {
+    size_t n = strlen(lm_argv[i]);
+    char *copy = (char *)lm_alloc(n + 1, 1);
+    memcpy(copy, lm_argv[i], n + 1);
+    lm_arr_push(out, lm_vs(copy));
+  }
+  return out;
+}
 static int lm_at_eof(void) {
   int c = getchar();
   if (c == EOF) return 1;
@@ -779,6 +791,7 @@ class Gen {
         case 'assert': text = `lm_assert(${a}, ${args[1]})`; break;
         case 'read_line': text = 'lm_read_line()'; break;
         case 'at_eof': text = 'lm_at_eof()'; break;
+        case 'args': text = 'lm_args()'; break;
         case 'sort': text = `lm_sort_${slot(elemOf(aty as ArrayType))}(${a})`; break;
         case 'reverse': text = `lm_reverse(${a})`; break;
         case 'contains': text = `lm_contains_${slot(elemOf(aty as ArrayType))}(${a}, ${args[1]})`; break;
@@ -1125,6 +1138,6 @@ export function emitC(prog: Program): string {
   out.splice(thunksAt, 0, ...thunkDefs, '');
   out.splice(defsAt, 0, ...defs);
   out.splice(1, 0, ...protos);
-  out.push('int main(void) {', '  lm_gc_init(__builtin_frame_address(0));', ...roots, ...g.lines, '  return 0;', '}', '');
+  out.push('int main(int argc, char **argv) {', '  lm_argc = argc;', '  lm_argv = argv;', '  lm_gc_init(__builtin_frame_address(0));', ...roots, ...g.lines, '  return 0;', '}', '');
   return out.join('\n');
 }

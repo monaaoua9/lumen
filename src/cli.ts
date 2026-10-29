@@ -12,6 +12,7 @@ import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
 import { EXPLAIN, explain } from './explain.ts';
 import { format } from './fmt.ts';
+import { programArgs } from './runtime.ts';
 import { createInterface } from 'node:readline';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 
@@ -19,7 +20,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 
 commands
   check    static analysis only (types, scopes, lints)
-  run      analyze, then execute        [--engine interp|vm|c]  (default: vm)
+  run      analyze, then execute        [--engine interp|vm|c]  (default: vm)   [-- program args]
   disasm   print the bytecode
   test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm] [--only substr]
   emit-c   translate to C              [-o out.c]
@@ -36,7 +37,11 @@ options
   --Werror    (check) treat warnings as errors
 `;
 
-const args = process.argv.slice(2);
+const full = process.argv.slice(2);
+// everything after `--` belongs to the program (args() reads it)
+const split = full.indexOf('--');
+const args = split < 0 ? full : full.slice(0, split);
+if (split >= 0) programArgs.push(...full.slice(split + 1));
 const flag = (n: string) => args.includes(n);
 const opt = (n: string) => {
   const i = args.indexOf(n);
@@ -267,7 +272,7 @@ function runNative(csrc: string): number {
       const r = spawnSync(cc, ['-O2', '-o', exe, cfile, '-lm'], { stdio: ['ignore', 'inherit', 'inherit'] });
       if (r.error) continue;
       if (r.status !== 0) return r.status ?? 1;
-      return spawnSync(exe, { stdio: 'inherit' }).status ?? 1;
+      return spawnSync(exe, programArgs, { stdio: 'inherit' }).status ?? 1;
     }
     process.stderr.write('no C compiler found\n');
     return 1;
@@ -290,7 +295,7 @@ function bench(fe: ReturnType<typeof frontend>): number {
 // the tree-walking interpreter recurses on the host stack, so `run --engine interp` gets a thread with a big one
 // (that is what lets it reach the same call depth cap as the other engines)
 if (isMainThread && args[0] === 'run' && args[args.indexOf('--engine') + 1] === 'interp') {
-  const w = new Worker(new URL(import.meta.url), { argv: args, resourceLimits: { stackSizeMb: 256 } });
+  const w = new Worker(new URL(import.meta.url), { argv: full, resourceLimits: { stackSizeMb: 256 } });
   w.on('message', (m: { code: number }) => { process.exitCode = m.code; });
   w.on('error', e => { throw e; });
 } else {

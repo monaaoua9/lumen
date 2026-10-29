@@ -7,6 +7,9 @@ export type Value = number | string | boolean | null | Value[];
 
 export const MAX_DEPTH = 1000;
 
+// what follows `--` on the command line, read by args()
+export const programArgs: string[] = [];
+
 export interface IO {
   out(s: string): void;
 }
@@ -113,6 +116,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'assert': if (!a) throw new RuntimeError('assertion failed: ' + (args[1] as string), span); return null;
     case 'read_line': return readLine();
     case 'at_eof': return atEof();
+    case 'args': return [...programArgs];
     case 'sort': sortArr(a as Value[]); return null;
     case 'reverse': (a as Value[]).reverse(); return null;
     case 'contains': return (a as Value[]).includes(args[1]);
