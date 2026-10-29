@@ -1,4 +1,3 @@
-import "std/option.lum";
 enum Tok { Num(int), Op(string), Pair(int, int) }
 struct P { x: int, y: int }
 
@@ -17,11 +16,12 @@ for t in [Tok.Num(0), Tok.Num(-3), Tok.Num(8), Tok.Op("-"), Tok.Op("*"), Tok.Pai
 let p = P { x: 3, y: 4 };
 let P { x, y } = p;
 print(x + y);
-let o: Option<int> = Option.Some(5);
+enum Maybe { Got(int), Nothing }
+let o = Maybe.Got(5);
 match o {
-  Some(5) => print("five"),
-  Some(n) => print("some", n),
-  None => print("none"),
+  Got(5) => print("five"),
+  Got(n) => print("got", n),
+  Nothing => print("nothing"),
 }
 match Tok.Pair(0, 7) {
   Pair(0, k) => print("starts at zero, second is", k),
