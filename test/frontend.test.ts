@@ -539,6 +539,12 @@ test('labelled break and continue', () => {
   assert.deepEqual(errs('a: while true { loop { break a; } }'), []);
 });
 
+test('float literals with an exponent', () => {
+  assert.equal(runSrc('print(1e3, 2.5e-3, 1E2, 3e+2);', 'vm'), '1000.0 0.0025 100.0 300.0'+String.fromCharCode(10));
+  assert.deepEqual(errs('let x: float = 1e9; let y: int = 5; print(x, y);'), []);
+  assert.deepEqual(errs('let x: int = 1e3;'), ['E003']);
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
