@@ -488,3 +488,11 @@ test('user structs as payload of the library Result, same output everywhere', ()
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('recursive descent parser built on try agrees on every engine', () => {
+  const want = '1 + 2 * 3 = 7\n(1+2)*3 = 9\n2 * -> unexpected end\n4 $ 4 -> bad char $\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/expr_parser.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
