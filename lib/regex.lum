@@ -1,6 +1,6 @@
-// small backtracking matcher. supports . [abc] [a-z] [^x] \d \w \s \. and * + ? {n} {n,m} after an atom,
-// ^ at the start, $ at the end, | between whole alternatives. no groups. works on bytes,
-// except that . and negated classes step over a whole UTF-8 character
+// small backtracking matcher. supports . [abc] [a-z] [^x] \d \w \s \. and * + ? {n} {n,m} after an atom or a group,
+// groups (...) and (?:...) with | inside them, ^ and $, | between alternatives. works on bytes,
+// except that . and negated classes step over a whole UTF-8 character. no lazy quantifiers, no backreferences
 
 fn char_len(text: string, i: int): int {
   if i >= len(text) { return -1; }
@@ -116,15 +116,152 @@ fn quantifier(pat: string, ae: int): (int, int, int) {
   return (lo, hi, j + 1);
 }
 
-// end of the match of pat[pi..] against text starting at ti, or -1
-fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
-  if pi >= len(pat) {
-    if whole && ti != len(text) { return -1; }
-    return ti;
+// index of the ) that closes the ( at pi, or len(pat) when it is never closed
+fn group_end(pat: string, pi: int): int {
+  var depth = 0;
+  var i = pi;
+  var in_class = false;
+  while i < len(pat) {
+    let c = byte(pat, i);
+    if c == 92 { i += 2; continue; }
+    if in_class {
+      if c == 93 { in_class = false; }
+    } else if c == 91 {
+      in_class = true;
+    } else if c == 40 {
+      depth += 1;
+    } else if c == 41 {
+      depth -= 1;
+      if depth == 0 { return i; }
+    }
+    i += 1;
   }
-  if byte(pat, pi) == 36 && pi + 1 == len(pat) {
-    if ti == len(text) { return ti; }
-    return -1;
+  return len(pat);
+}
+
+// flat (start, end, start, end ...) of the | separated alternatives of pat[lo..hi], ignoring | inside () and []
+fn alt_bounds(pat: string, lo: int, hi: int): int[] {
+  let out: int[] = [];
+  var start = lo;
+  var depth = 0;
+  var i = lo;
+  var in_class = false;
+  while i < hi {
+    let c = byte(pat, i);
+    if c == 92 { i += 2; continue; }
+    if in_class {
+      if c == 93 { in_class = false; }
+    } else if c == 91 {
+      in_class = true;
+    } else if c == 40 {
+      depth += 1;
+    } else if c == 41 {
+      depth -= 1;
+    } else if c == 124 && depth == 0 {
+      push(out, start);
+      push(out, i);
+      start = i + 1;
+    }
+    i += 1;
+  }
+  push(out, start);
+  push(out, hi);
+  return out;
+}
+
+// how many capturing groups the pattern has
+fn group_count(pat: string): int {
+  var n = 0;
+  var i = 0;
+  var in_class = false;
+  while i < len(pat) {
+    let c = byte(pat, i);
+    if c == 92 { i += 2; continue; }
+    if in_class {
+      if c == 93 { in_class = false; }
+    } else if c == 91 {
+      in_class = true;
+    } else if c == 40 && !(i + 2 < len(pat) && byte(pat, i + 1) == 63 && byte(pat, i + 2) == 58) {
+      n += 1;
+    }
+    i += 1;
+  }
+  return n;
+}
+
+// number of the capturing group opened at pi (1 based), 0 for (?:...)
+fn group_no(pat: string, pi: int): int {
+  if pi + 2 < len(pat) && byte(pat, pi + 1) == 63 && byte(pat, pi + 2) == 58 { return 0; }
+  return group_count(substr(pat, 0, pi)) + 1;
+}
+
+// tries every alternative of pat[lo..hi] at ti, then the continuation; the end of the whole match or -1
+fn alts(pat: string, lo: int, hi: int, text: string, ti: int, caps: int[], kont: fn(int): int): int {
+  let b = alt_bounds(pat, lo, hi);
+  var i = 0;
+  while i < len(b) {
+    let r = m(pat, b[i], b[i + 1], text, ti, caps, kont);
+    if r >= 0 { return r; }
+    i += 2;
+  }
+  return -1;
+}
+
+// one more round of a repeated group (greedy), or the rest of the pattern once enough rounds are done
+fn rep(pat: string, g: int, lo: int, hi: int, mn: int, mx: int, count: int, ti: int, qend: int, pe: int, text: string, caps: int[], kont: fn(int): int): int {
+  if count < mx {
+    let round = fn(e: int): int {
+      // an empty round past the minimum would loop forever
+      if e == ti && count >= mn { return -1; }
+      var os = 0;
+      var oe = 0;
+      if g > 0 {
+        os = caps[2 * g];
+        oe = caps[2 * g + 1];
+        caps[2 * g] = ti;
+        caps[2 * g + 1] = e;
+      }
+      let r = rep(pat, g, lo, hi, mn, mx, count + 1, e, qend, pe, text, caps, kont);
+      if r < 0 && g > 0 {
+        caps[2 * g] = os;
+        caps[2 * g + 1] = oe;
+      }
+      return r;
+    };
+    let r = alts(pat, lo, hi, text, ti, caps, round);
+    if r >= 0 { return r; }
+  }
+  if count >= mn { return m(pat, qend, pe, text, ti, caps, kont); }
+  return -1;
+}
+
+// match pat[pi..pe) at ti and then hand the position to kont; the end of the whole match or -1
+fn m(pat: string, pi: int, pe: int, text: string, ti: int, caps: int[], kont: fn(int): int): int {
+  if pi >= pe { return kont(ti); }
+  let c = byte(pat, pi);
+  if c == 94 {
+    if ti != 0 { return -1; }
+    return m(pat, pi + 1, pe, text, ti, caps, kont);
+  }
+  if c == 36 {
+    if ti != len(text) { return -1; }
+    return m(pat, pi + 1, pe, text, ti, caps, kont);
+  }
+  if c == 40 {
+    let close = min(group_end(pat, pi), pe);
+    let g = group_no(pat, pi);
+    var inner = pi + 1;
+    if g == 0 { inner = pi + 3; }
+    let qu = quantifier(pat, close + 1);
+    var mn = 1;
+    var mx = 1;
+    var qend = close + 1;
+    if qu.2 > close + 1 {
+      mn = qu.0;
+      mx = qu.1;
+      qend = qu.2;
+    }
+    return rep(pat, g, inner, close, mn, mx, 0, ti, qend, pe, text, caps, kont);
   }
   let ae = atom_end(pat, pi);
   let qu = quantifier(pat, ae);
@@ -139,7 +276,7 @@ fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
     }
     var k = len(ends) - 1;
     while k >= qu.0 {
-      let r = match_from(pat, qu.2, text, ends[k], whole);
+      let r = m(pat, qu.2, pe, text, ends[k], caps, kont);
       if r >= 0 { return r; }
       k -= 1;
     }
@@ -147,53 +284,40 @@ fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
   }
   let l = atom_len(pat, pi, ae, text, ti);
   if l < 0 { return -1; }
-  return match_from(pat, ae, text, ti + l, whole);
+  return m(pat, ae, pe, text, ti + l, caps, kont);
 }
 
-// split on | that is not inside [] and not escaped
-fn alternatives(pat: string): string[] {
-  let out: string[] = [];
-  var start = 0;
-  var i = 0;
-  var in_class = false;
-  while i < len(pat) {
-    let c = byte(pat, i);
-    if c == 92 { i += 2; continue; }
-    if in_class {
-      if c == 93 { in_class = false; }
-    } else if c == 91 {
-      in_class = true;
-    } else if c == 124 {
-      push(out, substr(pat, start, i - start));
-      start = i + 1;
-    }
-    i += 1;
-  }
-  push(out, substr(pat, start, len(pat) - start));
-  return out;
+// end of the match of the whole pattern at ti (the whole text when `whole`), or -1
+fn run(pat: string, text: string, ti: int, caps: int[], whole: bool): int {
+  let done = fn(e: int): int {
+    if whole && e != len(text) { return -1; }
+    return e;
+  };
+  return alts(pat, 0, len(pat), text, ti, caps, done);
 }
 
-// (start, end) of the first match at or after `from`, (-1, -1) when there is none
-pub fn search_from(pat: string, text: string, from: int): (int, int) {
-  let alts = alternatives(pat);
+fn fresh(pat: string): int[] {
+  let caps: int[] = [];
+  for _i in 0..2 * (group_count(pat) + 1) { push(caps, -1); }
+  return caps;
+}
+
+// (start, end) of the first match at or after `from`, (-1, -1) when there is none; caps gets the groups
+fn find_caps(pat: string, text: string, from: int, caps: int[]): (int, int) {
   var s = from;
   while s <= len(text) {
-    for a in alts {
-      if len(a) > 0 && byte(a, 0) == 94 {
-        if s == 0 {
-          let e = match_from(a, 1, text, s, false);
-          if e >= 0 { return (s, e); }
-        }
-      } else {
-        let e = match_from(a, 0, text, s, false);
-        if e >= 0 { return (s, e); }
-      }
-    }
+    for i in 0..len(caps) { caps[i] = -1; }
+    let e = run(pat, text, s, caps, false);
+    if e >= 0 { return (s, e); }
     let step = char_len(text, s);
     if step < 0 { break; }
     s += step;
   }
   return (-1, -1);
+}
+
+pub fn search_from(pat: string, text: string, from: int): (int, int) {
+  return find_caps(pat, text, from, fresh(pat));
 }
 
 pub fn search(pat: string, text: string): (int, int) {
@@ -207,12 +331,24 @@ pub fn is_match(pat: string, text: string): bool {
 
 // the whole text has to match
 pub fn full_match(pat: string, text: string): bool {
-  for a in alternatives(pat) {
-    var from = 0;
-    if len(a) > 0 && byte(a, 0) == 94 { from = 1; }
-    if match_from(a, from, text, 0, true) >= 0 { return true; }
+  return run(pat, text, 0, fresh(pat), true) >= 0;
+}
+
+// the first match followed by what each group matched (an empty string for a group that did not take part); empty when nothing matches
+pub fn captures(pat: string, text: string): string[] {
+  let caps = fresh(pat);
+  let r = find_caps(pat, text, 0, caps);
+  let out: string[] = [];
+  if r.0 < 0 { return out; }
+  push(out, substr(text, r.0, r.1 - r.0));
+  for g in 1..len(caps) / 2 {
+    if caps[2 * g] < 0 {
+      push(out, "");
+    } else {
+      push(out, substr(text, caps[2 * g], caps[2 * g + 1] - caps[2 * g]));
+    }
   }
-  return false;
+  return out;
 }
 
 pub fn all_matches(pat: string, text: string): string[] {
