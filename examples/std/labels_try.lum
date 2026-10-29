@@ -1,0 +1,26 @@
+import "std/option.lum"
+
+fn first_neg(rows: int[][]): option.Option<(int, int)> {
+  outer: for i in 0..len(rows) {
+    for j in 0..len(rows[i]) {
+      if rows[i][j] < 0 { return option.Option.Some((i, j)); }
+      if rows[i][j] == 99 { break outer; }
+    }
+  }
+  return option.Option.None;
+}
+
+fn pos_label(rows: int[][]): option.Option<string> {
+  let (i, j) = try first_neg(rows);
+  return option.Option.Some("row " + str(i) + " col " + str(j));
+}
+
+fn main() {
+  let makers: (fn(): int)[] = [];
+  for i in 0..3 { push(makers, fn(): int => i * 10); }
+  for m in makers { print(m()); }
+  for rows in [[[1, 2], [3, -4]], [[99, -1]], [[1]]] {
+    match pos_label(rows) { Some(s) => { print(s); } None => { print("none"); } }
+  }
+}
+main();
