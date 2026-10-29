@@ -1,0 +1,43 @@
+import "std/list.lum"
+import "std/text.lum"
+import "std/option.lum"
+import "std/heap.lum"
+
+struct Task { name: string, pri: int, deps: string[] }
+
+fn parse(line: string): option.Result<Task> {
+  let parts = split(line, ":");
+  if len(parts) < 2 { return option.Result.Err("no priority: " + line); }
+  let p = parse_int(trim(parts[1]), -1);
+  if p < 0 { return option.Result.Err("bad priority: " + line); }
+  let deps: string[] = [];
+  if len(parts) > 2 {
+    for d in split(parts[2], ",") { push(deps, trim(d)); }
+  }
+  return option.Result.Ok(Task { name: trim(parts[0]), pri: p, deps: deps });
+}
+
+fn load(lines: string[]): option.Result<Task[]> {
+  let out: Task[] = [];
+  for l in lines {
+    let t = try parse(l);
+    push(out, t);
+  }
+  return option.Result.Ok(out);
+}
+
+fn main() {
+  let src = ["build: 2: compile", "compile: 1", "test: 3: build, lint", "lint: 1"];
+  match load(src) {
+    Ok(ts) => {
+      let sorted = sort_by(ts, fn(a: Task, b: Task): bool => a.pri < b.pri);
+      for t in sorted { print(t.name, t.pri, len(t.deps)); }
+      print(sum_by(ts, fn(t: Task): int => t.pri));
+      let names = map(ts, fn(t: Task): string => upper(t.name));
+      print(join(names, ","));
+    }
+    Err(m) => { print("error", m); }
+  }
+  match load(["x: y"]) { Ok(_) => { print("?"); } Err(m) => { print(m); } }
+}
+main();
