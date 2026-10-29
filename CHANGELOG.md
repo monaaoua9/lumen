@@ -4,8 +4,6 @@ Newest first. The README has the full description of every feature.
 
 ## Language
 
-- `docs/tutorial.md`: a short tour whose examples are run by `test/docs.test.ts`.
-
 - Default argument values, named arguments (`box(height: 5, width: 4)`), also on generic functions and methods, struct update `P { x: 1, ..base }`.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - Labelled loops: `outer: for ... { for ... { break outer; } }` and `continue outer;`.
@@ -34,6 +32,7 @@ Newest first. The README has the full description of every feature.
 
 ## Tools
 
+- `docs/tutorial.md`: a short tour whose examples are run by `test/docs.test.ts`.
 - `lumen test` runs every `fn test_*()` in one or more files (`--only` filters), `lumen check` takes several files.
 - A failing `lumen test` case shows the file, line and column of the assertion (or of the call inside the test that failed).
 - REPL commands `:type`, `:reset`, `:help`.
