@@ -44,3 +44,17 @@ fn test_unicode_escapes() {
   test.eq_str(round_trip("[\"\\ud83d x\"]"), "[\"\u{fffd} x\"]");
   test.eq_str(round_trip("[\"\\u12g4\"]"), "invalid");
 }
+
+fn test_reading_values() {
+  let r = json.parse("\{\"a\": [1, \{\"b\": \"x\"\}], \"ok\": true, \"n\": 7\}");
+  test.eq_bool(r.ok, true);
+  test.eq_int(json.size(r.json), 3);
+  test.eq_int(json.size(json.field(r.json, "a")), 2);
+  test.eq_str(json.as_str(json.field(json.at(json.field(r.json, "a"), 1), "b"), "?"), "x");
+  test.eq_int(json.as_int(json.field(r.json, "n"), -1), 7);
+  test.eq_bool(json.as_bool(json.field(r.json, "ok"), false), true);
+  // wrong kind or missing key falls back instead of failing
+  test.eq_str(json.as_str(json.field(r.json, "n"), "fb"), "fb");
+  test.eq_int(json.as_int(json.at(json.field(r.json, "a"), 9), 5), 5);
+  test.eq_str(json.as_str(json.field(json.field(r.json, "zz"), "yy"), "gone"), "gone");
+}
