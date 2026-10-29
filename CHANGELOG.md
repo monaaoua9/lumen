@@ -31,6 +31,7 @@ Newest first. The README has the full description of every feature.
 ## Tools
 
 - `lumen test` runs every `fn test_*()` in one or more files (`--only` filters), `lumen check` takes several files.
+- A failing `lumen test` case shows the file, line and column of the assertion (or of the call inside the test that failed).
 - REPL commands `:type`, `:reset`, `:help`.
 - Differential tests compare random int, float, string and array programs across interp, vm, `-O` and C.
 - The C backend prints the source position of the failing statement on traps.
