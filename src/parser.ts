@@ -1272,6 +1272,14 @@ class Parser {
       const text = this.src.slice(args[0].span.start, args[0].span.end).replace(/\s+/g, ' ');
       args.push({ k: 'str', value: text, span: args[0].span, ty: 'error' });
     }
+    // print(a, b) is print(str(a) + " " + str(b))
+    if (t.text === 'print' && args.length > 1 && !argNames.some(Boolean)) {
+      const sp = this.join(t.span, close.span);
+      const str = (a: Expr): Expr => ({ k: 'call', name: 'str', nameSpan: a.span, args: [a], span: a.span, ty: 'error' });
+      const sep: Expr = { k: 'str', value: ' ', span: sp, ty: 'error' };
+      const line = args.slice(1).reduce((acc: Expr, a) => ({ k: 'binary', op: '+', l: { k: 'binary', op: '+', l: acc, r: sep, span: sp, ty: 'error' }, r: str(a), span: sp, ty: 'error' }) as Expr, str(args[0]));
+      return { k: 'call', name: 'print', nameSpan: t.span, args: [line], span: sp, ty: 'error' };
+    }
     return { k: 'call', name: t.text, nameSpan: t.span, args, argNames: argNames.some(Boolean) ? argNames : undefined, span: this.join(t.span, close.span), ty: 'error' };
   }
 }
