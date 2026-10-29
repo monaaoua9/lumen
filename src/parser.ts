@@ -1,5 +1,5 @@
 import type { Diagnostic, Segment, Span } from './diagnostics.ts';
-import type { BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
+import type { ArmCover, BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
 import { arrayOf, enumType, fnType, structType, typeFromName } from './types.ts';
@@ -848,15 +848,15 @@ class Parser {
   }
 
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
-  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[] } {
+  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[]; cover?: ArmCover } {
     const n = this.nestedArm(pats, guard);
     const r = this.rangeArm0(scrut, n.pats, n.guard);
     const binds = [...(r.binds ?? []), ...n.binds];
-    return { ...r, binds: binds.length ? binds : undefined };
+    return { ...r, binds: binds.length ? binds : undefined, cover: n.cover };
   }
 
   // `Some(Some(v))`: the arm matches the outer variant, a guard tests the inner one and `v` is read out of the hidden binding in front of the body
-  nestedArm(pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard: Expr | undefined; binds: Stmt[] } {
+  nestedArm(pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard: Expr | undefined; binds: Stmt[]; cover?: ArmCover } {
     if (!pats.some(p => this.varNested.get(p) || this.varTuples.get(p))) return { pats, guard, binds: [] };
     const sp = pats[0].span;
     if (pats.length > 1) {
@@ -889,7 +889,16 @@ class Parser {
       return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, k === 'span' ? v : swap(v)]));
     };
     const swapped = guard ? swap(guard) as Expr : undefined;
-    return { pats, guard: test && swapped ? and(test, swapped) : (test ?? swapped), binds };
+    // one inner variant tested and nothing else refutable: the arm covers that variant of the inner enum
+    let cover: ArmCover | undefined;
+    const top = pats[0] as Extract<Pat, { k: 'variant' }>;
+    const nests = this.varNested.get(top) ?? [];
+    const q = nests[0]?.pat;
+    if (!guard && nests.length === 1 && top.k === 'variant' && !this.varLits.get(top) && !this.varTuples.get(top)?.some(t => JSON.stringify(t.shape).includes('"lit"'))
+      && !this.varLits.get(q) && !this.varNested.get(q) && !this.varTuples.get(q)) {
+      cover = { variant: top.name, pos: top.binds!.findIndex(b => b?.name === nests[0].name), inner: q.name };
+    }
+    return { pats, guard: test && swapped ? and(test, swapped) : (test ?? swapped), binds, cover };
   }
 
   // true when `e` holds the variant `q` with all the literals and inner variants it spells out

@@ -1,5 +1,5 @@
 import type { Diagnostic, Segment, Severity, Span } from './diagnostics.ts';
-import type { EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
+import type { ArmCover, EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
 import { BUILTINS, arrayOf, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Elem, FnType, Type } from './types.ts';
 
@@ -959,7 +959,7 @@ class Analyzer {
       this.declareBinds(s.arms[i].pats);
       this.armGuard(s.arms[i].guard);
       return this.block(s.arms[i].body);
-    }));
+    }), false, s.arms.map(a => a.cover));
     s.tmp = r.tmp;
     const all = (k: 'diverges' | 'returns') => r.out.length > 0 && r.exhaustive && r.out.every(f => f[k]);
     return { diverges: all('diverges'), returns: all('returns') };
@@ -970,7 +970,7 @@ class Analyzer {
       this.declareBinds(e.arms[i].pats);
       this.armGuard(e.arms[i].guard);
       return this.expr(e.arms[i].value, want);
-    }), e.partial);
+    }), e.partial, e.arms.map(a => a.cover));
     e.tmp = r.tmp;
     let ty: Type = 'error';
     r.out.forEach((t, i) => {
@@ -989,7 +989,7 @@ class Analyzer {
   }
 
   // an arm with a guard can fall through, so it covers nothing for exhaustiveness or reachability
-  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T, partial = false): { tmp: number; out: T[]; exhaustive: boolean } {
+  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T, partial = false, covers: (ArmCover | undefined)[] = []): { tmp: number; out: T[]; exhaustive: boolean } {
     const st = this.expr(scrut);
     const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
@@ -1041,6 +1041,28 @@ class Analyzer {
       out.push(runArm(ai));
     }
 
+    // `Wrap(Some(n))` and `Wrap(None)` together cover `Wrap` when the inner variants add up to the whole inner enum
+    if (decl) {
+      const byOuter = new Map<string, Map<number, Set<string>>>();
+      covers.forEach(c => {
+        if (!c) return;
+        const byPos = byOuter.get(c.variant) ?? new Map<number, Set<string>>();
+        byPos.set(c.pos, (byPos.get(c.pos) ?? new Set<string>()).add(c.inner));
+        byOuter.set(c.variant, byPos);
+      });
+      for (const [vname, byPos] of byOuter) {
+        const oi = decl.variants.findIndex(v => v.name === vname);
+        if (oi < 0 || seen.has(`v${oi}`)) continue;
+        for (const [pos, inners] of byPos) {
+          const t = decl.variants[oi].payload[pos];
+          const inner = t && isEnum(t) ? this.enums.get(t.slice(1)) : undefined;
+          if (inner && inner.variants.every(v => inners.has(v.name))) {
+            seen.add(`v${oi}`);
+            break;
+          }
+        }
+      }
+    }
     const exhaustive = wild
       || (st === 'bool' && seen.has('ltrue') && seen.has('lfalse'))
       || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)));

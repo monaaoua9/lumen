@@ -46,7 +46,7 @@ export type Expr =
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
   | (Base & { k: 'blockx'; body: Stmt[]; value: Expr })
-  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span }[]; tmp: number; partial?: boolean })
+  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span; cover?: ArmCover }[]; tmp: number; partial?: boolean })
   | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number; boxed: boolean })
   | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })
   | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[]; argNames?: (string | undefined)[] })
@@ -93,11 +93,19 @@ export type Pat =
   | { k: 'variant'; span: Span; name: string; idx: number; binds: ({ name: string; span: Span; sym?: VarSym } | null)[] | null; tys: Type[]; boxed: boolean }
   | { k: 'lit'; span: Span; value: number | string | boolean; ty: Type };
 
+// an arm like `Wrap(Some(n))` is guarded after desugaring; this says what the guard really tests, so that `Wrap(Some(n))` plus `Wrap(None)` can still add up to a covered `Wrap`
+export interface ArmCover {
+  variant: string;
+  pos: number;
+  inner: string;
+}
+
 export interface MatchArm {
   pats: Pat[];
   guard?: Expr;
   body: Stmt[];
   span: Span;
+  cover?: ArmCover;
 }
 
 export interface Param {
