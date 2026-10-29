@@ -1,0 +1,9 @@
+import "std/matrix.lum"
+
+let a = [[1, 2], [3, 4]];
+print(matrix.mul(a, matrix.identity(2)));
+print(matrix.transpose([[1, 2, 3], [4, 5, 6]]));
+print(matrix.add(a, a));
+// fibonacci through [[1, 1], [1, 0]] ^ n
+print(matrix.pow([[1, 1], [1, 0]], 30)[0][1]);
+print(matrix.new(2, 3, 7));
