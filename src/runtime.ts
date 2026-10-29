@@ -106,11 +106,11 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'str': return format(a, tys[0]);
     case 'int': return tys[0] === 'int' ? a : floatToInt(a as number, span);
     case 'float': return a;
-    case 'len': return Array.isArray(a) ? a.length : Buffer.byteLength(a as string);
+    case 'len': return Array.isArray(a) ? a.length : byteLen(a as string);
     case 'push': (a as Value[]).push(args[1]); return null;
     case 'sqrt': return sqrtOf(a as number, span);
     case 'substr': return substrOf(a as string, args[1] as number, args[2] as number, span);
-    case 'find': return Buffer.from(a as string).indexOf(Buffer.from(args[1] as string));
+    case 'find': return bytesOf(a as string).indexOf(Buffer.from(args[1] as string));
     case 'byte': return byteAt(a as string, args[1] as number, span);
     case 'join': return (a as unknown as string[]).join(args[1] as string);
     case 'trim': return trimOf(a as string);
@@ -158,8 +158,23 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
 }
 
 // strings are UTF-8 and offsets count bytes, cutting through a multi-byte character is an error
+// scanning a string byte by byte asks for the same string's bytes again and again, so the last one is kept
+let lastStr = '';
+let lastBuf = Buffer.alloc(0);
+export function bytesOf(s: string): Buffer {
+  if (s !== lastStr) {
+    lastBuf = Buffer.from(s);
+    lastStr = s;
+  }
+  return lastBuf;
+}
+
+export function byteLen(s: string): number {
+  return s === lastStr ? lastBuf.length : Buffer.byteLength(s);
+}
+
 export function substrOf(s: string, start: number, n: number, span?: Span): string {
-  const buf = Buffer.from(s);
+  const buf = bytesOf(s);
   if (start < 0 || n < 0 || start + n > buf.length) throw new RuntimeError('substring out of range', span);
   const inside = (i: number) => i < buf.length && (buf[i] & 0xc0) === 0x80;
   if (inside(start) || inside(start + n)) throw new RuntimeError('substring splits a character', span);
@@ -255,7 +270,7 @@ export function trimOf(s: string): string {
 }
 
 export function byteAt(s: string, i: number, span?: Span): number {
-  const buf = Buffer.from(s);
+  const buf = bytesOf(s);
   if (i < 0 || i >= buf.length) throw new RuntimeError('byte index out of range', span);
   return buf[i];
 }
