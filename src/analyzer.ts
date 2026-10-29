@@ -1878,7 +1878,7 @@ class Analyzer {
         const here = [this.fns, this.generics, this.structs, this.structTemplates, this.enums, this.enumTemplates, this.traits]
           .flatMap(m => [...m.entries()])
           .filter(([, d]) => this.fileOf(((d as any).decl ?? d).nameSpan) === `${q.module}.lum`)
-          .map(([n]) => n as string);
+          .map(([n]) => (n as string).replace(/^.*\$/, ''));
         this.err('E028', `module '${q.module}' has no item '${q.name}'`, q.span, here.length ? closestHint(q.name, here) : undefined);
         continue;
       }
