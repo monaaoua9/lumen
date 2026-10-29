@@ -472,7 +472,7 @@ test('repl commands', () => {
 });
 
 test('try early return gives the same output on every engine', () => {
-  const want = { try_result: 'sum 9\nbad number: x\nbad number: y\n', try_option: '8\nnone\n', try_stmt: '3\nnot positive\n' };
+  const want = { try_result: 'sum 9\nbad number: x\nbad number: y\n', try_option: '8\nnone\n', try_stmt: '3\nnot positive\n', try_config: '22\nbad value in: b =\n' };
   for (const [name, out] of Object.entries(want)) {
     for (const engine of ['interp', 'vm', 'c']) {
       const r = cli('run', `examples/std/${name}.lum`, '--engine', engine);
