@@ -163,6 +163,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/path.lum`: text-only helpers for `/` separated paths, `basename`, `dirname`, `ext` and `combine(a, b)` (named so because `join` is a builtin).
 
+`std/stats.lum`: `mean`, `median`, `variance` (population), `stddev` and `min_max` (a tuple) over `float[]`.
+
 `std/set.lum`: a set of strings (`new`, `from`, `add`, `has`, `drop`, `size`, `items`, `union`, `intersect`, `minus`), insertion ordered, linear lookups.
 
 `std/random.lum`: a seeded Park-Miller generator, `new(seed)`, `step`, `below(r, n)`, `between(r, lo, hi)` and `shuffle(r, xs)`. The same seed gives the same numbers on every engine.
