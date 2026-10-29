@@ -1,0 +1,221 @@
+// small backtracking matcher. supports . [abc] [a-z] [^x] \d \w \s \. and * + ? after an atom,
+// ^ at the start, $ at the end, | between whole alternatives. no groups. works on bytes,
+// except that . and negated classes step over a whole UTF-8 character
+
+fn char_len(text: string, i: int): int {
+  if i >= len(text) { return -1; }
+  var n = 1;
+  while i + n < len(text) && byte(text, i + n) >= 128 && byte(text, i + n) < 192 { n += 1; }
+  return n;
+}
+
+fn is_word(c: int): bool {
+  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c == 95;
+}
+
+// index just past the atom that starts at pi
+fn atom_end(pat: string, pi: int): int {
+  let c = byte(pat, pi);
+  if c == 92 { return min(pi + 2, len(pat)); }
+  if c == 91 {
+    var j = pi + 1;
+    if j < len(pat) && byte(pat, j) == 94 { j += 1; }
+    // a ] right after [ or [^ is a plain member
+    if j < len(pat) { j += 1; }
+    while j < len(pat) && byte(pat, j) != 93 { j += 1; }
+    return min(j + 1, len(pat));
+  }
+  return pi + max(char_len(pat, pi), 1);
+}
+
+fn class_has(pat: string, pi: int, pe: int, c: int): bool {
+  var j = pi + 1;
+  var neg = false;
+  if byte(pat, j) == 94 { neg = true; j += 1; }
+  var hit = false;
+  let end = pe - 1;
+  while j < end {
+    var lo = byte(pat, j);
+    if lo == 92 && j + 1 < end {
+      j += 1;
+      lo = byte(pat, j);
+      if lo == 100 { if c >= 48 && c <= 57 { hit = true; } j += 1; continue; }
+      if lo == 119 { if is_word(c) { hit = true; } j += 1; continue; }
+      if lo == 115 { if c == 32 || (c >= 9 && c <= 13) { hit = true; } j += 1; continue; }
+    }
+    if j + 2 < end && byte(pat, j + 1) == 45 {
+      if c >= lo && c <= byte(pat, j + 2) { hit = true; }
+      j += 3;
+    } else {
+      if c == lo { hit = true; }
+      j += 1;
+    }
+  }
+  return hit != neg;
+}
+
+// how many bytes the atom eats at text[ti], -1 when it does not match
+fn atom_len(pat: string, pi: int, pe: int, text: string, ti: int): int {
+  if ti >= len(text) { return -1; }
+  let c = byte(pat, pi);
+  let t = byte(text, ti);
+  if c == 46 { return char_len(text, ti); }
+  if c == 91 {
+    if class_has(pat, pi, pe, t) { return char_len(text, ti); }
+    return -1;
+  }
+  if c == 92 && pi + 1 < len(pat) {
+    let e = byte(pat, pi + 1);
+    if e == 100 { if t >= 48 && t <= 57 { return 1; } return -1; }
+    if e == 119 { if is_word(t) { return 1; } return -1; }
+    if e == 115 { if t == 32 || (t >= 9 && t <= 13) { return 1; } return -1; }
+    if t == e { return 1; }
+    return -1;
+  }
+  let n = pe - pi;
+  if ti + n > len(text) { return -1; }
+  // bytes, so a cut in the middle of a character in the text is just a mismatch
+  var k = 0;
+  while k < n {
+    if byte(text, ti + k) != byte(pat, pi + k) { return -1; }
+    k += 1;
+  }
+  return n;
+}
+
+// end of the match of pat[pi..] against text starting at ti, or -1
+fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
+  if pi >= len(pat) {
+    if whole && ti != len(text) { return -1; }
+    return ti;
+  }
+  if byte(pat, pi) == 36 && pi + 1 == len(pat) {
+    if ti == len(text) { return ti; }
+    return -1;
+  }
+  let ae = atom_end(pat, pi);
+  var q = 0;
+  if ae < len(pat) { q = byte(pat, ae); }
+  if q == 42 || q == 43 || q == 63 {
+    var most = 1000000000;
+    if q == 63 { most = 1; }
+    var least = 0;
+    if q == 43 { least = 1; }
+    let ends: int[] = [ti];
+    var cur = ti;
+    while len(ends) - 1 < most {
+      let l = atom_len(pat, pi, ae, text, cur);
+      if l < 0 { break; }
+      cur += l;
+      push(ends, cur);
+    }
+    var k = len(ends) - 1;
+    while k >= least {
+      let r = match_from(pat, ae + 1, text, ends[k], whole);
+      if r >= 0 { return r; }
+      k -= 1;
+    }
+    return -1;
+  }
+  let l = atom_len(pat, pi, ae, text, ti);
+  if l < 0 { return -1; }
+  return match_from(pat, ae, text, ti + l, whole);
+}
+
+// split on | that is not inside [] and not escaped
+fn alternatives(pat: string): string[] {
+  let out: string[] = [];
+  var start = 0;
+  var i = 0;
+  var in_class = false;
+  while i < len(pat) {
+    let c = byte(pat, i);
+    if c == 92 { i += 2; continue; }
+    if in_class {
+      if c == 93 { in_class = false; }
+    } else if c == 91 {
+      in_class = true;
+    } else if c == 124 {
+      push(out, substr(pat, start, i - start));
+      start = i + 1;
+    }
+    i += 1;
+  }
+  push(out, substr(pat, start, len(pat) - start));
+  return out;
+}
+
+// (start, end) of the first match at or after `from`, (-1, -1) when there is none
+pub fn search_from(pat: string, text: string, from: int): (int, int) {
+  let alts = alternatives(pat);
+  var s = from;
+  while s <= len(text) {
+    for a in alts {
+      if len(a) > 0 && byte(a, 0) == 94 {
+        if s == 0 {
+          let e = match_from(a, 1, text, s, false);
+          if e >= 0 { return (s, e); }
+        }
+      } else {
+        let e = match_from(a, 0, text, s, false);
+        if e >= 0 { return (s, e); }
+      }
+    }
+    let step = char_len(text, s);
+    if step < 0 { break; }
+    s += step;
+  }
+  return (-1, -1);
+}
+
+pub fn search(pat: string, text: string): (int, int) {
+  return search_from(pat, text, 0);
+}
+
+pub fn is_match(pat: string, text: string): bool {
+  let r = search_from(pat, text, 0);
+  return r.0 >= 0;
+}
+
+// the whole text has to match
+pub fn full_match(pat: string, text: string): bool {
+  for a in alternatives(pat) {
+    var from = 0;
+    if len(a) > 0 && byte(a, 0) == 94 { from = 1; }
+    if match_from(a, from, text, 0, true) >= 0 { return true; }
+  }
+  return false;
+}
+
+pub fn all_matches(pat: string, text: string): string[] {
+  let out: string[] = [];
+  var at = 0;
+  while at <= len(text) {
+    let r = search_from(pat, text, at);
+    if r.0 < 0 { break; }
+    push(out, substr(text, r.0, r.1 - r.0));
+    if r.1 > r.0 { at = r.1; } else { at = r.1 + max(char_len(text, r.1), 1); }
+  }
+  return out;
+}
+
+// replaces every match; an empty match is skipped over one character
+pub fn sub(pat: string, text: string, with: string): string {
+  var out = "";
+  var at = 0;
+  while at <= len(text) {
+    let r = search_from(pat, text, at);
+    if r.0 < 0 { break; }
+    out += substr(text, at, r.0 - at) + with;
+    if r.1 > r.0 {
+      at = r.1;
+    } else {
+      let n = char_len(text, r.1);
+      if n < 0 { at = len(text) + 1; break; }
+      out += substr(text, r.1, n);
+      at = r.1 + n;
+    }
+  }
+  if at <= len(text) { out += substr(text, at, len(text) - at); }
+  return out;
+}
