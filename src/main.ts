@@ -61,6 +61,12 @@ function main(): number | Promise<number> {
     writeFileSync(join(dir, 'expr.lum'), args[e + 1] + '\n');
     args.splice(e, 2, join(dir, 'expr.lum'));
   }
+  if (cmd === '--version' || cmd === '-v') {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    process.stdout.write(`lumen ${pkg.version}
+`);
+    return 0;
+  }
   if (cmd === 'repl') return repl();
   if (cmd === 'fmt') return fmtFiles();
   if (cmd === 'explain') {
