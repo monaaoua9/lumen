@@ -180,6 +180,15 @@ ${out}`);
         const { line, col, file: where } = fe.source.locate(e.span.start);
         msg += `\n  --> ${where}:${line}:${col}\n   | ${fe.source.lineText(line, where)}`;
       }
+      // long (usually recursive) traces keep the innermost and outermost frames
+      const tr = e.trace ?? [];
+      const shown = tr.length > 12 ? [...tr.slice(0, 6), null, ...tr.slice(-5)] : tr;
+      for (const t of shown) {
+        if (!t) { msg += `\n  ... ${tr.length - 11} more calls`; continue; }
+        if (!t.span) continue;
+        const at = fe.source.locate(t.span.start);
+        msg += `\n  in ${t.fn.replace(/^.*\$/, '')} (${at.file}:${at.line}:${at.col})`;
+      }
       process.stderr.write(msg + '\n');
       return 1;
     }
