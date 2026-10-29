@@ -17,6 +17,7 @@ Newest first. The README has the full description of every feature.
 - New std/matrix: `new`, `identity`, `transpose`, `add`, `mul`, `pow`.
 - std/text: `wrap`, `glob`.
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
+- Nested variant patterns: `Wrap(Some(n))`, `Bin(Add, x, y)`, also in `if let` and `while let` (these now accept the same literal and range forms as `match`).
 - A generic struct literal can name its type arguments: `Stack<int> { items: [] }`.
 - Literal parts in variant patterns: `Num(0)`, `Op("+") | Op("-")`, `Pair(0, y) if y > 3`.
 - Statement `match` arms may be a bare expression: `Ok(b) => print(b),`.
