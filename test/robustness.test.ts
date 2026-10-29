@@ -631,3 +631,16 @@ test('generic types that mention themselves agree on every engine', () => {
     }
   }
 });
+
+test('unused pub functions of an imported file are not warned about', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-pub-'));
+  try {
+    writeFileSync(join(dir, 'lib2.lum'), 'pub fn used(): int { return 1; }\npub fn spare(): int { return 2; }\nfn hidden(): int { return 3; }\n');
+    writeFileSync(join(dir, 'app.lum'), 'import "lib2.lum"\nprint(lib2.used());\n');
+    const r = cli('check', join(dir, 'app.lum'));
+    assert.ok(!r.stdout.includes("'spare'") && !r.stderr.includes("'spare'"), r.stdout + r.stderr);
+    assert.ok((r.stdout + r.stderr).includes("'hidden'"), r.stdout + r.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
