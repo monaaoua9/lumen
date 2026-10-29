@@ -135,6 +135,35 @@ Buzz
 14
 ```
 
+وأجزاء الحالة قد تكون قيماً حرفية، ولا تحتاج الذراع في `match` كجملة إلى أقواس إذا كانت تعبيراً واحداً.
+
+```lum
+enum Cmd { Move(int), Say(string), Stop }
+
+fn run(c: Cmd) {
+  match c {
+    Move(0) => print("standing still"),
+    Move(n) if n < 0 => print("back", -n),
+    Move(n) => print("forward", n),
+    Say("hi") | Say("hello") => print("greeting"),
+    Say(w) => print("says", w),
+    Stop => print("stop"),
+  }
+}
+
+run(Cmd.Move(0));
+run(Cmd.Move(-2));
+run(Cmd.Say("hello"));
+run(Cmd.Say("bye"));
+```
+
+```output
+standing still
+back 2
+greeting
+says bye
+```
+
 ## 6. الـ Tuples والتفكيك
 
 الـ tuple تُكتب `(a, b)` وتُقرأ بـ `.0` وتُفكّك في `let` و`for`.
