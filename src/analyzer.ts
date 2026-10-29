@@ -90,7 +90,7 @@ function mapTypes(node: unknown, fn: (t: string, owner: Record<string, unknown>)
   for (const k of Object.keys(o)) {
     const v = o[k];
     if ((k === 'ty' || k === 'annot' || k === 'ret') && typeof v === 'string') o[k] = fn(v, o);
-    else if ((k === 'tys' || k === 'payload') && Array.isArray(v)) o[k] = v.map(x => fn(x as string, o));
+    else if ((k === 'tys' || k === 'payload' || k === 'typeArgs') && Array.isArray(v)) o[k] = v.map(x => fn(x as string, o));
     else mapTypes(v, fn, skip);
   }
 }
