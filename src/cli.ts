@@ -130,19 +130,27 @@ function runFile(file: string, cmd: string): number | Promise<number> {
         let failed = 0;
         for (const t of names) {
           let out = '';
+          let fe2: ReturnType<typeof checked> | undefined;
           try {
             const call = `
 ${t}();
 `;
             // the call belongs to the entry file, which is the last segment
             const segs = segments.map((sg, i) => (i === segments.length - 1 ? { ...sg, end: sg.end + call.length } : sg));
-            execute(checked(text + call, name, flag('-O'), segs), eng, { out: s => { out += s; } });
+            fe2 = checked(text + call, name, flag('-O'), segs);
+            execute(fe2, eng, { out: s => { out += s; } });
             process.stdout.write(`ok    ${t}
 `);
           } catch (e) {
             if (!(e instanceof RuntimeError || e instanceof ExitSignal)) throw e;
             failed++;
-            const why = e instanceof RuntimeError ? e.message : `exit ${e.code}`;
+            let why = e instanceof RuntimeError ? e.message : `exit ${e.code}`;
+            // where the test made the failing call
+            const site = e instanceof RuntimeError ? (e.trace?.find(x => x.fn === t && x.span)?.span ?? e.span) : undefined;
+            if (site && fe2) {
+              const at = fe2.source.locate(site.start);
+              why += ` (${at.file}:${at.line}:${at.col})`;
+            }
             process.stdout.write(`FAIL  ${t}: ${why}
 ${out}`);
           }
