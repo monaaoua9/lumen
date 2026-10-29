@@ -11,6 +11,7 @@ Newest first. The README has the full description of every feature.
 - `const NAME = value;` declares an immutable binding (a `let` under another name).
 - A guard on a tuple pattern may read the names the pattern binds (`(x, 0) if x > 3 =>`).
 - Tuple pattern alternatives can bind names: `(x, 0) | (0, x) => x`, as long as each alternative binds the same ones.
+- `lumen` starts about 100 ms faster: the entry file turns on the V8 compile cache before loading the compiler.
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
 - std/math: `lerp`, `hypot`, `fpow`; std/text: `truncate`, `title`.
