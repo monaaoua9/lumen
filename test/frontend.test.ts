@@ -833,3 +833,11 @@ test('several nested variants in one arm: all combinations together cover the ou
   const mixed = head + 'fn f(b: B): int { return match b { P(S(x), y) => x, P(N, S(y)) => y, P(N, N) => 0, E => 9 }; }';
   assert.deepEqual(diagCodes(mixed).filter(c => c === 'E020'), []);
 });
+
+test('break with a value needs a typed let and the innermost loop', () => {
+  assert.deepEqual(diagCodes('let x: int = loop { break 1; }; print(x);').filter(c => c.startsWith('P')), []);
+  assert.ok(diagCodes('let y = loop { break 1; };').includes('P001'));
+  assert.ok(diagCodes('for i in 0..3 { break 5; }').includes('P001'));
+  assert.ok(diagCodes('let x: int = loop { break; };').includes('P001'));
+  assert.ok(diagCodes('let x: int = loop { for i in 0..2 { break 1; } break 2; };').includes('P001'));
+});

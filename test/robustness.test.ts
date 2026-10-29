@@ -884,3 +884,10 @@ test('nested variants in several positions agree on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '3 -1\n', engine);
   }
 });
+
+test('a loop can give a value with break on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/loop_value.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '10\n64\ndone\n', engine);
+  }
+});

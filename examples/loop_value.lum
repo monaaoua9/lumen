@@ -1,0 +1,20 @@
+var i = 0;
+let r: int = loop {
+  i += 1;
+  if i > 4 { break i * 2; }
+};
+print(r);
+fn first_square_over(n: int): int {
+  var k = 1;
+  let sq: int = loop {
+    if k * k > n { break k * k; }
+    k += 1;
+  };
+  return sq;
+}
+print(first_square_over(50));
+let name: string = loop {
+  for j in 0..10 { if j == 3 { break; } }
+  break "done";
+};
+print(name);
