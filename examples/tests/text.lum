@@ -31,3 +31,9 @@ fn test_trim_split() {
   let (all, rest) = text.split_once("none", "=");
   test.eq_str(all + rest, "none");
 }
+
+fn test_pad_default_fill() {
+  test.eq_str(text.pad_left("7", 3), "  7");
+  test.eq_str(text.pad_right("7", 3), "7  ");
+  test.eq_str(text.pad_left("7", 3, "0"), "007");
+}
