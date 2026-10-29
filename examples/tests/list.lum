@@ -77,3 +77,14 @@ fn test_private_struct_in_generics() {
   test.eq_int(list.sum(ids), 4);
   test.eq_int(len(list.chunks(rows, 1)), 2);
 }
+
+fn test_windows_groups() {
+  let w = list.windows([1, 2, 3, 4], 2);
+  test.eq_int(len(w), 3);
+  test.eq_int(w[2][0], 3);
+  test.eq_int(len(list.windows([1], 2)), 0);
+  let g = list.group_by(["apple", "avocado", "banana", "blueberry", "cherry"], fn(w) => w[0]);
+  test.eq_int(map.size(g), 3);
+  test.eq_int(len(map.get(g, "a", [])), 2);
+  test.eq_str(join(map.get(g, "b", []), "+"), "banana+blueberry");
+}
