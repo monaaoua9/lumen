@@ -10,6 +10,7 @@ import { run as runVm } from './vm.ts';
 import { emitC } from './cgen.ts';
 import type { Module } from './bytecode.ts';
 import type { IO } from './runtime.ts';
+import { isMainThread } from 'node:worker_threads';
 
 export interface Frontend {
   source: Source;
@@ -20,12 +21,16 @@ export interface Frontend {
 
 // lex -> parse -> analyze. analysis is skipped when the parse already failed,
 // half-built trees only produce noise
+// thrown on the main thread when the recursive passes run out of stack, the cli then starts over on a thread with a bigger one
+export class DeepNesting extends Error {}
+
 export function frontend(text: string, name = '<input>', segments: Segment[] = []): Frontend {
   try {
     return frontend0(text, name, segments);
   } catch (e) {
-    // the recursive descent ran out of stack: say so instead of dumping a JS stack trace
     if (!(e instanceof RangeError)) throw e;
+    if (isMainThread) throw new DeepNesting();
+    // even the big stack was not enough: say so instead of dumping a JS stack trace
     const d: Diagnostic = { severity: 'error', code: 'P001', message: 'this program nests expressions or blocks too deeply', span: { start: 0, end: Math.min(1, text.length) } };
     return { source: new Source(text, name, segments), program: parse('', []).program, diagnostics: [d], ok: false };
   }

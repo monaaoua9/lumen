@@ -6,7 +6,7 @@ import { basename, join } from 'node:path';
 import { CompileError, ExitSignal, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
 import type { Segment } from './diagnostics.ts';
 import { bundle } from './modules.ts';
-import { checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
+import { DeepNesting, checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
 import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
@@ -287,7 +287,8 @@ function build(csrc: string, out: string): number {
       process.stdout.write(`built ${out} (via ${cc}, source kept in ${cfile})\n`);
       return 0;
     }
-    return r.status ?? 1;
+    process.stderr.write(`error: ${cc} failed${r.status === null ? ` (${r.signal ?? 'crashed'})` : ` with exit code ${r.status}`}\n`);
+    return r.status || 1;
   }
   process.stderr.write(`no C compiler found; C source is in ${cfile}\n`);
   return 1;
@@ -303,7 +304,10 @@ function runNative(csrc: string): number {
     for (const cc of ['gcc', 'clang', 'cc']) {
       const r = spawnSync(cc, ['-O2', '-o', exe, cfile, '-lm'], { stdio: ['ignore', 'inherit', 'inherit'] });
       if (r.error) continue;
-      if (r.status !== 0) return r.status ?? 1;
+      if (r.status !== 0) {
+        process.stderr.write(`error: ${cc} failed${r.status === null ? ` (${r.signal ?? 'crashed'})` : ` with exit code ${r.status}`}\n`);
+        return r.status || 1;
+      }
       return spawnSync(exe, programArgs, { stdio: 'inherit' }).status ?? 1;
     }
     process.stderr.write('no C compiler found\n');
@@ -326,13 +330,26 @@ function bench(fe: ReturnType<typeof frontend>): number {
 
 // the tree-walking interpreter recurses on the host stack, so `run --engine interp` gets a thread with a big one
 // (that is what lets it reach the same call depth cap as the other engines)
-if (isMainThread && args[0] === 'run' && args[args.indexOf('--engine') + 1] === 'interp') {
+function onBigStack() {
   const w = new Worker(new URL(import.meta.url), { argv: full, resourceLimits: { stackSizeMb: 256 } });
   w.on('message', (m: { code: number }) => { process.exitCode = m.code; });
   w.on('error', e => { throw e; });
+}
+
+if (isMainThread && args[0] === 'run' && args[args.indexOf('--engine') + 1] === 'interp') {
+  onBigStack();
 } else {
-  Promise.resolve(main()).then(c => {
+  new Promise<number>(done => done(main())).then(c => {
     if (isMainThread) process.exitCode = c;
     else parentPort!.postMessage({ code: c });
+  }, e => {
+    // a very long expression chain: nothing ran yet, so the whole command can start over with room to recurse
+    if (e instanceof DeepNesting && isMainThread) onBigStack();
+    else if (e instanceof RangeError) {
+      // a later pass (code generation) ran out of stack even here
+      process.stderr.write('error: this program nests expressions or blocks too deeply\n');
+      if (isMainThread) process.exitCode = 1;
+      else parentPort!.postMessage({ code: 1 });
+    } else throw e;
   });
 }
