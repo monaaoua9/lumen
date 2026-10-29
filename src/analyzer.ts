@@ -890,7 +890,7 @@ class Analyzer {
         return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
       }
       // xs.len() and s.upper() read as len(xs) and upper(s); same for plain functions taking the value first
-      if (!fn && !fld && !owner && (e.name in BUILTINS || this.fns.get(e.name)?.params[0] === ot)) {
+      if (!fn && !fld && (e.name in BUILTINS || this.fns.get(e.name)?.params[0] === ot || this.takesFirst(e.name, ot))) {
         this.keep.set(e.obj, ot);
         Object.assign(e, { k: 'call', args: [e.obj, ...e.args] });
         return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
@@ -1695,6 +1695,15 @@ class Analyzer {
         this.scope = saved;
       }
     }
+  }
+
+  // a generic function whose first parameter accepts a value of type `ot`, for the xs.map(f) form
+  takesFirst(name: string, ot: Type): boolean {
+    const gen = this.generics.get(name);
+    if (!gen || gen.params.length === 0 || this.scope.lookup(name)) return false;
+    const binds = new Map<string, Type>();
+    unify(gen.params[0].ty, ot, new Set(gen.typeParams!), binds, this.structInst);
+    return replaceVars(gen.params[0].ty, binds) === ot;
   }
 
   // `geometry.dist(...)`: the parser drops the qualifier, here we make sure the item really lives in that file
