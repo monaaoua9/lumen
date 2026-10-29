@@ -230,6 +230,7 @@ node src/cli.ts repl                              # interactive; a bare expressi
 node src/cli.ts fmt --write file.lum              # re-indent by bracket depth (--check for CI)
 node src/cli.ts test file.lum                   # run every `fn test_*()`, failed assert() = failed test (--only name to filter)
 node src/cli.ts explain E003                      # what a diagnostic code means, with a bad/good example
+node src/cli.ts --version                        # lumen 0.1.0
 npm test                         # unit tests + cross-backend parity
 npm run typecheck
 ```
