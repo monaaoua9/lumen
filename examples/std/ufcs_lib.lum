@@ -1,0 +1,17 @@
+import "std/list.lum"
+import "std/text.lum"
+fn main() {
+  let xs = [1, 2, 3, 4, 5];
+  print(xs.chunks(2));
+  print(xs.map(fn(x) => x * 2));
+  print("7".pad_left(3, "0"));
+  print(xs.take_while(fn(x) => x < 3).sum());
+}
+main();
+
+struct P { x: int }
+fn doubled<T>(v: T): T[] { return [v, v]; }
+fn area(p: P): int { return p.x * p.x; }
+let p = P { x: 4 };
+print(p.area());
+print(p.doubled().len());
