@@ -13,6 +13,7 @@ Newest first. The README has the full description of every feature.
 - std/list: `product`, `rotate`, `count_by`.
 - New std/format: `commas`, `table`, `percent`.
 - New std/date: calendar arithmetic (`to_days`, `from_days`, `weekday`, `add_days`, `iso`).
+- New std/encoding: `to_hex`, `from_hex`, `hex_encode`, `base64_encode`.
 - A generic function nobody calls still gets its undeclared names reported (E001), the rest of its body is checked once it is called.
 - `try` inside a block expression is a P001 error instead of silently capturing the statements after it.
 - Runtime errors in the C backend print the same call trace as the interpreter and the VM.
