@@ -85,6 +85,8 @@ export class ExitSignal extends Error {
 
 export class RuntimeError extends Error {
   span?: Span;
+  // innermost caller first: the function and where it made the call (VM only)
+  trace?: { fn: string; span?: Span }[];
   constructor(msg: string, span?: Span) {
     super(msg);
     this.span = span;
