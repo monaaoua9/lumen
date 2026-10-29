@@ -1,0 +1,21 @@
+import "std/map.lum"
+import "std/list.lum"
+import "std/text.lum"
+
+fn counter(): fn(): int {
+  var n = 0;
+  return fn(): int { n += 1; return n; };
+}
+
+fn main() {
+  let doc = "the cat and the hat and the bat";
+  let freq: map.Map<int> = map.new();
+  for w in text.words(doc) { map.update(freq, w, 0, fn(c) => c + 1); }
+  let pairs = list.sort_by(map.entries(freq), fn(a, b) => a.1 > b.1 || (a.1 == b.1 && a.0 < b.0));
+  for (w, c) in pairs { print("{text.pad_right(w, 5)}{c}"); }
+  let next = counter();
+  next();
+  next();
+  print(next());
+}
+main();
