@@ -332,3 +332,18 @@ test('std examples survive a collection on every allocation', { skip: cc ? false
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('C backend: len() and indexing a long string do not rescan it', { skip: cc ? false : 'no C compiler on PATH' }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-len-'));
+  try {
+    const exe = join(dir, 'big.exe');
+    const b = spawnSync(process.execPath, ['src/cli.ts', 'build', 'examples/std/json_large.lum', '-o', exe], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+    assert.equal(b.status, 0, b.stderr);
+    // a rescan per character made this take minutes
+    const r = spawnSync(exe, [], { encoding: 'utf8', input: '', timeout: 15000 });
+    assert.equal(r.status, 0, String(r.error));
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'true 87781\n93781\n');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
