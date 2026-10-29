@@ -1,0 +1,23 @@
+fn fizz(n: int): string {
+  return match (n % 3, n % 5) {
+    (0, 0) => "FizzBuzz",
+    (0, _) => "Fizz",
+    (_, 0) => "Buzz",
+    _ => str(n),
+  };
+}
+
+fn describe(p: (string, bool)): string {
+  match p {
+    ("admin", true) => { return "active admin"; }
+    ("admin", _) | ("root", _) => { return "admin-ish"; }
+    (_, true) if len(p.0) > 3 => { return "long active"; }
+    _ => { return "other"; }
+  }
+}
+
+for i in 1..16 { print(fizz(i)); }
+print(describe(("admin", true)));
+print(describe(("root", false)));
+print(describe(("alice", true)));
+print(describe(("bo", true)));
