@@ -21,3 +21,10 @@ fn test_combine() {
   test.eq_str(path.combine("a", "/b"), "/b");
   test.eq_str(path.combine("", "b"), "b");
 }
+
+fn test_non_ascii_paths() {
+  test.eq_str(path.basename("/مجلد/ملف.txt"), "ملف.txt");
+  test.eq_str(path.dirname("/مجلد/ملف.txt"), "/مجلد");
+  test.eq_str(path.ext("/مجلد/ملف.txt"), ".txt");
+  test.eq_str(path.ext("ملف"), "");
+}
