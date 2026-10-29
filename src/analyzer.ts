@@ -285,8 +285,13 @@ class Analyzer {
     this.synthDyn(prog);
     this.declareEnums(prog.enums);
     this.declareStructs(prog.structs);
+    this.declared = true;
     for (const d of this.enums.values()) {
+      // an instance like Result<Task> is written by the user, so the library's own payload is not an access
+      const inst = this.structInst.has(d.name);
+      if (inst) this.noAccess++;
       for (const v of d.variants) v.payload.forEach(t => this.checkType(t, v.span));
+      if (inst) this.noAccess--;
     }
     // lambdas inside a generic body belong to the template, every instance gets its own copy
     const templateLambdas = new Set<FnDecl>();
@@ -409,7 +414,7 @@ class Analyzer {
     this.structs.set(inst, decl);
     this.prog.structs.push(decl);
     // fields of an instance created after declareStructs ran still have to name real types
-    for (const f of decl.fields) this.checkType(f.ty, f.span);
+    if (this.declared) for (const f of decl.fields) this.checkType(f.ty, f.span);
     return inst;
   }
 
@@ -438,7 +443,8 @@ class Analyzer {
     };
     this.enums.set(inst, decl);
     this.prog.enums.push(decl);
-    for (const v of decl.variants) v.payload.forEach(t => this.checkType(t, v.span));
+    // before declareStructs the user's structs are not registered yet, the loop after it checks these
+    if (this.declared) for (const v of decl.variants) v.payload.forEach(t => this.checkType(t, v.span));
     return inst;
   }
 
@@ -514,6 +520,7 @@ class Analyzer {
   }
 
   noAccess = 0;
+  declared = false;
 
   access(kind: string, name: string, decl: { pub?: boolean; nameSpan: Span } | undefined, use: Span) {
     if (!decl || decl.pub || !this.segments.length || this.noAccess > 0) return;
