@@ -970,7 +970,7 @@ class Analyzer {
       this.declareBinds(e.arms[i].pats);
       this.armGuard(e.arms[i].guard);
       return this.expr(e.arms[i].value, want);
-    }));
+    }), e.partial);
     e.tmp = r.tmp;
     let ty: Type = 'error';
     r.out.forEach((t, i) => {
@@ -989,7 +989,7 @@ class Analyzer {
   }
 
   // an arm with a guard can fall through, so it covers nothing for exhaustiveness or reachability
-  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T): { tmp: number; out: T[]; exhaustive: boolean } {
+  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T, partial = false): { tmp: number; out: T[]; exhaustive: boolean } {
     const st = this.expr(scrut);
     const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
@@ -1044,7 +1044,7 @@ class Analyzer {
     const exhaustive = wild
       || (st === 'bool' && seen.has('ltrue') && seen.has('lfalse'))
       || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)));
-    if (matchable && !exhaustive) {
+    if (matchable && !exhaustive && !partial) {
       const missing = decl ? decl.variants.filter((_, i) => !seen.has(`v${i}`)).map(v => `${decl.name}.${v.name}`) : [];
       this.err('E020', 'non-exhaustive match', scrut.span, missing.length ? `missing: ${missing.join(', ')}` : "add a '_' arm");
     }
