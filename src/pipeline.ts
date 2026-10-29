@@ -21,6 +21,17 @@ export interface Frontend {
 // lex -> parse -> analyze. analysis is skipped when the parse already failed,
 // half-built trees only produce noise
 export function frontend(text: string, name = '<input>', segments: Segment[] = []): Frontend {
+  try {
+    return frontend0(text, name, segments);
+  } catch (e) {
+    // the recursive descent ran out of stack: say so instead of dumping a JS stack trace
+    if (!(e instanceof RangeError)) throw e;
+    const d: Diagnostic = { severity: 'error', code: 'P001', message: 'this program nests expressions or blocks too deeply', span: { start: 0, end: Math.min(1, text.length) } };
+    return { source: new Source(text, name, segments), program: parse('', []).program, diagnostics: [d], ok: false };
+  }
+}
+
+function frontend0(text: string, name: string, segments: Segment[]): Frontend {
   const source = new Source(text, name, segments);
   const { program, diags } = parse(text, segments);
   const parseFailed = diags.some(d => d.severity === 'error');
