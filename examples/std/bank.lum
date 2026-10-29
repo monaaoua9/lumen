@@ -1,0 +1,29 @@
+import "std/option.lum"
+
+struct Account { id: int, owner: string, balance: int }
+
+fn withdraw(a: Account, amt: int): option.Result<int> {
+  if amt > a.balance { return option.Result.Err("insufficient funds"); }
+  a.balance -= amt;
+  return option.Result.Ok(a.balance);
+}
+
+fn transfer(from: Account, to: Account, amt: int): option.Result<int> {
+  let r = withdraw(from, amt);
+  if let Err(m) = r { return option.Result.Err("transfer failed: " + m); }
+  to.balance += amt;
+  return option.Result.Ok(amt);
+}
+
+fn main() {
+  let a = Account { id: 1, owner: "sara", balance: 100 };
+  let b = Account { id: 2, owner: "omar", balance: 5 };
+  for amt in [30, 90, 70] {
+    match transfer(a, b, amt) {
+      Ok(n) => { print("moved {n}"); }
+      Err(m) => { print(m); }
+    }
+  }
+  print("{a.owner}={a.balance} {b.owner}={b.balance}");
+}
+main();
