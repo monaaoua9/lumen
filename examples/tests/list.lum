@@ -47,6 +47,6 @@ fn test_tuples() {
   let (small, big) = list.partition([1, 5, 2, 8], fn(x) => x < 3);
   test.eq_int(len(small) * 10 + len(big), 22);
   var last = "";
-  for i, (n, s) in list.enumerate(["p", "q"]) { last = last + str(i) + s; }
+  for i, (_, s) in list.enumerate(["p", "q"]) { last = last + str(i) + s; }
   test.eq_str(last, "0p1q");
 }
