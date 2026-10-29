@@ -1,0 +1,57 @@
+// comma separated values with "quoted, fields" and "" for a quote inside one
+pub fn parse(text: string): string[][] {
+  let rows: string[][] = [];
+  var row: string[] = [];
+  var cell = "";
+  var quoted = false;
+  var i = 0;
+  while i < len(text) {
+    let c = text[i];
+    if quoted {
+      if c == "\"" {
+        if i + 1 < len(text) && text[i + 1] == "\"" {
+          cell += "\"";
+          i += 1;
+        } else {
+          quoted = false;
+        }
+      } else {
+        cell += c;
+      }
+    } else if c == "\"" {
+      quoted = true;
+    } else if c == "," {
+      push(row, cell);
+      cell = "";
+    } else if c == "\n" {
+      push(row, cell);
+      push(rows, row);
+      row = [];
+      cell = "";
+    } else if c != "\r" {
+      cell += c;
+    }
+    i += 1;
+  }
+  // a last line without a newline still counts
+  if len(cell) > 0 || len(row) > 0 {
+    push(row, cell);
+    push(rows, row);
+  }
+  return rows;
+}
+
+fn field(s: string): string {
+  if find(s, ",") < 0 && find(s, "\"") < 0 && find(s, "\n") < 0 { return s; }
+  return "\"" + replace(s, "\"", "\"\"") + "\"";
+}
+
+pub fn format(rows: string[][]): string {
+  var out = "";
+  for row in rows {
+    let cells: string[] = [];
+    for c in row { push(cells, field(c)); }
+    out += join(cells, ",") + "\n";
+  }
+  return out;
+}
