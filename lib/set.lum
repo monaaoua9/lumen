@@ -1,8 +1,11 @@
-// set of strings, kept in insertion order. lookups are linear like std/map
-pub struct Set { items: string[] }
+import "std/map.lum"
+
+// set of strings, kept in insertion order. membership goes through a std/map, so it is a hash lookup
+pub struct Set { items: string[], seen: map.Map<bool> }
 
 pub fn new(): Set {
-  return Set { items: [] };
+  let seen: map.Map<bool> = map.new();
+  return Set { items: [], seen: seen };
 }
 
 pub fn from(xs: string[]): Set {
@@ -12,24 +15,27 @@ pub fn from(xs: string[]): Set {
 }
 
 pub fn has(s: Set, x: string): bool {
-  return contains(s.items, x);
+  return map.has(s.seen, x);
 }
 
 // true when x was not there before
 pub fn add(s: Set, x: string): bool {
   if has(s, x) { return false; }
   push(s.items, x);
+  map.set(s.seen, x, true);
   return true;
 }
 
 pub fn drop(s: Set, x: string): bool {
+  if !has(s, x) { return false; }
   for i in 0..len(s.items) {
     if s.items[i] == x {
       remove(s.items, i);
-      return true;
+      break;
     }
   }
-  return false;
+  map.delete(s.seen, x);
+  return true;
 }
 
 pub fn size(s: Set): int {
