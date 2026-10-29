@@ -497,7 +497,7 @@ test('array slice syntax', () => {
 test('if let', () => {
   const E = 'enum O { Some(int), None } ';
   assert.deepEqual(errs(E + 'let o = O.Some(1); if let Some(v) = o { print(v); } else { print(0); }'), []);
-  assert.deepEqual(errs(E + 'let o = O.None; if let Nope(v) = o { print(v); }'), ['E021', 'E001']);
+  assert.deepEqual(errs(E + 'let o = O.None; if let Nope(v) = o { print(v); }'), ['E021']);
 });
 
 test('indexing a string', () => {
@@ -840,4 +840,12 @@ test('break with a value needs a typed let and the innermost loop', () => {
   assert.ok(diagCodes('for i in 0..3 { break 5; }').includes('P001'));
   assert.ok(diagCodes('let x: int = loop { break; };').includes('P001'));
   assert.ok(diagCodes('let x: int = loop { for i in 0..2 { break 1; } break 2; };').includes('P001'));
+});
+
+test('one bad type in a signature does not drag along missing-return and unknown-name errors', () => {
+  const src = 'fn run(a: int): Result<int, string> { let l = 1; }\nmatch run(1) { Ok(v) => print(v), Err(m) => print(m), }';
+  const codes = diagCodes(src).filter(c => c.startsWith('E'));
+  assert.ok(codes.includes('E016'));
+  assert.ok(!codes.includes('E007'));
+  assert.ok(!codes.includes('E001'));
 });
