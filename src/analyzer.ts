@@ -1252,6 +1252,12 @@ class Analyzer {
         if (it !== 'error' && it !== 'int') this.err('E003', `array index must be int, found ${it}`, e.idx.span);
         this.negativeIndex(e.idx);
         if (at === 'error') return 'error';
+        if (at === 'string') {
+          // s[i] is the one-character string substr(s, i, 1)
+          const one: Expr = { k: 'int', value: 1, span: e.span, ty: 'int' };
+          Object.assign(e, { k: 'call', name: 'substr', nameSpan: e.span, args: [e.arr, e.idx, one], builtin: 'substr' });
+          return 'string';
+        }
         if (!isArray(at)) {
           this.err('E003', `cannot index a value of type ${at}`, e.arr.span);
           return 'error';

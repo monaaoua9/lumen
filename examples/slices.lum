@@ -10,3 +10,9 @@ let word = "lumen";
 print(word[1..4]);
 print(word[0..0] + "|" + word[0..5]);
 print(slice(word, 2, 2));
+print(word[0] + word[4]);
+var vowels = 0;
+for i in 0..len(word) {
+  if contains(["a", "e", "i", "o", "u"], word[i]) { vowels += 1; }
+}
+print(vowels);
