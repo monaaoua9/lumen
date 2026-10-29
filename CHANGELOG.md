@@ -12,6 +12,7 @@ Newest first. The README has the full description of every feature.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
 - Local functions can call themselves.
 - Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
+- `for (a, b) in pairs` and `for i, (a, b) in xs` take tuples apart in the loop head.
 
 ## Builtins
 
@@ -27,4 +28,4 @@ Newest first. The README has the full description of every feature.
 ## Standard library
 
 - New: `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
-- Extended: `std/list` (sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (lines, chars, center, fixed, ...), `std/map` (keys, values, update), `std/option` (map_option, find_by, first, ...), `std/math` (isqrt, factorial, ...).
+- Extended: `std/list` (zip, enumerate, partition, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (lines, chars, center, fixed, ...), `std/map` (keys, values, entries, update), `std/option` (map_option, find_by, first, ...), `std/math` (isqrt, factorial, ...).

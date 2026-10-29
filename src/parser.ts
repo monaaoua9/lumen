@@ -491,10 +491,18 @@ class Parser {
   // `continue` can't skip it, and the hidden names start with '_$' (not typable, never linted)
   forStmt(): Stmt {
     const kw = this.next();
-    let name = this.vn(this.expect('ident', 'a loop variable'));
+    // `for (a, b) in pairs` takes a tuple element apart
+    const parts: Token[] = [];
+    const tupleName = (): Token => {
+      const open = this.next();
+      do parts.push(this.vn(this.expect('ident', 'a loop variable'))); while (this.eat(',') && !this.at(')'));
+      this.expect(')');
+      return { ...open, kind: 'ident', text: `_$t${this.forId}` };
+    };
+    let name = this.at('(') ? tupleName() : this.vn(this.expect('ident', 'a loop variable'));
     // `for i, x in xs` also names the position
-    const indexVar = this.eat(',') ? name : undefined;
-    if (indexVar) name = this.vn(this.expect('ident', 'a loop variable'));
+    const indexVar = !parts.length && this.eat(',') ? name : undefined;
+    if (indexVar) name = this.at('(') ? tupleName() : this.vn(this.expect('ident', 'a loop variable'));
     this.expect('in');
     const first = this.condExpr();
     const id = this.forId++;
@@ -533,7 +541,7 @@ class Parser {
     const body = this.block();
     const loop: Stmt = {
       k: 'while', span: this.join(kw.span, this.prevSpan()), cond,
-      body: [...(indexVar ? [decl(indexVar.text, v(counter), false, indexVar.span)] : []), decl(name.text, elem, false, name.span), bump, ...body],
+      body: [...(indexVar ? [decl(indexVar.text, v(counter), false, indexVar.span)] : []), decl(name.text, elem, false, name.span), ...parts.map((p, i) => p.text === '_' ? null : decl(p.text, { k: 'field', obj: v(name.text), name: `_${i}`, nameSpan: p.span, idx: -1, span: p.span, ty: 'error' }, false, p.span)).filter((x): x is Stmt => x !== null), bump, ...body],
     };
     return { k: 'block', span: loop.span, body: [...setup, loop] };
   }
@@ -693,7 +701,7 @@ class Parser {
     const params = Array.from({ length: n }, (_, i) => String.fromCharCode(65 + i));
     const span = this.prevSpan();
     this.structs.push({
-      k: 'struct', span, name, nameSpan: span, typeParams: params,
+      k: 'struct', span, name, nameSpan: span, typeParams: params, pub: true,
       fields: params.map((p, i) => ({ name: `_${i}`, ty: structType(p), span })),
     });
     return name;

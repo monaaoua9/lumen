@@ -179,3 +179,26 @@ pub fn reversed<T>(xs: T[]): T[] {
   reverse(out);
   return out;
 }
+
+pub fn zip<A, B>(xs: A[], ys: B[]): (A, B)[] {
+  let out: (A, B)[] = [];
+  let n = if len(xs) < len(ys) { len(xs) } else { len(ys) };
+  for i in 0..n { push(out, (xs[i], ys[i])); }
+  return out;
+}
+
+pub fn enumerate<T>(xs: T[]): (int, T)[] {
+  let out: (int, T)[] = [];
+  for i, x in xs { push(out, (i, x)); }
+  return out;
+}
+
+// (items that pass, items that do not)
+pub fn partition<T>(xs: T[], test: fn(T): bool): (T[], T[]) {
+  let yes: T[] = [];
+  let no: T[] = [];
+  for x in xs {
+    if test(x) { push(yes, x); } else { push(no, x); }
+  }
+  return (yes, no);
+}

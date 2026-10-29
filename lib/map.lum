@@ -61,3 +61,9 @@ pub fn update<V>(m: Map<V>, key: string, start: V, f: fn(V): V) {
 pub fn new<V>(): Map<V> {
   return Map { keys: [], vals: [] };
 }
+
+pub fn entries<V>(m: Map<V>): (string, V)[] {
+  let out: (string, V)[] = [];
+  for i, k in m.keys { push(out, (k, m.vals[i])); }
+  return out;
+}

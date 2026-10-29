@@ -37,3 +37,10 @@ print(left.0 + left.1 + right.0 + right.1);
 var counter = (0, "n");
 counter = (counter.0 + 1, counter.1 + "!");
 print(counter);
+
+for (word, n) in [("one", 1), ("two", 2)] {
+  print(word + str(n));
+}
+for i, (word, _) in [("x", 0), ("y", 0)] {
+  print(str(i) + word);
+}

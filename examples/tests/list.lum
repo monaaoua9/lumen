@@ -36,3 +36,17 @@ fn test_equal_index() {
   test.eq_int(list.index_of([5, 6, 7], 1), -1);
   test.is_true(list.equal(list.reversed([1, 2, 3]), [3, 2, 1]), "reversed copy");
 }
+
+fn test_tuples() {
+  let z = list.zip([1, 2, 3], ["a", "b"]);
+  test.eq_int(len(z), 2);
+  test.eq_str(z[1].1, "b");
+  var total = 0;
+  for (n, s) in z { total += n * len(s); }
+  test.eq_int(total, 3);
+  let (small, big) = list.partition([1, 5, 2, 8], fn(x) => x < 3);
+  test.eq_int(len(small) * 10 + len(big), 22);
+  var last = "";
+  for i, (n, s) in list.enumerate(["p", "q"]) { last = last + str(i) + s; }
+  test.eq_str(last, "0p1q");
+}
