@@ -8,6 +8,7 @@ Newest first. The README has the full description of every feature.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
 - `try e;` as a statement: same early return, the unwrapped value is dropped.
+- `const NAME = value;` declares an immutable binding (a `let` under another name).
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
 - std/math: `lerp`, `hypot`, `fpow`; std/text: `truncate`, `title`.
 - std/list: `product`, `rotate`, `count_by`.
