@@ -1,7 +1,8 @@
 // forward-slash paths as text, nothing touches the disk
 fn last_slash(p: string): int {
   var i = len(p) - 1;
-  while i >= 0 && p[i] != "/" { i -= 1; }
+  // bytes, not characters: 47 never occurs inside a multi-byte character
+  while i >= 0 && byte(p, i) != 47 { i -= 1; }
   return i;
 }
 
@@ -20,7 +21,7 @@ pub fn dirname(p: string): string {
 pub fn ext(p: string): string {
   let name = basename(p);
   var i = len(name) - 1;
-  while i > 0 && name[i] != "." { i -= 1; }
+  while i > 0 && byte(name, i) != 46 { i -= 1; }
   if i <= 0 { return ""; }
   return name[i..];
 }
