@@ -202,3 +202,37 @@ pub fn partition<T>(xs: T[], test: fn(T): bool): (T[], T[]) {
   }
   return (yes, no);
 }
+
+pub fn take_while<T>(xs: T[], keep: fn(T): bool): T[] {
+  let out: T[] = [];
+  for x in xs {
+    if !keep(x) { break; }
+    push(out, x);
+  }
+  return out;
+}
+
+pub fn drop_while<T>(xs: T[], skip: fn(T): bool): T[] {
+  let out: T[] = [];
+  var dropping = true;
+  for x in xs {
+    if dropping && skip(x) { continue; }
+    dropping = false;
+    push(out, x);
+  }
+  return out;
+}
+
+pub fn chunks<T>(xs: T[], size: int): T[][] {
+  let out: T[][] = [];
+  var cur: T[] = [];
+  for x in xs {
+    push(cur, x);
+    if len(cur) == size {
+      push(out, cur);
+      cur = [];
+    }
+  }
+  if len(cur) > 0 { push(out, cur); }
+  return out;
+}

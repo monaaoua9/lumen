@@ -50,3 +50,13 @@ fn test_tuples() {
   for i, (_, s) in list.enumerate(["p", "q"]) { last = last + str(i) + s; }
   test.eq_str(last, "0p1q");
 }
+
+fn test_slicing_helpers() {
+  let xs = [1, 2, 3, 10, 4];
+  test.eq_int(len(list.take_while(xs, fn(x) => x < 5)), 3);
+  test.eq_int(len(list.drop_while(xs, fn(x) => x < 5)), 2);
+  let cs = list.chunks(xs, 2);
+  test.eq_int(len(cs), 3);
+  test.eq_int(len(cs[2]), 1);
+  test.eq_int(cs[1][1], 10);
+}
