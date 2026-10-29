@@ -57,6 +57,7 @@ class Parser {
 
   // top-level names per file, only filled when several files are bundled
   segments: Segment[];
+  src = ''; // the text being parsed, assert(cond) quotes its condition from it
   declared = new Map<string, Map<string, string>>(); // file -> name -> fn | struct | enum
   clash = new Set<string>(); // names declared in more than one file
   lets = new Map<string, Set<string>>(); // file -> top-level let/var names
@@ -1143,6 +1144,11 @@ class Parser {
       } while (this.eat(',') && !this.at(')'));
     }
     const close = this.expect(')');
+    // assert(x > 1) reports "assertion failed: x > 1"
+    if (t.text === 'assert' && args.length === 1) {
+      const text = this.src.slice(args[0].span.start, args[0].span.end).replace(/\s+/g, ' ');
+      args.push({ k: 'str', value: text, span: args[0].span, ty: 'error' });
+    }
     return { k: 'call', name: t.text, nameSpan: t.span, args, argNames: argNames.some(Boolean) ? argNames : undefined, span: this.join(t.span, close.span), ty: 'error' };
   }
 }
@@ -1150,6 +1156,7 @@ class Parser {
 export function parse(src: string, segments: Segment[] = []): { program: Program; diags: Diagnostic[] } {
   const { tokens, diags } = lex(src);
   const p = new Parser(tokens, diags, segments);
+  p.src = src;
   const program = p.program();
   return { program, diags };
 }

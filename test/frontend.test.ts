@@ -337,7 +337,9 @@ test('if expressions', () => {
 test('assert builtin', () => {
   assert.deepEqual(errs('assert(1 < 2, "math");'), []);
   assert.deepEqual(errs('assert(1, "math");'), ['E003']);
-  assert.deepEqual(errs('assert(true);'), ['E004']);
+  assert.deepEqual(errs('assert(true);'), []);
+  assert.deepEqual(errs('assert(1);'), ['E003']);
+  assert.deepEqual(errs('assert(true, "a", "b");'), ['E004']);
   assert.deepEqual(errs('print(assert(true, "x"));'), ['E010']);
 });
 
