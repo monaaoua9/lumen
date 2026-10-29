@@ -526,6 +526,11 @@ test('tuple types read as tuples in messages', () => {
   assert.ok(d.some(x => x.message.includes('(int, string)')), JSON.stringify(d));
 });
 
+test('int() of an enum', () => {
+  assert.deepEqual(errs('enum C { A, B } print(int(C.B));'), []);
+  assert.deepEqual(errs('enum S { A(int), B } print(int(S.B));'), ['E003']);
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
