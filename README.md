@@ -177,6 +177,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
 
+`std/regex.lum`: a small backtracking matcher (`.`, `[a-z]`, `[^x]`, `\d \w \s`, `* + ?`, `^`, `$`, `|` between whole alternatives, no groups; write `"\\d+"` in a string, because `\d` alone is not a string escape): `is_match`, `full_match`, `search` (start and end as a tuple), `all_matches` and `sub`.
+
 `std/path.lum`: text-only helpers for `/` separated paths, `basename`, `dirname`, `ext` and `combine(a, b)` (named so because `join` is a builtin).
 
 `std/stats.lum`: `mean`, `median`, `variance` (population), `stddev` and `min_max` (a tuple) over `float[]`.
