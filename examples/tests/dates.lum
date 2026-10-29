@@ -1,0 +1,25 @@
+import "std/test.lum"
+import "std/date.lum"
+
+fn test_epoch() {
+  test.eq_int(date.to_days(1970, 1, 1), 0);
+  test.eq_int(date.to_days(2000, 3, 1), 11017);
+}
+
+fn test_roundtrip() {
+  for d in [-1000, -1, 0, 1, 365, 11016, 20000] {
+    let (y, m, day) = date.from_days(d);
+    test.eq_int(date.to_days(y, m, day), d);
+  }
+}
+
+fn test_leap() {
+  test.is_true(date.is_leap(2000), "2000");
+  test.is_true(!date.is_leap(1900), "1900");
+  test.eq_int(date.days_in_month(2024, 2), 29);
+}
+
+fn test_weekday() {
+  test.eq_int(date.weekday(2024, 1, 1), 0);
+  test.eq_int(date.weekday(1970, 1, 1), 3);
+}
