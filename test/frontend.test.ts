@@ -521,6 +521,11 @@ test('print takes several values', () => {
   assert.equal(runSrc('print("a", 1, true);', 'vm'), 'a 1 true\n');
 });
 
+test('tuple types read as tuples in messages', () => {
+  const d = frontend('let t = (1, "a"); let n: int = t;').diagnostics;
+  assert.ok(d.some(x => x.message.includes('(int, string)')), JSON.stringify(d));
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
