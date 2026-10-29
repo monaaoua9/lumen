@@ -518,7 +518,9 @@ class Parser {
     let setup: Stmt[];
     let cond: Expr;
     let elem: Expr;
+    let isRange = false;
     if (this.eat('..')) {
+      isRange = true;
       if (indexVar) this.diags.push({ severity: 'error', code: 'P001', message: "a range loop has no separate index, use a single variable", span: indexVar.span });
       const end = this.condExpr();
       if (this.cur.kind === 'ident' && this.cur.text === 'step') {
@@ -537,7 +539,11 @@ class Parser {
       cond = bin('<', v(counter), { k: 'call', name: 'len', nameSpan: sp, args: [v(arr)], span: sp, ty: 'error' });
       elem = { k: 'index', arr: v(arr), idx: v(counter), span: first.span, ty: 'error' };
     }
-    const bump: Stmt = { k: 'assign', span: sp, name: counter, nameSpan: sp, value: bin('+', v(counter), int(stride)) };
+    // over a string the step is the width of the character just read, the analyzer fills it in
+    const step: Expr = !isRange
+      ? { k: 'call', name: '$step', nameSpan: sp, args: [v(`_$a${id}`), v(counter)], span: sp, ty: 'error' }
+      : int(stride);
+    const bump: Stmt = { k: 'assign', span: sp, name: counter, nameSpan: sp, value: bin('+', v(counter), step) };
     const body = this.block();
     const loop: Stmt = {
       k: 'while', span: this.join(kw.span, this.prevSpan()), cond,
