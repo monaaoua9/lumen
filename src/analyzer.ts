@@ -508,8 +508,10 @@ class Analyzer {
     return this.segments.find(s => span.start >= s.start && span.start <= s.end)?.name;
   }
 
+  noAccess = 0;
+
   access(kind: string, name: string, decl: { pub?: boolean; nameSpan: Span } | undefined, use: Span) {
-    if (!decl || decl.pub || !this.segments.length) return;
+    if (!decl || decl.pub || !this.segments.length || this.noAccess > 0) return;
     const home = this.fileOf(decl.nameSpan);
     if (home && home !== this.fileOf(use)) {
       this.err('E027', `${kind} '${name}' is private to ${home}`, use, `declare it with 'pub ${kind === 'function' ? 'fn' : kind}' to use it from other files`);
@@ -1803,6 +1805,8 @@ class Analyzer {
       d.typeParams = undefined;
       d.name = `${gen.name}$${this.insts.size}`;
       mapTypes(d, t => replaceVars(t, binds));
+      // the caller's own types fill the type parameters, so the lib's file is not the one that has to see them
+      this.noAccess++;
       mapTypes(d, (t, o) => this.canon(t, (o.span as Span | undefined) ?? e.span));
       this.registerLambdas(d);
       this.prog.fns.push(d);
@@ -1813,6 +1817,7 @@ class Analyzer {
       this.scope = this.globals;
       this.analyzeFn(d);
       this.scope = saved;
+      this.noAccess--;
     }
     return this.checkUserCall(e, sym, tys);
   }
