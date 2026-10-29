@@ -1,0 +1,39 @@
+import "std/heap.lum"
+import "std/queue.lum"
+import "std/csv.lum"
+import "std/json.lum"
+
+struct Job { id: int, pri: int, cost: int }
+
+fn load(text: string): Job[] {
+  let rows = csv.parse(text);
+  let jobs: Job[] = [];
+  for i in 1..len(rows) {
+    let r = rows[i];
+    push(jobs, Job { id: parse_int(r[0], 0), pri: parse_int(r[1], 0), cost: parse_int(r[2], 1) });
+  }
+  return jobs;
+}
+
+fn main() {
+  let jobs = load("id,pri,cost\n1,3,5\n2,1,2\n3,2,4\n4,1,1\n");
+  let h = heap.new(fn(a: Job, b: Job): bool => a.pri < b.pri || (a.pri == b.pri && a.id < b.id));
+  for j in jobs { heap.add(h, j); }
+  var clock = 0;
+  let order: int[] = [];
+  while heap.size(h) > 0 {
+    let j = heap.take(h);
+    clock += j.cost;
+    push(order, j.id);
+    print("job", j.id, "done at", clock);
+  }
+  let q: queue.Queue<int> = queue.new();
+  for id in order { queue.put(q, id); }
+  var out = "[";
+  while queue.size(q) > 0 {
+    out += str(queue.next(q));
+    if queue.size(q) > 0 { out += ","; }
+  }
+  print(out + "]");
+}
+main();
