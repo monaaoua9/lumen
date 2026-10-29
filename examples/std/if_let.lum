@@ -1,0 +1,27 @@
+import "std/option.lum"
+
+fn find_even(xs: int[]): option.Option<int> {
+  for x in xs {
+    if x % 2 == 0 { return option.Option.Some(x); }
+  }
+  return option.Option.None;
+}
+
+if let Some(n) = find_even([3, 7, 10, 11]) {
+  print("first even: " + str(n));
+} else {
+  print("none");
+}
+
+if let Some(n) = find_even([1, 3]) {
+  print(n);
+} else if let Some(m) = find_even([4]) {
+  print("second chance " + str(m));
+}
+
+let r: option.Result<int> = option.Result.Err("boom");
+if let Err(msg) = r {
+  print("failed: " + msg);
+}
+if let Ok(v) = r { print(v); }
+print("done");

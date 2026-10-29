@@ -803,6 +803,20 @@ class Parser {
 
   ifStmt(): Stmt {
     const kw = this.next();
+    if (this.eat('let')) {
+      // if let Some(x) = e { a } else { b }  is  match e { Some(x) => { a } _ => { b } }
+      const pat = this.pattern();
+      this.expect('=');
+      const scrut = this.condExpr();
+      const then = this.block();
+      let els: Stmt[] = [];
+      if (this.eat('else')) els = this.at('if') ? [this.ifStmt()] : this.block();
+      const sp = this.join(kw.span, this.prevSpan());
+      return {
+        k: 'match', span: sp, scrut, tmp: -1,
+        arms: [{ pats: [pat], body: then, span: sp }, { pats: [{ k: 'wild', span: kw.span }], body: els, span: sp }],
+      };
+    }
     const cond = this.condExpr();
     const then = this.block();
     let els: Stmt[] | null = null;

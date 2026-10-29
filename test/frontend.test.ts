@@ -458,6 +458,12 @@ test('array slice syntax', () => {
   assert.deepEqual(errs('print("abc"[0..1]);'), ['E003']);
 });
 
+test('if let', () => {
+  const E = 'enum O { Some(int), None } ';
+  assert.deepEqual(errs(E + 'let o = O.Some(1); if let Some(v) = o { print(v); } else { print(0); }'), []);
+  assert.deepEqual(errs(E + 'let o = O.None; if let Nope(v) = o { print(v); }'), ['E021', 'E001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
