@@ -39,5 +39,5 @@ Newest first. The README has the full description of every feature.
 
 ## Standard library
 
-- New: `std/stats`, `std/path`, `std/csv`, `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
+- New: `std/heap` (priority queue), `std/stats`, `std/path`, `std/csv`, `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
 - Extended: `std/list` (max_by, min_by, last, sum_by, zip, enumerate, partition, take_while, drop_while, chunks, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (char_count, pad_left and pad_right count characters and default to spaces, trim_start, trim_end, split_once, lines, chars, center, fixed, ...), `std/set` (is_subset, equal), `std/random` (pick), `std/map` (keys, values, entries, from_entries, merge, update), `std/option` (and_then, unwrap_or_else, is_err, and_then_result, map_option, find_by, first, ...), `std/math` (mod_pow, fib, isqrt, factorial, ...).
