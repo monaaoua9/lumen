@@ -1,0 +1,27 @@
+struct Pair { a: int, b: int }
+
+var x = 1;
+var y = 2;
+x, y = y, x;
+print(str(x) + str(y));
+
+let xs = [10, 20, 30, 40];
+xs[0], xs[3] = xs[3], xs[0];
+print(xs);
+
+let p = Pair { a: 5, b: 6 };
+p.a, p.b = p.b, p.a + p.b;
+print(p);
+
+// fibonacci without a temp
+var f0 = 0;
+var f1 = 1;
+for _i in 0..10 {
+  f0, f1 = f1, f0 + f1;
+}
+print(f0);
+
+var i = 0;
+var j = 2;
+i, j, xs[1] = j, i, 99;
+print(str(i) + str(j) + str(xs[1]));

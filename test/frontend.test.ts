@@ -509,6 +509,12 @@ test('named arguments', () => {
   assert.deepEqual(errs('print(len(xs: [1]));'), ['E004']);
 });
 
+test('multiple assignment', () => {
+  assert.deepEqual(errs('var a = 1; var b = 2; a, b = b, a; print(a + b);'), []);
+  assert.deepEqual(diagCodes('var a = 1; var b = 2; a, b = 1; print(a + b);'), ['P001']);
+  assert.deepEqual(errs('var a = 1; a, b = 1, 2;'), ['E001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

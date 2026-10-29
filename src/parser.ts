@@ -370,6 +370,7 @@ class Parser {
     }
 
     const e = this.expr();
+    if (this.at(',') && (e.k === 'var' || e.k === 'field' || e.k === 'index')) return this.multiAssign(e);
     if (e.k === 'field' && (this.at('=') || this.cur.kind in COMPOUND)) {
       const opTok = this.next();
       const rhs = this.expr();
@@ -395,6 +396,28 @@ class Parser {
     }
     this.expect(';');
     return { k: 'expr', span: this.join(e.span, this.prevSpan()), e };
+  }
+
+  // a, b = b, a;  evaluates every right side first, then stores them left to right
+  multiAssign(first: Expr): Stmt {
+    const targets = [first];
+    while (this.eat(',')) targets.push(this.expr());
+    this.expect('=');
+    const values = [this.expr()];
+    while (this.eat(',')) values.push(this.expr());
+    this.expect(';');
+    const sp = this.join(first.span, this.prevSpan());
+    if (values.length !== targets.length) this.fail(`${targets.length} targets but ${values.length} values`, sp);
+    const id = this.forId++;
+    const body: Stmt[] = values.map((v, i) => ({ k: 'let', span: v.span, name: `_$m${id}_${i}`, nameSpan: v.span, mutable: false, init: v }));
+    targets.forEach((t, i) => {
+      const value: Expr = { k: 'var', name: `_$m${id}_${i}`, span: t.span, ty: 'error' };
+      if (t.k === 'var') body.push({ k: 'assign', span: t.span, name: t.name, nameSpan: t.span, value });
+      else if (t.k === 'field') body.push({ k: 'setfield', span: t.span, obj: t.obj, name: t.name, nameSpan: t.nameSpan, idx: -1, value });
+      else if (t.k === 'index') body.push({ k: 'setindex', span: t.span, arr: t.arr, idx: t.idx, value });
+      else this.fail('cannot assign to this expression', t.span);
+    });
+    return { k: 'block', span: sp, body };
   }
 
   condExpr(): Expr {
