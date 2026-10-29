@@ -575,3 +575,10 @@ test('guards on tuple patterns that bind names agree on every engine', () => {
     assert.equal(r.stderr, '', engine);
   }
 });
+
+test('flood fill with a local recursive function and consts agrees on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/flood_fill.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '7 7 0\n', engine);
+  }
+});
