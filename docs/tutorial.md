@@ -82,6 +82,21 @@ cell 1 0
 cell 1 1
 ```
 
+A loop can give a value. The variable's type is written, and `break` carries the value.
+
+```lum
+var k = 1;
+let first: int = loop {
+  if k * k > 50 { break k * k; }
+  k += 1;
+};
+print(first);
+```
+
+```output
+64
+```
+
 ## 4. Structs and methods
 
 `impl` attaches functions to a struct. Any function can also be called with method syntax on its first argument.
@@ -174,6 +189,26 @@ standing still
 back 2
 greeting
 says bye
+```
+
+A `match` on a tuple can test variants in its parts. When the arms list every combination, no `_` arm is needed.
+
+```lum
+enum Light { Red, Green }
+
+fn go(l: Light, urgent: bool): string {
+  return match (l, urgent) {
+    (Red, true) => "stop now",
+    (Red, false) => "wait",
+    (Green, _) => "go",
+  };
+}
+
+print(go(Light.Red, false), go(Light.Green, true));
+```
+
+```output
+wait go
 ```
 
 ## 6. Tuples and destructuring
