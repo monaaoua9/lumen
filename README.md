@@ -149,7 +149,7 @@ map.set(ages, "ada", 36);
 print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 ```
 
-`std/option.lum`: generic `Option<T>` (`Some`/`None`) and `Result<T>` (`Ok`/`Err(string)`) with `unwrap_or`, `is_some`, `ok_or`, `is_ok`, `map_option`, `map_result`. `std/math.lum`: `gcd`, `lcm`, `pow`, `clamp`, `is_prime` on ints.
+`std/option.lum`: generic `Option<T>` (`Some`/`None`) and `Result<T>` (`Ok`/`Err(string)`) with `unwrap_or`, `is_some`, `ok_or`, `is_ok`, `map_option`, `map_result`. `std/math.lum`: `gcd`, `lcm`, `pow`, `clamp`, `is_prime`, `sign`, `factorial`, `isqrt`, `digit_sum` on ints.
 
 `std/list.lum`: `map`, `filter`, `fold`, `any`, `all`, `count`, `find_index`, `take`, `drop`, `zip_with`, `sort_by` (stable, takes a `before(a, b)` function), `flatten`, `flat_map`, `unique`, `max_of`, `min_of` over any element type (they take function values, so `list.map(xs, fn(x) => x * 2)`), plus `range(lo, hi)` and `sum`.
 

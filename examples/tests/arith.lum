@@ -12,3 +12,9 @@ fn test_pow() {
 fn test_lcm() {
   assert(math.lcm(4, 6) == 12, "lcm");
 }
+
+fn test_isqrt() {
+  assert(math.isqrt(1000000) == 1000, "perfect square");
+  assert(math.isqrt(999999) == 999, "just below");
+  assert(math.factorial(5) == 120, "factorial");
+}

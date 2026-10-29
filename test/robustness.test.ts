@@ -320,7 +320,7 @@ test('std/option.lum and std/math.lum run the same on every engine', () => {
   });
   assert.equal(outs[1], outs[0]);
   assert.equal(outs[2], outs[0]);
-  assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true', '16', 'false', 'got 3', '-7']);
+  assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true', '16', 'false', 'got 3', '-7', '0', '3628800', '910', '19']);
 });
 
 test('std/list.lum higher-order helpers agree on every engine', () => {
@@ -350,7 +350,7 @@ test('std/text.lum helpers agree on every engine', () => {
 test('lumen test runs each test_ function and reports failures', () => {
   const good = cli('test', 'examples/tests/arith.lum');
   assert.equal(good.status, 0, good.stdout + good.stderr);
-  assert.ok(good.stdout.includes('3 passed, 0 failed'), good.stdout);
+  assert.ok(good.stdout.includes('4 passed, 0 failed'), good.stdout);
 
   const only = cli('test', 'examples/tests/arith.lum', '--only', 'pow');
   assert.ok(only.stdout.includes('1 passed, 0 failed'), only.stdout);

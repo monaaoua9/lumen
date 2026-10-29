@@ -31,3 +31,7 @@ print(option.is_some(none));
 let msg = option.map_result(safe_div(9, 3), fn(x) => "got " + str(x));
 print(option.ok_or(msg, "failed"));
 print(option.ok_or(option.map_result(safe_div(1, 0), fn(x) => x + 1), -7));
+print(math.sign(-9) + math.sign(0) + math.sign(4));
+print(math.factorial(10));
+print(math.isqrt(99) * 100 + math.isqrt(100) + math.isqrt(0));
+print(math.digit_sum(-4096));
