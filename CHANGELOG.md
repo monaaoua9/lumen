@@ -18,6 +18,7 @@ Newest first. The README has the full description of every feature.
 - std/text: `wrap`, `glob`.
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
 - New std/regex: `is_match`, `full_match`, `search`, `all_matches`, `pieces`, `sub` over a small pattern syntax (classes, `* + ? {n,m}`, anchors, `|`).
+- `chr(n)` builds any Unicode code point (UTF-8), it used to stop at 127; std/json decodes \uXXXX escapes and surrogate pairs.
 - Tuples inside variant patterns: `Some((i, name))`, `Hit((0, _))`.
 - Nested variant patterns: `Wrap(Some(n))`, `Bin(Add, x, y)`, also in `if let` and `while let` (these now accept the same literal and range forms as `match`).
 - A generic struct literal can name its type arguments: `Stack<int> { items: [] }`.
