@@ -4,6 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { frontend } from '../src/pipeline.ts';
 import { format } from '../src/fmt.ts';
 import { Repl } from '../src/repl.ts';
@@ -821,4 +822,27 @@ test('bad shifts trap the same way on every engine', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+test('lsp publishes diagnostics for an unsaved buffer and answers formatting', () => {
+  const frame = (o: object) => {
+    const b = JSON.stringify(o);
+    return `Content-Length: ${Buffer.byteLength(b)}\r\n\r\n${b}`;
+  };
+  const uri = pathToFileURL(join(tmpdir(), 'lumen-lsp-x.lum')).href;
+  const input = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, text: 'let a: int = "s";\nprint(b);\n' } } },
+    { jsonrpc: '2.0', id: 2, method: 'textDocument/formatting', params: { textDocument: { uri } } },
+    { jsonrpc: '2.0', id: 3, method: 'shutdown' },
+    { jsonrpc: '2.0', method: 'exit' },
+  ].map(frame).join('');
+  const r = spawnSync(process.execPath, ['src/cli.ts', 'lsp'], { input, encoding: 'utf8' });
+  assert.equal(r.status, 0);
+  const msgs = [...r.stdout.matchAll(/Content-Length: \d+\r\n\r\n(\{.*\})/g)].map(m => JSON.parse(m[1]));
+  const diags = msgs.find(m => m.method === 'textDocument/publishDiagnostics').params.diagnostics;
+  assert.deepEqual(diags.map((d: any) => d.code).sort(), ['E001', 'E003', 'W001']);
+  const e3 = diags.find((d: any) => d.code === 'E003');
+  assert.deepEqual(e3.range.start, { line: 0, character: 13 });
+  assert.deepEqual(msgs.find(m => m.id === 2).result, []);
 });
