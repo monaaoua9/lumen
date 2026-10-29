@@ -1,0 +1,9 @@
+import "std/list.lum"
+fn main() {
+  let ps = [(1, "a"), (2, "b")];
+  let a = list.map(ps, fn(e) => e.0);
+  print(a.sum());
+  let b = list.map(ps, fn(e) => e.1.len());
+  print(b.sum());
+}
+main();
