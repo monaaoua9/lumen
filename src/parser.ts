@@ -569,13 +569,56 @@ class Parser {
       this.expect('=>');
       const body = this.block();
       this.eat(',');
-      arms.push({ pats, guard, body, span: this.join(first, this.prevSpan()) });
+      arms.push({ ...this.rangeArm(scrut, pats, guard), body, span: this.join(first, this.prevSpan()) });
     }
     const close = this.expect('}');
     return { k: 'match', span: this.join(kw.span, close.span), scrut, arms, tmp: -1 };
   }
 
+  // `1..5` and `1..=5` are written in patterns but live on as guards, see rangeArm
+  ranges = new Map<Pat, { lo: number; hi: number; inclusive: boolean }>();
+
   pattern(): Pat {
+    const p = this.basePattern();
+    if (p.k === 'lit' && p.ty === 'int' && this.at('..')) {
+      this.next();
+      const inclusive = this.eat('=') !== null;
+      const end = this.basePattern();
+      if (end.k !== 'lit' || end.ty !== 'int') this.fail('a range pattern ends with an int literal', end.span);
+      const r: Pat = { k: 'wild', span: this.join(p.span, end.span) };
+      this.ranges.set(r, { lo: p.value as number, hi: (end as typeof p).value as number, inclusive });
+      return r;
+    }
+    return p;
+  }
+
+  // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
+  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr } {
+    if (!pats.some(p => this.ranges.has(p))) return { pats, guard };
+    const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
+    const sp = pats[0].span;
+    if (!plain(scrut)) {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'a range pattern needs a variable or field as the match value', span: sp });
+      return { pats, guard };
+    }
+    const int = (value: number): Expr => ({ k: 'int', value, span: sp, ty: 'error' });
+    const cmp = (op: BinOp, v: number): Expr => ({ k: 'binary', op, l: structuredClone(scrut), r: int(v), span: sp, ty: 'error' });
+    const conds: Expr[] = [];
+    for (const p of pats) {
+      const r = this.ranges.get(p);
+      if (r) conds.push({ k: 'binary', op: '&&', l: cmp('>=', r.lo), r: cmp(r.inclusive ? '<=' : '<', r.hi), span: sp, ty: 'error' });
+      else if (p.k === 'lit' && p.ty === 'int') conds.push(cmp('==', p.value as number));
+      else {
+        this.diags.push({ severity: 'error', code: 'P001', message: 'range patterns can only be mixed with int literals', span: p.span });
+        return { pats, guard };
+      }
+    }
+    let all = conds.reduce((a, b) => ({ k: 'binary', op: '||', l: a, r: b, span: sp, ty: 'error' }) as Expr);
+    if (guard) all = { k: 'binary', op: '&&', l: all, r: guard, span: sp, ty: 'error' };
+    return { pats: [{ k: 'wild', span: sp }], guard: all };
+  }
+
+  basePattern(): Pat {
     const t = this.next();
     switch (t.kind) {
       case 'ident': {
@@ -1005,7 +1048,7 @@ class Parser {
           this.expect('=>');
           const braces = this.at('{');
           const value = braces ? this.blockExpr(this.next()) : this.allowStruct(() => this.expr());
-          arms.push({ pats, guard, value, span: this.join(first, value.span) });
+          arms.push({ ...this.rangeArm(scrut, pats, guard), value, span: this.join(first, value.span) });
           if (!this.eat(',') && !braces) break;
         }
         const close = this.expect('}');

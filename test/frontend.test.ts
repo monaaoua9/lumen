@@ -493,6 +493,12 @@ test('default arguments', () => {
   assert.deepEqual(diagCodes('fn h(a: int = 1, b: int): int { return a + b; }'), ['P001']);
 });
 
+test('range patterns', () => {
+  assert.deepEqual(errs('let n = 5; print(match n { 0..3 => 1, 3..=9 => 2, _ => 0 });'), []);
+  assert.deepEqual(errs('let n = 5; print(match n { 0..3 => 1 });'), ['E020']);
+  assert.deepEqual(diagCodes('let n = 5; print(match n + 1 { 0..3 => 1, _ => 0 });'), ['P001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

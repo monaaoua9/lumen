@@ -1,0 +1,28 @@
+fn grade(score: int): string {
+  return match score {
+    90..=100 => "A",
+    80..90 => "B",
+    70..80 => "C",
+    0 | 1..70 => "F",
+    _ => "?",
+  };
+}
+
+for s in [100, 95, 85, 79, 70, 69, 0, -1, 101] {
+  print(str(s) + " " + grade(s));
+}
+
+fn size(n: int) {
+  match n {
+    -9..0 => { print("small negative"); }
+    0 => { print("zero"); }
+    1..=9 if n % 2 == 0 => { print("even digit"); }
+    1..=9 => { print("odd digit"); }
+    _ => { print("other"); }
+  }
+}
+size(-5);
+size(0);
+size(4);
+size(7);
+size(12);
