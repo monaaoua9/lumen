@@ -8,7 +8,7 @@ Newest first. The README has the full description of every feature.
 - `match (a, b) { (Red, true) => ... }`: variants (with bindings, literals, nesting) may appear as the parts of a tuple pattern. A capitalised name inside a tuple pattern used to bind silently; inside a variant's payload tuple it is now a P001 error.
 - Bitwise operators on ints: `&`, `|`, `^`, `<<`, `>>`, `~`, on every engine and in `-O` folding.
 - Names may be written with any letters, Arabic included (`struct طالب { اسم: string }`).
-- Arms like `Wrap(Some(n))` and `Wrap(None)` together count as covering `Wrap`, so the match no longer needs a `_` arm (plain bindings only, one nested variant per arm).
+- Arms like `Wrap(Some(n))` and `Wrap(None)` together count as covering `Wrap`, so the match no longer needs a `_` arm (plain bindings only; several nested variants in one arm are checked together, like `Pair(Some(a), None)`).
 - Default argument values, named arguments (`box(height: 5, width: 4)`), also on generic functions and methods, struct update `P { x: 1, ..base }`.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
