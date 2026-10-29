@@ -165,7 +165,7 @@ test('structs: declarations', () => {
   assert.ok(!diagCodes('struct N { kids: N[] } let n = N { kids: [] }; print(n);').includes('E017'));
   assert.ok(diagCodes('struct A { x: int } struct A { y: int }').includes('E006'));
   assert.ok(diagCodes('struct A { x: int, x: int }').includes('E006'));
-  assert.ok(parse('struct A { }').diags.some(d => d.code === 'P003'));
+  assert.deepEqual(diagCodes('struct A { } let a = A { }; print(a);'), []);
 });
 
 test('structs: literal vs block ambiguity', () => {

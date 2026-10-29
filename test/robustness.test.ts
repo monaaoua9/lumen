@@ -651,3 +651,12 @@ test('try inside a lambda with a Result return type agrees on every engine', () 
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '42\nbad x\n', engine);
   }
 });
+
+test('structs without fields work as trait carriers on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/strategy_traits.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'strengths queue\n', engine);
+    const u = cli('run', '-e', 'struct U { } let u = U { }; print(u); print(u == U { });', '--engine', engine);
+    assert.equal(u.stdout.replace(/\r\n/g, '\n'), 'U {}\ntrue\n', engine);
+  }
+});
