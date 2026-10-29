@@ -1040,3 +1040,67 @@ print(http_request("post", "http://127.0.0.1:${port}/", h, ""));`);
     srv.kill();
   }
 });
+
+test('git dependencies install at a tag, lock the commit, and reinstall from the lock', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-git-'));
+  const git = (cwd: string, ...a: string[]) => {
+    const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd, encoding: 'utf8' });
+    assert.equal(r.status, 0, a.join(' ') + r.stderr);
+    return r.stdout.trim();
+  };
+  const lumen = (cwd: string, ...a: string[]) => spawnSync(process.execPath, [join(process.cwd(), 'src/cli.ts'), ...a], { cwd, encoding: 'utf8' });
+  try {
+    const lib = join(dir, 'lib.git');
+    mkdirSync(lib);
+    git(lib, 'init', '-q');
+    writeFileSync(join(lib, 'palette.lum'), 'pub fn red(): string {\n  return "#f00";\n}\n');
+    git(lib, 'add', '-A');
+    git(lib, 'commit', '-q', '-m', 'one');
+    git(lib, 'tag', 'v1');
+    const first = git(lib, 'rev-parse', 'HEAD');
+    writeFileSync(join(lib, 'palette.lum'), 'pub fn red(): string {\n  return "#e00";\n}\n');
+    git(lib, 'commit', '-q', '-am', 'two');
+    git(lib, 'tag', 'v2');
+
+    const app = join(dir, 'app');
+    mkdirSync(app);
+    writeFileSync(join(app, 'main.lum'), 'import "lib/palette.lum"\nprint(palette.red());\n');
+    writeFileSync(join(app, 'lumen.toml'), `[dependencies]\nlib = "${lib}#v1"\n`);
+    assert.equal(lumen(app, 'install').status, 0);
+    assert.equal(lumen(app, 'run', 'main.lum').stdout.trim(), '#f00');
+    assert.ok(readFileSync(join(app, 'lumen.lock'), 'utf8').includes(first));
+
+    // a new ref in the manifest moves the clone and the lock
+    writeFileSync(join(app, 'lumen.toml'), `[dependencies]\nlib = "${lib}#v2"\n`);
+    assert.equal(lumen(app, 'install').status, 0);
+    assert.equal(lumen(app, 'run', 'main.lum').stdout.trim(), '#e00');
+    assert.ok(!readFileSync(join(app, 'lumen.lock'), 'utf8').includes(first));
+
+    // wiping the clone and installing again gives the locked commit, not whatever HEAD is now
+    writeFileSync(join(lib, 'palette.lum'), 'pub fn red(): string {\n  return "#d00";\n}\n');
+    git(lib, 'commit', '-q', '-am', 'three');
+    rmSync(join(app, '.lumen'), { recursive: true, force: true });
+    assert.equal(lumen(app, 'install').status, 0);
+    assert.equal(lumen(app, 'run', 'main.lum').stdout.trim(), '#e00');
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('a dependency resolves its own dependencies through its own manifest', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-nest-'));
+  try {
+    for (const d of ['app', 'mid', 'base']) mkdirSync(join(dir, d));
+    writeFileSync(join(dir, 'base', 'b.lum'), 'pub fn tag(): string {\n  return "base";\n}\n');
+    writeFileSync(join(dir, 'mid', 'lumen.toml'), '[dependencies]\nbase = "../base"\n');
+    writeFileSync(join(dir, 'mid', 'm.lum'), 'import "base/b.lum"\n\npub fn tag(): string {\n  return "mid+" + b.tag();\n}\n');
+    writeFileSync(join(dir, 'app', 'lumen.toml'), '[dependencies]\nmid = "../mid"\n');
+    writeFileSync(join(dir, 'app', 'main.lum'), 'import "mid/m.lum"\nprint(m.tag());\n');
+    for (const engine of ['interp', 'vm']) {
+      const r = cli('run', join(dir, 'app', 'main.lum'), '--engine', engine);
+      assert.equal(r.stdout.trim(), 'mid+base', engine + r.stderr);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

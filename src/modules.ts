@@ -28,13 +28,13 @@ const IMPORT = /^[ \t]*import[ \t]+"([^"\n]*)"[ \t]*;?[ \t]*$/gm;
 export function bundle(entry: string, entryText?: string): Bundle {
   const parts: Part[] = [];
   const seen = new Set<string>();
-  const pkgs = depsFor(entry);
 
   const visit = (path: string) => {
     const abs = resolve(path);
     if (seen.has(abs)) return;
     seen.add(abs);
     const deps: string[] = [];
+    const pkgs = depsFor(abs);
     const part: Part = { name: basename(abs), std: abs.startsWith(STD), text: '', bad: [] };
     part.text = (entryText !== undefined && abs === resolve(entry) ? entryText : readFileSync(abs, 'utf8')).replace(IMPORT, (m, rel: string, off: number) => {
       const head = rel.split('/')[0];

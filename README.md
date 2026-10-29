@@ -219,15 +219,17 @@ Typos get a "did you mean" suggestion (edit distance).
 
 ## Packages
 
-`lumen init [name]` writes a `lumen.toml`. Dependencies are listed by name, either as a local path or as a git url:
+`lumen init [name]` writes a `lumen.toml`. Dependencies are listed by name, as a local path or as a git url with an optional tag, branch or commit after `#`:
 
 ```toml
 [dependencies]
 colors = "../colors"
-json5 = "https://github.com/someone/json5.git"
+json5 = "https://github.com/someone/json5.git#v1.2.0"
 ```
 
-`lumen install` clones the git ones into `.lumen/deps/<name>` (path dependencies need nothing). After that `import "colors/palette.lum"` works from any file under the manifest, the same way `std/` does. There are no version numbers or lockfile: a git dependency is whatever its default branch had when it was cloned, delete the folder under `.lumen/deps` to fetch again.
+`lumen install` clones the git ones into `.lumen/deps/<name>` and writes the exact commits to `lumen.lock`; commit that file and everyone who installs gets the same code, even if a branch moved. Change the `#ref` in the manifest and the next install moves the clone. `lumen update [name]` throws the clone and its lock entry away and fetches the ref again.
+
+After that `import "colors/palette.lum"` works from any file under the manifest, the same way `std/` does. A dependency that has its own `lumen.toml` sees its own dependencies, and `install` fetches those too. There is no version solving: two packages that want different versions of a third each get their own copy, and since modules are named after their file, import them under different file names if both end up in one program.
 
 ## Usage
 
