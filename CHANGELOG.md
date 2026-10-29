@@ -9,6 +9,7 @@ Newest first. The README has the full description of every feature.
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
 - `try e;` as a statement: same early return, the unwrapped value is dropped.
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
+- Generic enums (`option.Result<Task>`) can carry a struct that the program itself declares, also when the struct is not `pub`.
 - Labelled loops: `outer: for ... { for ... { break outer; } }` and `continue outer;`.
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, open and inclusive ends (`a[1..]`, `a[..2]`, `a[2..=3]`), `s[i]` reads one character.
