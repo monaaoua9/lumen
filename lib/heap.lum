@@ -1,0 +1,54 @@
+// binary heap ordered by `before`: the element that is before all others comes out first
+pub struct Heap<T> { items: T[], before: fn(T, T): bool }
+
+pub fn new<T>(before: fn(T, T): bool): Heap<T> {
+  let items: T[] = [];
+  return Heap { items: items, before: before };
+}
+
+pub fn size<T>(h: Heap<T>): int {
+  return len(h.items);
+}
+
+pub fn peek<T>(h: Heap<T>): T {
+  return h.items[0];
+}
+
+fn swap<T>(xs: T[], i: int, j: int) {
+  let t = xs[i];
+  xs[i] = xs[j];
+  xs[j] = t;
+}
+
+pub fn add<T>(h: Heap<T>, x: T) {
+  push(h.items, x);
+  var i = len(h.items) - 1;
+  while i > 0 {
+    let up = (i - 1) / 2;
+    if !h.before(h.items[i], h.items[up]) { break; }
+    swap(h.items, i, up);
+    i = up;
+  }
+}
+
+// traps on an empty heap, like pop on an empty array
+pub fn take<T>(h: Heap<T>): T {
+  let top = h.items[0];
+  let last = pop(h.items);
+  let n = len(h.items);
+  if n > 0 {
+    h.items[0] = last;
+    var i = 0;
+    loop {
+      var best = i;
+      let l = 2 * i + 1;
+      let r = l + 1;
+      if l < n && h.before(h.items[l], h.items[best]) { best = l; }
+      if r < n && h.before(h.items[r], h.items[best]) { best = r; }
+      if best == i { break; }
+      swap(h.items, i, best);
+      i = best;
+    }
+  }
+  return top;
+}
