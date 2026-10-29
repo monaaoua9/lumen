@@ -210,3 +210,35 @@ fig 2
 apple 1
 15
 ```
+
+
+## 9. الأخطاء بدون استثناءات
+
+الدالة التي قد تفشل تُرجع `Result<T>` (أو `Option<T>`). السطر `let n = try f();` يفكّ الـ `Ok`، وإذا كانت النتيجة `Err` ترجع الدالة المحيطة هذا الخطأ فوراً، فيبقى مسار النجاح مسطّحاً.
+
+```lum
+import "std/option.lum"
+
+fn port(s: string): option.Result<int> {
+  let n = parse_int(s, -1);
+  if n < 1 || n > 65535 { return option.Result.Err("bad port " + s); }
+  return option.Result.Ok(n);
+}
+
+fn address(host: string, p: string): option.Result<string> {
+  let n = try port(p);
+  return option.Result.Ok(host + ":" + str(n));
+}
+
+for p in ["8080", "99999"] {
+  match address("localhost", p) {
+    Ok(a) => { print(a); }
+    Err(m) => { print("error:", m); }
+  }
+}
+```
+
+```output
+localhost:8080
+error: bad port 99999
+```
