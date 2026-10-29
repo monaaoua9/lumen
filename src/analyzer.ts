@@ -1114,6 +1114,11 @@ class Analyzer {
       if (sym && sym.where === 'local') caps.push({ name: n, ty: sym.ty });
     }
     if (caps.length === 0) return;
+    // the real function is shared by every instance, so it cannot take a parameter of type T
+    if (/\$\d+$/.test(this.ctx.name)) {
+      this.err('E031', `local function '${d.name.replace(/\$r\d+$/, '')}' calls itself and reads locals of a generic function`, first.span, 'pass the values as parameters, or move it out of the generic function');
+      return;
+    }
     const vars = (span: Span): Expr[] => caps.map(c => ({ k: 'var', name: c.name, span, ty: 'error' }));
     const selfCalls = (o: unknown) => {
       if (Array.isArray(o)) return o.forEach(selfCalls);
