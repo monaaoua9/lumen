@@ -31,3 +31,14 @@ fn test_subset_equal() {
   test.eq_bool(set.is_subset(b, a), false);
   test.eq_bool(set.equal(a, set.from(["b", "a"])), true);
 }
+
+fn test_many_members() {
+  let s = set.new();
+  for i in 0..2000 { set.add(s, "m{i % 1500}"); }
+  test.eq_int(set.size(s), 1500);
+  test.eq_bool(set.has(s, "m1499"), true);
+  test.eq_bool(set.drop(s, "m7"), true);
+  test.eq_bool(set.has(s, "m7"), false);
+  test.eq_bool(set.add(s, "m7"), true);
+  test.eq_int(set.size(s), 1500);
+}

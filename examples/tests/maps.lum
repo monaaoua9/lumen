@@ -38,3 +38,18 @@ fn test_from_entries_merge() {
   test.eq_int(map.get(m, "y", 0), 20);
   test.eq_int(map.get(a, "y", 0), 2);
 }
+
+fn test_many_keys() {
+  let m: map.Map<int> = map.new();
+  for i in 0..3000 { map.set(m, "key{i}", i); }
+  test.eq_int(map.size(m), 3000);
+  test.eq_int(map.get(m, "key2999", -1), 2999);
+  test.eq_int(map.get(m, "key1500", -1), 1500);
+  test.eq_bool(map.has(m, "key3000"), false);
+  test.eq_bool(map.delete(m, "key10"), true);
+  test.eq_int(map.get(m, "key10", -1), -1);
+  test.eq_int(map.get(m, "key11", -1), 11);
+  test.eq_int(map.size(m), 2999);
+  map.set(m, "key11", 0);
+  test.eq_int(map.get(m, "key11", -1), 0);
+}
