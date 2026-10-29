@@ -784,3 +784,13 @@ test('E024 hint names the type to annotate', () => {
 test('a generic enum can hold itself', () => {
   assert.deepEqual(diagCodes('enum T<A> { Leaf, Node(T<A>, A, T<A>) } fn main() { let t: T<int> = T.Leaf; print(str(t)); } main();'), []);
 });
+
+test('covering a variant through its nested parts needs every inner variant, unguarded', () => {
+  const head = 'enum In { A, B, C } enum Out { W(In), Z } ';
+  const all = head + 'fn f(o: Out): int { return match o { W(A) => 1, W(B) => 2, W(C) => 3, Z => 0 }; }';
+  assert.deepEqual(diagCodes(all).filter(c => c === 'E020'), []);
+  const missing = head + 'fn f(o: Out): int { return match o { W(A) => 1, W(B) => 2, Z => 0 }; }';
+  assert.deepEqual(diagCodes(missing).filter(c => c === 'E020'), ['E020']);
+  const guarded = head + 'fn f(o: Out): int { return match o { W(A) => 1, W(B) => 2, W(C) if false => 3, Z => 0 }; }';
+  assert.deepEqual(diagCodes(guarded).filter(c => c === 'E020'), ['E020']);
+});
