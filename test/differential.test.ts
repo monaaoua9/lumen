@@ -83,3 +83,57 @@ test('random int expressions agree with the C backend', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function strExpr(r: (n: number) => number, depth: number): string {
+  const words = ['"lumen"', '"a,b,,c"', '"  pad "', '""', '"Hello World"', '"aaa"'];
+  if (depth === 0 || r(4) === 0) return words[r(words.length)];
+  const a = strExpr(r, depth - 1);
+  const b = strExpr(r, depth - 1);
+  switch (r(10)) {
+    case 0: return `(${a} + ${b})`;
+    case 1: return `upper(${a})`;
+    case 2: return `lower(${a})`;
+    case 3: return `trim(${a})`;
+    case 4: return `substr(${a}, v${r(4)}, v${r(4)})`;
+    case 5: return `replace(${a}, ${b}, "x")`;
+    case 6: return `repeat(${a}, v${r(4)})`;
+    case 7: return `join(split(${a}, ","), "|")`;
+    case 8: return `str(find(${a}, ${b}))`;
+    default: return `${a}[v${r(4)}..v${r(4) + 2}]`;
+  }
+}
+
+test('random string expressions agree on every in-process engine', () => {
+  for (let seed = 1; seed <= 150; seed++) {
+    const r = rng(seed * 7);
+    const header = Array.from({ length: 12 }, (_, i) => `var v${i} = ${i};`).join('\n');
+    inProcess(`${header}\nprint(${strExpr(r, 3)});\nprint(len(${strExpr(r, 2)}) > ${r(5)});\nprint(${strExpr(r, 2)} < ${strExpr(r, 2)});\n`);
+  }
+});
+
+test('random string expressions agree with the C backend', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-diffs-'));
+  try {
+    let compared = 0;
+    for (let seed = 1; seed <= 40 && compared < 6; seed++) {
+      const r = rng(seed * 11);
+      const header = Array.from({ length: 12 }, (_, i) => `var v${i} = ${i};`).join('\n');
+      const src = `${header}\nprint(${strExpr(r, 3)});\nprint(${strExpr(r, 3)});\nprint(${strExpr(r, 2)} >= ${strExpr(r, 2)});\n`;
+      let want: string;
+      try {
+        want = runSrc(src, 'vm');
+      } catch (err) {
+        if (!(err instanceof RuntimeError)) throw err;
+        continue;
+      }
+      const file = join(dir, `s${seed}.lum`);
+      writeFileSync(file, src);
+      const out = spawnSync(process.execPath, ['src/cli.ts', 'run', file, '--engine', 'c'], { encoding: 'utf8' });
+      assert.equal(out.stdout.replace(/\r\n/g, '\n'), want, src);
+      compared++;
+    }
+    assert.ok(compared >= 3, `only ${compared} programs ran to the end`);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
