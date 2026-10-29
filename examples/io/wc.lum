@@ -1,0 +1,21 @@
+import "std/text.lum"
+
+// lumen run examples/io/wc.lum -- file.txt
+let files = args();
+if len(files) == 0 {
+  print("usage: wc <file>...");
+  exit(2);
+}
+
+var totalLines = 0;
+var totalWords = 0;
+for path in files {
+  let body = read_file(path);
+  let lines = text.lines(body);
+  var words = 0;
+  for l in lines { words += len(text.words(l)); }
+  print(text.pad_left(str(len(lines)), 6, " ") + text.pad_left(str(words), 6, " ") + text.pad_left(str(len(body)), 8, " ") + " " + path);
+  totalLines += len(lines);
+  totalWords += words;
+}
+if len(files) > 1 { print(text.pad_left(str(totalLines), 6, " ") + text.pad_left(str(totalWords), 6, " ") + " total"); }
