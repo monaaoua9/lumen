@@ -13,7 +13,8 @@ const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=',
 const ONE = new Set('+-*/%(){}[],;:=<>!.|'.split(''));
 
 const isDigit = (c: string) => c >= '0' && c <= '9';
-const isIdStart = (c: string) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
+// non-ASCII letters are fine in names (Arabic identifiers); gcc takes UTF-8 names as they are
+const isIdStart = (c: string) => (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_' || (c > '\x7f' && /[\p{L}\p{M}]/u.test(c));
 
 export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
   const tokens: Token[] = [];
