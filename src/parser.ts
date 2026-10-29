@@ -1061,6 +1061,8 @@ class Parser {
         }
         this.expect(')');
         let ret: Type = this.eat(':') ? this.type() : 'void';
+        // lambdaInner restores the enclosing function's type afterwards
+        this.retTy = ret;
         let body: Stmt[];
         if (this.eat('=>')) {
           if (ret === 'void') ret = '?' as Type;
