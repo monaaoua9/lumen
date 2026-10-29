@@ -137,3 +137,80 @@ test('random string expressions agree with the C backend', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function floatExpr(r: (n: number) => number, depth: number): string {
+  const lits = ['0.5', '1.0', '2.5', '0.1', '100.0', '3.0', '1000000.0', '0.001', '7.25'];
+  if (depth === 0 || r(4) === 0) return r(5) === 0 ? `float(v${r(12)})` : lits[r(lits.length)];
+  const a = floatExpr(r, depth - 1);
+  const b = floatExpr(r, depth - 1);
+  switch (r(8)) {
+    case 0: return `(${a} + ${b})`;
+    case 1: return `(${a} - ${b})`;
+    case 2: return `(${a} * ${b})`;
+    case 3: return `(${a} / ${b})`;
+    case 4: return `floor(${a})`;
+    case 5: return `ceil(${a})`;
+    case 6: return `sqrt(abs(${a}))`;
+    default: return `max(${a}, ${b})`;
+  }
+}
+
+test('random float expressions agree on every engine including C', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-difff-'));
+  try {
+    const header = Array.from({ length: 12 }, (_, i) => `var v${i} = ${i};`).join('\n');
+    let src = header + '\n';
+    for (let seed = 1; seed <= 60; seed++) {
+      const r = rng(seed * 13);
+      src += `print(${floatExpr(r, 3)});\n`;
+    }
+    const want = inProcess(src);
+    const file = join(dir, 'f.lum');
+    writeFileSync(file, src);
+    const out = spawnSync(process.execPath, ['src/cli.ts', 'run', file, '--engine', 'c'], { encoding: 'utf8' });
+    assert.equal(out.stdout.replace(/\r\n/g, '\n'), want);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+function arrayProgram(seed: number): string {
+  const r = rng(seed * 17);
+  const out = ['let a: int[] = [];', 'let b: int[] = [3, 1, 2];'];
+  for (let i = 0; i < 30; i++) {
+    const t = r(2) === 0 ? 'a' : 'b';
+    const v = r(20);
+    switch (r(11)) {
+      case 0: out.push(`push(${t}, ${v});`); break;
+      case 1: out.push(`if len(${t}) > 0 { print(pop(${t})); }`); break;
+      case 2: out.push(`if len(${t}) > ${v % 5} { insert(${t}, ${v % 5}, ${v}); }`); break;
+      case 3: out.push(`if len(${t}) > ${v % 5} { print(remove(${t}, ${v % 5})); }`); break;
+      case 4: out.push(`sort(${t});`); break;
+      case 5: out.push(`reverse(${t});`); break;
+      case 6: out.push(`print(${t});`); break;
+      case 7: out.push(`print(contains(${t}, ${v}));`); break;
+      case 8: out.push(`if len(${t}) >= 2 { print(${t}[0..2]); }`); break;
+      case 9: out.push(`for i, x in ${t} { if x > ${v} { print(i); break; } }`); break;
+      default: out.push(`print(len(${t}) * ${v});`); break;
+    }
+  }
+  out.push('print(a);', 'print(b);');
+  return out.join('\n') + '\n';
+}
+
+test('random array operations agree on every engine including C', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-diffa-'));
+  try {
+    for (let seed = 1; seed <= 40; seed++) {
+      const src = arrayProgram(seed);
+      const want = inProcess(src);
+      if (seed > 5) continue; // C compiles slowly, a few programs are enough
+      const file = join(dir, `a${seed}.lum`);
+      writeFileSync(file, src);
+      const out = spawnSync(process.execPath, ['src/cli.ts', 'run', file, '--engine', 'c'], { encoding: 'utf8' });
+      assert.equal(out.stdout.replace(/\r\n/g, '\n'), want, src);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
