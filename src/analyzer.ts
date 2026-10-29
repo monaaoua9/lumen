@@ -1955,6 +1955,13 @@ class Analyzer {
     }
     const names = gen.typeParams!;
     const binds = new Map<string, Type>();
+    if (e.typeArgs) {
+      if (e.typeArgs.length !== names.length) {
+        this.err('E016', `'${e.name}' takes ${names.length} type argument${names.length === 1 ? '' : 's'}, but ${e.typeArgs.length} ${e.typeArgs.length === 1 ? 'was' : 'were'} given`, e.nameSpan);
+        return 'error';
+      }
+      names.forEach((n, i) => binds.set(n, this.canon(e.typeArgs![i], e.nameSpan) as Type));
+    }
     gen.params.forEach((p, i) => unify(p.ty, tys[i], new Set(names), binds, this.structInst));
     e.args.forEach((a, i) => {
       if (!late(a)) return;
@@ -2024,6 +2031,7 @@ class Analyzer {
       this.err('E004', 'named arguments only work when calling a plain function', e.span);
       e.argNames = undefined;
     }
+    if (e.typeArgs && !this.generics.has(e.name)) this.err('E016', `'${e.name}' is not generic`, e.nameSpan);
     if (isBuiltin(e.name) && !this.fns.has(e.name)) return this.builtin(e, e.name);
 
     const gen = this.generics.get(e.name);

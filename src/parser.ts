@@ -1643,13 +1643,13 @@ class Parser {
     return this.postfix();
   }
 
-  typeArgsBeforeBrace(): Type[] | null {
+  typeArgsBeforeBrace(next: '{' | '(' = '{'): Type[] | null {
     try {
       this.expect('<');
       const out: Type[] = [this.type()];
       while (this.eat(',')) out.push(this.type());
       this.expect('>');
-      return this.at('{') ? out : null;
+      return this.at(next) ? out : null;
     } catch (err) {
       if (err instanceof Bail) return null;
       throw err;
@@ -1835,6 +1835,13 @@ class Parser {
       if (typeArgs) return { ...this.structLit(t), typeArgs } as Expr;
       [this.pos, this.diags.length] = save;
     }
+    // `map.new<int>()`: explicit type arguments; anything that does not end in `(` was a comparison after all
+    let typeArgs: Type[] | undefined;
+    if (this.at('<')) {
+      const save = [this.pos, this.diags.length];
+      typeArgs = this.typeArgsBeforeBrace('(') ?? undefined;
+      if (!typeArgs) [this.pos, this.diags.length] = save;
+    }
     if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
     this.next();
     const args: Expr[] = [];
@@ -1866,7 +1873,7 @@ class Parser {
       const line = args.slice(1).reduce((acc: Expr, a) => ({ k: 'binary', op: '+', l: { k: 'binary', op: '+', l: acc, r: sep, span: sp, ty: 'error' }, r: str(a), span: sp, ty: 'error' }) as Expr, str(args[0]));
       return { k: 'call', name: 'print', nameSpan: t.span, args: [line], span: sp, ty: 'error' };
     }
-    return { k: 'call', name: t.text, nameSpan: t.span, args, argNames: argNames.some(Boolean) ? argNames : undefined, span: this.join(t.span, close.span), ty: 'error' };
+    return { k: 'call', name: t.text, nameSpan: t.span, typeArgs, args, argNames: argNames.some(Boolean) ? argNames : undefined, span: this.join(t.span, close.span), ty: 'error' };
   }
 }
 
