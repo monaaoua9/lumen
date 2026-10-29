@@ -48,3 +48,10 @@ fn test_utf8_walk() {
   for _c in s { n += 1; }
   test.eq_int(n, 5);
 }
+
+fn test_char_widths() {
+  test.eq_int(text.char_count("مرحبا"), 5);
+  test.eq_int(text.char_count("abc"), 3);
+  test.eq_str(text.pad_left("ب", 3, "*"), "**ب");
+  test.eq_str(text.pad_right("بب", 4, "-"), "بب--");
+}
