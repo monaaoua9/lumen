@@ -823,3 +823,13 @@ test('tuple matches that list every combination of variants and bools need no ca
   const guarded = head + 'fn f(c: C, b: bool): int { return match (c, b) { (R, true) => 1, (R, false) if b => 2, (G, _) => 3 }; }';
   assert.deepEqual(diagCodes(guarded).filter(c => c === 'E020'), ['E020']);
 });
+
+test('several nested variants in one arm: all combinations together cover the outer variant', () => {
+  const head = 'enum O { S(int), N } enum B { P(O, O), E } ';
+  const all = head + 'fn f(b: B): int { return match b { P(S(x), S(y)) => x + y, P(S(x), N) => x, P(N, S(y)) => y, P(N, N) => 0, E => 9 }; }';
+  assert.deepEqual(diagCodes(all).filter(c => c === 'E020'), []);
+  const missing = head + 'fn f(b: B): int { return match b { P(S(x), S(y)) => x + y, P(S(x), N) => x, P(N, N) => 0, E => 9 }; }';
+  assert.deepEqual(diagCodes(missing).filter(c => c === 'E020'), ['E020']);
+  const mixed = head + 'fn f(b: B): int { return match b { P(S(x), y) => x, P(N, S(y)) => y, P(N, N) => 0, E => 9 }; }';
+  assert.deepEqual(diagCodes(mixed).filter(c => c === 'E020'), []);
+});

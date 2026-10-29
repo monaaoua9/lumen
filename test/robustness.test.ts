@@ -877,3 +877,10 @@ test('variants inside tuple patterns agree on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('nested variants in several positions agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/nested_pairs.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '3 -1\n', engine);
+  }
+});

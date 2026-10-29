@@ -1,0 +1,12 @@
+enum Opt { Some(int), None }
+enum Box { Pair(Opt, Opt), Empty }
+fn f(b: Box): int {
+  return match b {
+    Pair(Some(x), Some(y)) => x + y,
+    Pair(Some(x), None) => x,
+    Pair(None, Some(y)) => y,
+    Pair(None, None) => 0,
+    Empty => -1,
+  };
+}
+print(f(Box.Pair(Opt.Some(1), Opt.Some(2))), f(Box.Empty));
