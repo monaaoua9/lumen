@@ -16,3 +16,7 @@ for i in 0..len(word) {
   if contains(["a", "e", "i", "o", "u"], word[i]) { vowels += 1; }
 }
 print(vowels);
+var spaced = "";
+for ch in "abc" { spaced += ch + "."; }
+print(spaced);
+for i, ch in word[0..2] { print(str(i) + ch); }

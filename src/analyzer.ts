@@ -678,8 +678,8 @@ class Analyzer {
           // hidden bindings made by the parser for `for a..b`
           this.err('E003', `range bounds must be int, found ${t}`, s.init.span);
           ty = 'error';
-        } else if (s.name.startsWith('_$a') && !isArray(t) && t !== 'error') {
-          this.err('E003', `cannot iterate over a value of type ${t}`, s.init.span, 'for loops work on int ranges (a..b) and arrays');
+        } else if (s.name.startsWith('_$a') && !isArray(t) && t !== 'string' && t !== 'error') {
+          this.err('E003', `cannot iterate over a value of type ${t}`, s.init.span, 'for loops work on int ranges (a..b), arrays and strings');
           ty = 'error';
         } else if (s.annot && s.annot !== 'error' && t !== 'error' && t !== s.annot) {
           this.mismatch(s.annot, t, s.init.span);
