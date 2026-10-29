@@ -1,0 +1,28 @@
+import "std/list.lum"
+import "std/text.lum"
+import "std/map.lum"
+
+struct Emp { name: string, dept: string, pay: int }
+
+fn parse(line: string): Emp {
+  let p = split(line, ",");
+  return Emp { name: p[0], dept: p[1], pay: parse_int(p[2], 0) };
+}
+
+fn main() {
+  let raw = ["ann,eng,120", "bob,eng,100", "cy,ops,80", "di,ops,95", "ed,hr,70"];
+  let emps = map(raw, parse);
+  let groups = group_by(emps, fn(e: Emp): string => e.dept);
+  for d in map.keys(groups) {
+    let g = map.get(groups, d, []);
+    let total = sum_by(g, fn(e: Emp): int => e.pay);
+    let top = max_by(g, fn(e: Emp): int => e.pay);
+    print(d, len(g), total, top.name);
+  }
+  let (hi, lo) = partition(emps, fn(e: Emp): bool => e.pay >= 100);
+  print(len(hi), len(lo));
+  let ranked = sort_by(emps, fn(a: Emp, b: Emp): bool => a.pay > b.pay);
+  for (i, e) in enumerate(take(ranked, 3)) { print(i + 1, e.name, e.pay); }
+  print(join(map(windows(map(ranked, fn(e: Emp): int => e.pay), 2), fn(w: int[]): string => str(w[0] - w[1])), " "));
+}
+main();
