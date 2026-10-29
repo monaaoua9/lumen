@@ -1,0 +1,23 @@
+import "std/test.lum"
+import "std/stats.lum"
+
+fn test_center() {
+  test.eq_float(stats.mean([1.0, 2.0, 6.0]), 3.0, 0.0001);
+  test.eq_float(stats.median([5.0, 1.0, 3.0]), 3.0, 0.0001);
+  test.eq_float(stats.median([4.0, 1.0, 2.0, 3.0]), 2.5, 0.0001);
+}
+
+fn test_spread() {
+  let xs = [2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0];
+  test.eq_float(stats.variance(xs), 4.0, 0.0001);
+  test.eq_float(stats.stddev(xs), 2.0, 0.0001);
+  let (lo, hi) = stats.min_max(xs);
+  test.eq_float(lo, 2.0, 0.0001);
+  test.eq_float(hi, 9.0, 0.0001);
+}
+
+fn test_median_keeps_input() {
+  let xs = [3.0, 1.0, 2.0];
+  test.eq_float(stats.median(xs), 2.0, 0.0001);
+  test.eq_float(xs[0], 3.0, 0.0001);
+}
