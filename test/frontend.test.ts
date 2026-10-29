@@ -794,3 +794,8 @@ test('covering a variant through its nested parts needs every inner variant, ung
   const guarded = head + 'fn f(o: Out): int { return match o { W(A) => 1, W(B) => 2, W(C) if false => 3, Z => 0 }; }';
   assert.deepEqual(diagCodes(guarded).filter(c => c === 'E020'), ['E020']);
 });
+
+test('redefining a builtin reports it once, not at every call', () => {
+  const src = 'fn find(xs: int[], id: int): int { return id; } print(find([1], 2)); print(find([3], 4) + 1);';
+  assert.deepEqual(diagCodes(src).filter(c => c.startsWith('E')), ['E006']);
+});
