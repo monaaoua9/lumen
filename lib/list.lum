@@ -289,3 +289,23 @@ pub fn group_by<T>(xs: T[], key: fn(T): string): map.Map<T[]> {
   }
   return out;
 }
+
+pub fn product(xs: int[]): int {
+  var total = 1;
+  for x in xs { total *= x; }
+  return total;
+}
+
+// moves the first k elements to the back; k may be negative or larger than the array
+pub fn rotate<T>(xs: T[], k: int): T[] {
+  let n = len(xs);
+  if n == 0 { return []; }
+  let s = ((k % n) + n) % n;
+  return flatten([xs[s..], xs[..s]]);
+}
+
+pub fn count_by<T>(xs: T[], key: fn(T): string): map.Map<int> {
+  let out: map.Map<int> = map.new();
+  for x in xs { map.update(out, key(x), 0, fn(c: int): int => c + 1); }
+  return out;
+}
