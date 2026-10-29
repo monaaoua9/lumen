@@ -1,0 +1,36 @@
+// plain statistics over float arrays; mean/median trap on an empty array
+pub fn mean(xs: float[]): float {
+  var total = 0.0;
+  for x in xs { total += x; }
+  return total / float(len(xs));
+}
+
+pub fn median(xs: float[]): float {
+  let s = slice(xs, 0, len(xs));
+  sort(s);
+  let n = len(s);
+  if n % 2 == 1 { return s[n / 2]; }
+  return (s[n / 2 - 1] + s[n / 2]) / 2.0;
+}
+
+// population variance, divide by n
+pub fn variance(xs: float[]): float {
+  let m = mean(xs);
+  var acc = 0.0;
+  for x in xs { acc += (x - m) * (x - m); }
+  return acc / float(len(xs));
+}
+
+pub fn stddev(xs: float[]): float {
+  return sqrt(variance(xs));
+}
+
+pub fn min_max(xs: float[]): (float, float) {
+  var lo = xs[0];
+  var hi = xs[0];
+  for x in xs {
+    lo = min(lo, x);
+    hi = max(hi, x);
+  }
+  return (lo, hi);
+}
