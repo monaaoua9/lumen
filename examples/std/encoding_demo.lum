@@ -1,0 +1,7 @@
+import "std/encoding.lum"
+
+print(encoding.to_hex(255), encoding.to_hex(4096), encoding.to_hex(-26), encoding.to_hex(0));
+print(encoding.from_hex("ff"), encoding.from_hex("1A"), encoding.from_hex("xyz"));
+print(encoding.hex_encode("Lumen"));
+print(encoding.base64_encode("Man"), encoding.base64_encode("Ma"), encoding.base64_encode("M"));
+print(encoding.base64_encode("Hello, Lumen!"));
