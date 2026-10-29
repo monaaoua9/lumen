@@ -20,3 +20,10 @@ var spaced = "";
 for ch in "abc" { spaced += ch + "."; }
 print(spaced);
 for i, ch in word[0..2] { print(str(i) + ch); }
+
+let tail = [1, 2, 3, 4, 5];
+print(tail[1..]);
+print(tail[..2]);
+print(tail[2..=3]);
+print("hello"[1..]);
+print("hello"[..=1]);
