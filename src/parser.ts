@@ -218,9 +218,14 @@ class Parser {
     this.expect('{');
     this.depth++;
     const out: Stmt[] = [];
+    let dest = out;
     while (!this.at('}') && !this.at('eof')) {
       const s = this.statementRecovering();
-      if (s) out.push(s, ...this.queue.splice(0));
+      if (s) dest.push(s, ...this.queue.splice(0));
+      if (this.tryRest) {
+        dest = this.tryRest;
+        this.tryRest = null;
+      }
     }
     this.depth--;
     this.expect('}');
@@ -313,6 +318,11 @@ class Parser {
     if (me.cnt) decls.push({ k: 'let', span: sp, name: `_$lc${me.id}`, nameSpan: sp, mutable: true, init: structuredClone(off) });
     return { k: 'block', span: sp, body: [...decls, s] };
   }
+
+  // the return type of the function being parsed, `try` needs to know it
+  retTy: Type = 'void';
+  // set by `let x = try e;`: the rest of the block moves into this array, see tryLet
+  tryRest: Stmt[] | null = null;
 
   // `outer: for ...` loops that a labelled break/continue targets, see loopStmt
   loops: LoopInfo[] = [];
@@ -969,6 +979,16 @@ class Parser {
   }
 
   lambdaInner(t: Token): Expr {
+    const outerRet = this.retTy;
+    this.retTy = 'void';
+    try {
+      return this.lambdaBody(t);
+    } finally {
+      this.retTy = outerRet;
+    }
+  }
+
+  lambdaBody(t: Token): Expr {
         this.expect('(');
         const params: Param[] = [];
         if (!this.at(')')) {
@@ -1046,7 +1066,10 @@ class Parser {
     }
     this.expect(')');
     const ret: Type = this.eat(':') ? this.type() : 'void';
+    const outerRet = this.retTy;
+    this.retTy = ret;
     const body = this.block();
+    this.retTy = outerRet;
     const decl: FnDecl = { k: 'fn', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, params, ret, body, nlocals: 0, typeParams: typeParams ?? implParams, bounds: bounds ?? implBounds };
     if (owner) decl.name = `${owner}$${name.text}`;
     this.fns.push(decl);
@@ -1064,11 +1087,45 @@ class Parser {
       annot = this.type();
     }
     this.expect('=');
+    if (this.cur.kind === 'ident' && this.cur.text === 'try' && ![';', '=', '.', ',', ')'].includes(this.peek().kind)) {
+      return this.tryLet(kw, name, annot, annotSpan);
+    }
     const init = this.expr();
     this.expect(';');
     return {
       k: 'let', span: this.join(kw.span, this.prevSpan()), name: name.text, nameSpan: name.span,
       mutable: kw.kind === 'var', annot, annotSpan, init,
+    };
+  }
+
+  // let v = try e;  continues with v only when e is Ok (or Some); otherwise the function returns the Err (or None):
+  //   match e { Err(m) => { return Result.Err(m); } Ok(t) => { let v = t; ...rest of the block... } }
+  tryLet(kw: Token, name: Token, annot: Type | undefined, annotSpan: Span | undefined): Stmt {
+    this.next();
+    const e = this.expr();
+    this.expect(';');
+    const sp = this.join(kw.span, this.prevSpan());
+    const base = this.retTy.replace(/^[#@]/, '').split('<')[0];
+    if (base !== 'Result' && base !== 'Option') {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'try needs the function to return a Result or an Option', span: sp });
+      return { k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan, init: e };
+    }
+    const id = this.forId++;
+    const tmp = `_$t${id}`;
+    const msg = `_$m${id}`;
+    const v = (n: string): Expr => ({ k: 'var', name: n, span: sp, ty: 'error' });
+    const variant = (vn: string, bind?: string): Pat => ({ k: 'variant', span: sp, name: vn, idx: -1, binds: bind ? [{ name: bind, span: sp }] : null, tys: [], boxed: false });
+    const rest: Stmt[] = [{ k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan, init: v(tmp) }];
+    const bail: Expr = base === 'Result'
+      ? { k: 'mcall', obj: v('Result'), name: 'Err', nameSpan: sp, args: [v(msg)], span: sp, ty: 'error' }
+      : { k: 'field', obj: v('Option'), name: 'None', nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+    this.tryRest = rest;
+    return {
+      k: 'match', span: sp, scrut: e, tmp: -1,
+      arms: [
+        { pats: [base === 'Result' ? variant('Err', msg) : variant('None')], body: [{ k: 'return', span: sp, value: bail }], span: sp },
+        { pats: [base === 'Result' ? variant('Ok', tmp) : variant('Some', tmp)], body: rest, span: sp },
+      ],
     };
   }
 
