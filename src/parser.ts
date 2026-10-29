@@ -748,6 +748,9 @@ class Parser {
   // `(0, _)` patterns also become guards: one comparison per literal element
   tuples = new Map<Pat, (Pat | { bind: string; span: Span })[]>();
 
+  // `Num(0)`: the literal part binds a hidden name and the arm gets a guard comparing it, see litGuard
+  varLits = new Map<Pat, { name: string; lit: Pat & { k: 'lit' } }[]>();
+
   pattern(): Pat {
     const p = this.basePattern();
     if (p.k === 'lit' && p.ty === 'int' && this.at('..')) {
@@ -762,8 +765,31 @@ class Parser {
     return p;
   }
 
+  litGuard(pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard: Expr | undefined } {
+    const per = pats.map(p => this.varLits.get(p));
+    if (!per.some(x => x)) return { pats, guard };
+    const sp = pats[0].span;
+    // the alternatives collapse into one pattern, so they must differ in the literals only
+    const shape = (p: Pat) => p.k === 'variant' ? `${p.name}:${(p.binds ?? []).map(b => b === null ? '_' : b.name.startsWith('_$l') ? b.name : '?').join(',')}` : '';
+    if (pats.length > 1 && (per.some(x => !x) || pats.some(p => shape(p) !== shape(pats[0]) || shape(p).includes('?')))) {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'alternatives with literals must be the same variant and use _ for the other parts', span: sp });
+      return { pats, guard };
+    }
+    const and = (a: Expr, b: Expr): Expr => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' });
+    const conds = per.map(ls => ls!.map(({ name, lit }): Expr => ({
+      k: 'binary', op: '==', span: sp, ty: 'error',
+      l: { k: 'var', name, span: sp, ty: 'error' },
+      r: lit.ty === 'string' ? { k: 'str', value: lit.value as string, span: sp, ty: 'error' }
+        : lit.ty === 'bool' ? { k: 'bool', value: lit.value as boolean, span: sp, ty: 'error' }
+        : { k: 'int', value: lit.value as number, span: sp, ty: 'error' },
+    })).reduce(and));
+    const any = conds.reduce((a, b): Expr => ({ k: 'binary', op: '||', l: a, r: b, span: sp, ty: 'error' }));
+    return { pats: [pats[0]], guard: guard ? and(any, guard) : any };
+  }
+
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
   rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[] } {
+    ({ pats, guard } = this.litGuard(pats, guard));
     if (!pats.some(p => this.ranges.has(p) || this.tuples.has(p))) return { pats, guard };
     const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
     const sp = pats[0].span;
@@ -861,18 +887,28 @@ class Parser {
       case 'ident': {
         if (t.text === '_') return { k: 'wild', span: t.span };
         let binds: Extract<Pat, { k: 'variant' }>['binds'] = null;
+        const lits: { name: string; lit: Pat & { k: 'lit' } }[] = [];
         let end = t.span;
         if (this.eat('(')) {
           binds = [];
           if (!this.at(')')) {
             do {
+              if (['int', 'string', 'true', 'false', '-'].includes(this.cur.kind)) {
+                const lit = this.basePattern() as Pat & { k: 'lit' };
+                const name = `_$l${binds.length}`;
+                binds.push({ name, span: lit.span });
+                lits.push({ name, lit });
+                continue;
+              }
               const b = this.vn(this.expect('ident', 'a binding name'));
               binds.push(b.text === '_' ? null : { name: b.text, span: b.span });
             } while (this.eat(',') && !this.at(')'));
           }
           end = this.expect(')').span;
         }
-        return { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
+        const vp: Pat = { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
+        if (lits.length) this.varLits.set(vp, lits);
+        return vp;
       }
       case '(': {
         const parts: (Pat | { bind: string; span: Span })[] = [];
