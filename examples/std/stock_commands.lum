@@ -1,0 +1,47 @@
+import "std/map.lum"
+import "std/option.lum"
+import "std/format.lum"
+import "std/list.lum"
+
+struct Item { name: string, qty: int, price: int }
+
+enum Cmd { Add(string, int, int), Remove(string, int), Report }
+
+fn apply(stock: map.Map<Item>, c: Cmd): option.Result<int> {
+  match c {
+    Add(n, q, p) => {
+      if q <= 0 { return option.Result.Err("bad qty for " + n); }
+      if map.has(stock, n) {
+        let it = map.get(stock, n, Item { name: n, qty: 0, price: p });
+        it.qty += q;
+        it.price = p;
+      } else {
+        map.set(stock, n, Item { name: n, qty: q, price: p });
+      }
+      return option.Result.Ok(q);
+    }
+    Remove(n, q) => {
+      if !map.has(stock, n) { return option.Result.Err("unknown " + n); }
+      let it = map.get(stock, n, Item { name: n, qty: 0, price: 0 });
+      if it.qty < q { return option.Result.Err("not enough " + n); }
+      it.qty -= q;
+      return option.Result.Ok(q);
+    }
+    Report => { return option.Result.Ok(0); }
+  }
+}
+
+fn main() {
+  let stock: map.Map<Item> = map.new();
+  let cmds = [Cmd.Add("bolt", 100, 3), Cmd.Add("nut", 50, 2), Cmd.Remove("bolt", 30), Cmd.Remove("gear", 1), Cmd.Add("nut", 0, 2), Cmd.Remove("nut", 80), Cmd.Report];
+  for c in cmds {
+    match apply(stock, c) { Ok(n) => { print("ok", n); } Err(m) => { print("err", m); } }
+  }
+  let rows: string[][] = [["item", "qty", "value"]];
+  for k in map.keys(stock) {
+    let it = map.get(stock, k, Item { name: k, qty: 0, price: 0 });
+    push(rows, [it.name, str(it.qty), format.commas(it.qty * it.price * 1000)]);
+  }
+  print(format.table(rows));
+}
+main();
