@@ -127,7 +127,7 @@ export interface FnDecl {
 }
 
 export type Stmt =
-  | { k: 'let'; span: Span; name: string; nameSpan: Span; mutable: boolean; annot?: Type; annotSpan?: Span; init: Expr; sym?: VarSym }
+  | { k: 'let'; span: Span; name: string; nameSpan: Span; mutable: boolean; annot?: Type; annotSpan?: Span; init: Expr; sym?: VarSym; quiet?: boolean }
   | { k: 'assign'; span: Span; name: string; nameSpan: Span; value: Expr; sym?: VarSym }
   | { k: 'match'; span: Span; scrut: Expr; arms: MatchArm[]; tmp: number }
   | { k: 'setfield'; span: Span; obj: Expr; name: string; nameSpan: Span; idx: number; value: Expr }

@@ -709,6 +709,7 @@ class Analyzer {
           return NEXT;
         }
         s.sym = this.declareVar(s.name, ty, s.mutable, s.nameSpan);
+        if (s.quiet) s.sym.used = true;
         if (!s.mutable) s.sym.known = constInt(s.init);
         return NEXT;
       }
