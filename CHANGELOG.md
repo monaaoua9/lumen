@@ -35,6 +35,7 @@ Newest first. The README has the full description of every feature.
 - C backend: `len(s)`, `byte` and `substr` no longer rescan a long string on every call (parsing a 600 KB JSON text took 40 s, now 1.5 s).
 - `lumen --version` (also `-v`); the `cli.ts` entry has its shebang back.
 - `-e CODE` works with every command that reads a file (ast, disasm, emit-c, bench, test), not only run and check.
+- `editors/vscode`: a TextMate grammar and language configuration for `.lum` files.
 - A `pub` function of an imported file is no longer reported as never called.
 - `lumen test` files for std/format, std/text extras, std/date, std/matrix and std/encoding, run in CI.
 - Generic enums and structs may mention themselves (`enum Tree<T> { Leaf, Node(Tree<T>, T, Tree<T>) }`, `struct Node<T> { kids: Node<T>[] }`); the first form used to report E016.
