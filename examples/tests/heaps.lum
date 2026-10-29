@@ -1,0 +1,36 @@
+import "std/test.lum"
+import "std/heap.lum"
+
+fn test_orders_ints() {
+  let h = heap.new(fn(a: int, b: int): bool { return a < b; });
+  for x in [5, 3, 8, 1, 9, 2] { heap.add(h, x); }
+  test.eq_int(heap.size(h), 6);
+  test.eq_int(heap.peek(h), 1);
+  var out = "";
+  while heap.size(h) > 0 { out += str(heap.take(h)); }
+  test.eq_str(out, "123589");
+}
+
+fn test_max_heap_of_strings() {
+  let h = heap.new(fn(a: string, b: string): bool { return a > b; });
+  for w in ["fig", "apple", "pear"] { heap.add(h, w); }
+  test.eq_str(heap.take(h), "pear");
+  test.eq_str(heap.take(h), "fig");
+}
+
+fn test_many() {
+  let h = heap.new(fn(a: int, b: int): bool { return a < b; });
+  var seed = 7;
+  for _i in 0..200 {
+    seed = (seed * 31 + 11) % 1009;
+    heap.add(h, seed);
+  }
+  var prev = -1;
+  var sorted = true;
+  while heap.size(h) > 0 {
+    let x = heap.take(h);
+    if x < prev { sorted = false; }
+    prev = x;
+  }
+  test.eq_bool(sorted, true);
+}
