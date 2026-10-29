@@ -45,7 +45,7 @@ const PREC: Record<string, number> = {
   '*': 10, '/': 10, '%': 10,
 };
 
-const COMPOUND: Record<string, BinOp> = { '+=': '+', '-=': '-', '*=': '*', '/=': '/', '%=': '%' };
+const COMPOUND: Record<string, BinOp> = { '+=': '+', '-=': '-', '*=': '*', '/=': '/', '%=': '%', '&=': '&', '|=': '|', '^=': '^' };
 
 class Parser {
   toks: Token[];
