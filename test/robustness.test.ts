@@ -386,3 +386,18 @@ test('lumen test takes several files', () => {
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.equal((r.stdout.match(/\d+ passed, 0 failed/g) ?? []).length, 4);
 });
+
+test('the call depth cap is the same on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-depth-'));
+  try {
+    writeFileSync(join(dir, 'd.lum'), 'fn d(n: int): int { return if n == 0 { 0 } else { 1 + d(n - 1) }; }\nprint(d(500));\nprint(d(5000));');
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', join(dir, 'd.lum'), '--engine', engine);
+      assert.equal(r.status, 1, engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), '500\n', engine);
+      assert.ok(r.stderr.includes('stack overflow'), engine + r.stderr);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
