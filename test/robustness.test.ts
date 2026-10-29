@@ -363,6 +363,13 @@ test('runtime errors on the vm list the calling functions', () => {
   }
 });
 
+test('run -e takes code from the command line', () => {
+  const r = cli('run', '-e', 'print("x", 1 + 2);');
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'x 3\n');
+  assert.equal(cli('check', '-e', 'let n: int = "s";').status, 1);
+});
+
 test('lumen test runs each test_ function and reports failures', () => {
   const good = cli('test', 'examples/tests/arith.lum');
   assert.equal(good.status, 0, good.stdout + good.stderr);
