@@ -702,7 +702,7 @@ test('impls for instances of generic types', () => {
 });
 
 test('lint: generic function never instantiated', () => {
-  assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x + x + nope; }'), ['W011']);
+  assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x + x; }'), ['W011']);
   assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x; } print(id(1));'), []);
 });
 
@@ -722,4 +722,10 @@ test('try inside a block expression is an error and does not swallow later state
   const R = 'enum Res<T> { Ok(T), Err(string) } fn p(): Res<int> { return Res.Ok(1); } ';
   const codes = diagCodes(R + 'fn f(): Res<int> { let v = { let x = try p(); x + 1 }; return Res.Ok(v); } print(str(f()));');
   assert.deepEqual(codes, ['P001']);
+});
+
+test('lint: an uncalled generic still reports names declared nowhere', () => {
+  assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x + x + nope; }').filter(c => c === 'E001'), ['E001']);
+  assert.deepEqual(diagCodes('fn id<T>(x: T): T { let y = x; return y; }').filter(c => c === 'E001'), []);
+  assert.deepEqual(diagCodes('fn id<T>(xs: T[]): int { var n = 0; for x in xs { n += 1; } return n; }').filter(c => c === 'E001'), []);
 });
