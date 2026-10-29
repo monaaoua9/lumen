@@ -23,7 +23,8 @@ const IMPORT = /^[ \t]*import[ \t]+"([^"\n]*)"[ \t]*;?[ \t]*$/gm;
 
 // `import "other.lum";` lines are resolved before lexing: every file is read once, dependencies come first,
 // (the parser skips the import lines themselves)
-export function bundle(entry: string): Bundle {
+// `entryText` stands in for the entry file on disk (an editor buffer that is not saved yet)
+export function bundle(entry: string, entryText?: string): Bundle {
   const parts: Part[] = [];
   const seen = new Set<string>();
 
@@ -33,7 +34,7 @@ export function bundle(entry: string): Bundle {
     seen.add(abs);
     const deps: string[] = [];
     const part: Part = { name: basename(abs), std: abs.startsWith(STD), text: '', bad: [] };
-    part.text = readFileSync(abs, 'utf8').replace(IMPORT, (m, rel: string, off: number) => {
+    part.text = (entryText !== undefined && abs === resolve(entry) ? entryText : readFileSync(abs, 'utf8')).replace(IMPORT, (m, rel: string, off: number) => {
       const target = rel.startsWith('std/') ? resolve(STD, rel.slice(4)) : resolve(dirname(abs), rel);
       if (existsSync(target)) deps.push(target);
       else part.bad.push({ start: off + m.indexOf('"'), end: off + m.lastIndexOf('"') + 1, msg: `cannot find module '${rel}'` });
