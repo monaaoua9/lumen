@@ -27,3 +27,9 @@ fn test_truncate() {
   test.eq_str(text.truncate("abcdefghij", 8), "abcde...");
   test.eq_str(text.truncate("abc", 8), "abc");
 }
+
+fn test_capitalize_arabic() {
+  test.eq_str(text.capitalize("مرحبا"), "مرحبا");
+  test.eq_str(text.title("مرحبا hello"), "مرحبا Hello");
+  test.eq_str(text.capitalize(""), "");
+}
