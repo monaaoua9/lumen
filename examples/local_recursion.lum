@@ -1,0 +1,34 @@
+struct Node { v: int, kids: Node[] }
+
+fn total(root: Node, scale: int): int {
+  let seen: int[] = [];
+  fn visit(n: Node, depth: int) {
+    push(seen, n.v * scale + depth);
+    for k in n.kids { visit(k, depth + 1); }
+  }
+  visit(root, 0);
+  var sum = 0;
+  for x in seen { sum += x; }
+  return sum;
+}
+
+fn fact(n: int): int {
+  fn go(k: int): int { if k <= 1 { return 1; } return k * go(k - 1); }
+  return go(n);
+}
+
+fn search(xs: int[], want: int): int {
+  let pred = fn(x: int): bool => x == want;
+  fn find_from(i: int): int {
+    if i >= len(xs) { return -1; }
+    if pred(xs[i]) { return i; }
+    return find_from(i + 1);
+  }
+  return find_from(0);
+}
+
+fn main() {
+  let t = Node { v: 1, kids: [Node { v: 2, kids: [] }, Node { v: 3, kids: [Node { v: 4, kids: [] }] }] };
+  print(total(t, 10), fact(5), search([4, 8, 15, 16], 15), search([1], 9));
+}
+main();
