@@ -71,6 +71,12 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
         i++;
         while (isDigit(src[i] ?? '') || (src[i] === '_' && isDigit(src[i + 1] ?? ''))) i++;
       }
+      // 1e9, 2.5e-5: an exponent makes it a float
+      if ((src[i] === 'e' || src[i] === 'E') && (isDigit(src[i + 1] ?? '') || ((src[i + 1] === '+' || src[i + 1] === '-') && isDigit(src[i + 2] ?? '')))) {
+        isFloat = true;
+        i += 2;
+        while (isDigit(src[i] ?? '')) i++;
+      }
       const text = src.slice(start, i);
       const value = Number(text.replace(/_/g, ''));
       if (!isFloat && !Number.isSafeInteger(value)) {
