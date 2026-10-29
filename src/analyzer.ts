@@ -95,6 +95,8 @@ function mapTypes(node: unknown, fn: (t: string, owner: Record<string, unknown>)
   }
 }
 
+const LIST_FNS = new Set(['map', 'filter', 'fold', 'any', 'all', 'sum', 'count', 'find_index', 'take', 'drop', 'zip_with', 'sort_by', 'flatten', 'flat_map', 'unique', 'max_of', 'min_of', 'index_of', 'reversed', 'zip', 'enumerate', 'partition', 'take_while', 'drop_while', 'chunks', 'max_by', 'min_by', 'last', 'sum_by', 'windows', 'group_by', 'product', 'rotate', 'count_by']);
+
 // splits "A,B<C,D>,E" at the commas that are not nested
 function splitTop(s: string): string[] {
   const out: string[] = [];
@@ -913,8 +915,10 @@ class Analyzer {
       if (!fn || fn.params[0] !== ot || fn.decl.params[0].name !== 'self') {
         rest.forEach(a => this.expr(a));
         const cands = owner ? [...this.fns.values()].filter(f => f.name.startsWith(owner + '$') && f.decl.params[0]?.name === 'self').map(f => f.name.slice(owner.length + 1)) : [];
+        // xs.map(f) and friends come from std/list.lum
+        const listFn = !owner && ot.endsWith('[]') && LIST_FNS.has(e.name) && !this.generics.has(e.name);
         this.err('E019', owner ? `type '${owner}' has no method '${e.name}'` : `cannot call a method on a value of type ${ot}`, e.nameSpan,
-          cands.length ? closestHint(e.name, cands) : undefined);
+          listFn ? 'add: import "std/list.lum";' : cands.length ? closestHint(e.name, cands) : undefined);
         return 'error';
       }
       if (e.argNames) {
