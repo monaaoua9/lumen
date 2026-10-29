@@ -1859,7 +1859,11 @@ class Analyzer {
       const decl = this.fns.get(q.name)?.decl ?? this.generics.get(q.name) ?? this.structs.get(q.name) ?? this.structTemplates.get(q.name)
         ?? this.enums.get(q.name) ?? this.enumTemplates.get(q.name) ?? this.traits.get(q.name);
       if (!decl) {
-        this.err('E028', `module '${q.module}' has no item '${q.name}'`, q.span);
+        const here = [this.fns, this.generics, this.structs, this.structTemplates, this.enums, this.enumTemplates, this.traits]
+          .flatMap(m => [...m.entries()])
+          .filter(([, d]) => this.fileOf(((d as any).decl ?? d).nameSpan) === `${q.module}.lum`)
+          .map(([n]) => n as string);
+        this.err('E028', `module '${q.module}' has no item '${q.name}'`, q.span, here.length ? closestHint(q.name, here) : undefined);
         continue;
       }
       const home = this.fileOf(decl.nameSpan);
