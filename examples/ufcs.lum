@@ -1,0 +1,22 @@
+fn twice(n: int): int { return n * 2; }
+
+fn next(c: int[]): int[] {
+  c[0] += 1;
+  return c;
+}
+
+let words = "b,a,c".split(",");
+words.sort();
+print(words.join("-"));
+print("  Hi ".trim().upper().len());
+
+let xs: int[] = [];
+xs.push(4);
+xs.push(5);
+print(xs.len());
+print(xs[0].twice().twice());
+print(xs.contains(5));
+
+let counter = [0];
+print(next(counter).len() + counter.next().len());
+print(counter[0]);
