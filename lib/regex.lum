@@ -1,4 +1,4 @@
-// small backtracking matcher. supports . [abc] [a-z] [^x] \d \w \s \. and * + ? after an atom,
+// small backtracking matcher. supports . [abc] [a-z] [^x] \d \w \s \. and * + ? {n} {n,m} after an atom,
 // ^ at the start, $ at the end, | between whole alternatives. no groups. works on bytes,
 // except that . and negated classes step over a whole UTF-8 character
 
@@ -83,6 +83,39 @@ fn atom_len(pat: string, pi: int, pe: int, text: string, ti: int): int {
   return n;
 }
 
+// (least, most, index after the quantifier) for * + ? {n} {n,m} {n,}, or (0, 0, ae) when there is none
+fn quantifier(pat: string, ae: int): (int, int, int) {
+  if ae >= len(pat) { return (0, 0, ae); }
+  let c = byte(pat, ae);
+  let big = 1000000000;
+  if c == 42 { return (0, big, ae + 1); }
+  if c == 43 { return (1, big, ae + 1); }
+  if c == 63 { return (0, 1, ae + 1); }
+  if c != 123 { return (0, 0, ae); }
+  var j = ae + 1;
+  var lo = 0;
+  var seen = false;
+  while j < len(pat) && byte(pat, j) >= 48 && byte(pat, j) <= 57 {
+    lo = lo * 10 + byte(pat, j) - 48;
+    seen = true;
+    j += 1;
+  }
+  if !seen || j >= len(pat) { return (0, 0, ae); }
+  if byte(pat, j) == 125 { return (lo, lo, j + 1); }
+  if byte(pat, j) != 44 { return (0, 0, ae); }
+  j += 1;
+  var hi = big;
+  if j < len(pat) && byte(pat, j) >= 48 && byte(pat, j) <= 57 {
+    hi = 0;
+    while j < len(pat) && byte(pat, j) >= 48 && byte(pat, j) <= 57 {
+      hi = hi * 10 + byte(pat, j) - 48;
+      j += 1;
+    }
+  }
+  if j >= len(pat) || byte(pat, j) != 125 { return (0, 0, ae); }
+  return (lo, hi, j + 1);
+}
+
 // end of the match of pat[pi..] against text starting at ti, or -1
 fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
   if pi >= len(pat) {
@@ -94,24 +127,19 @@ fn match_from(pat: string, pi: int, text: string, ti: int, whole: bool): int {
     return -1;
   }
   let ae = atom_end(pat, pi);
-  var q = 0;
-  if ae < len(pat) { q = byte(pat, ae); }
-  if q == 42 || q == 43 || q == 63 {
-    var most = 1000000000;
-    if q == 63 { most = 1; }
-    var least = 0;
-    if q == 43 { least = 1; }
+  let qu = quantifier(pat, ae);
+  if qu.2 > ae {
     let ends: int[] = [ti];
     var cur = ti;
-    while len(ends) - 1 < most {
+    while len(ends) - 1 < qu.1 {
       let l = atom_len(pat, pi, ae, text, cur);
       if l < 0 { break; }
       cur += l;
       push(ends, cur);
     }
     var k = len(ends) - 1;
-    while k >= least {
-      let r = match_from(pat, ae + 1, text, ends[k], whole);
+    while k >= qu.0 {
+      let r = match_from(pat, qu.2, text, ends[k], whole);
       if r >= 0 { return r; }
       k -= 1;
     }
