@@ -1,0 +1,38 @@
+fn main() {
+  // continue and break aimed at the outer loop
+  outer: for i in 0..4 {
+    for j in 0..4 {
+      if j == 2 { continue outer; }
+      if i == 2 { break outer; }
+      print("{i}{j}");
+    }
+  }
+
+  // three levels deep, while and loop mixed
+  var n = 0;
+  rows: while n < 5 {
+    n += 1;
+    loop {
+      for k in 0..10 {
+        if k == 1 && n == 2 { continue rows; }
+        if k == 1 && n == 4 { break rows; }
+        if k == 2 { break; }
+      }
+      break;
+    }
+    print("row {n}");
+  }
+  print("n = {n}");
+
+  // an unlabelled break only leaves the inner loop
+  var hits = 0;
+  grid: for a in 0..3 {
+    for b in 0..3 {
+      if b == 1 { break; }
+      hits += 1;
+      if a == 1 { break grid; }
+    }
+  }
+  print(hits);
+}
+main();
