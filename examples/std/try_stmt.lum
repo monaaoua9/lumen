@@ -1,0 +1,17 @@
+import "std/option.lum"
+
+fn check(n: int): option.Result<int> {
+  return if n > 0 { option.Result.Ok(n) } else { option.Result.Err("not positive") };
+}
+
+fn run(a: int, b: int): option.Result<int> {
+  try check(a);
+  try check(b);
+  return option.Result.Ok(a + b);
+}
+
+fn main() {
+  match run(1, 2) { Ok(n) => { print(n); } Err(m) => { print(m); } }
+  match run(1, 0) { Ok(n) => { print(n); } Err(m) => { print(m); } }
+}
+main();
