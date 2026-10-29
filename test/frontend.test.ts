@@ -743,3 +743,8 @@ test('recursive local function reading locals of a generic function is E031', ()
   const src = 'fn n<T>(xs: T[]): int { fn go(i: int): int { if i >= len(xs) { return 0; } return 1 + go(i + 1); } return go(0); } print(n([1]));';
   assert.ok(diagCodes(src).includes('E031'));
 });
+
+test('E024 hint names the type to annotate', () => {
+  const d = frontend('fn mk<T>(): T[] { let a: T[] = []; return a; } let x = mk(); print(len(x));').diagnostics;
+  assert.ok(d.some(x => x.code === 'E024' && x.hint?.includes('let x: int[] = ...')), JSON.stringify(d));
+});

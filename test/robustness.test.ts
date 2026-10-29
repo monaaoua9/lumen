@@ -606,3 +606,11 @@ test('a private struct inside the library Map works on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('scheduler with csv, heap and queue agrees on every engine', () => {
+  const want = 'job 2 done at 2\njob 4 done at 3\njob 3 done at 7\njob 1 done at 12\n[2,4,3,1]\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/scheduler.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
