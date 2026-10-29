@@ -1,9 +1,9 @@
 // byte-based text helpers (ASCII, like the string builtins)
-pub fn pad_left(s: string, width: int, fill: string): string {
+pub fn pad_left(s: string, width: int, fill: string = " "): string {
   return repeat(fill, max(0, width - len(s))) + s;
 }
 
-pub fn pad_right(s: string, width: int, fill: string): string {
+pub fn pad_right(s: string, width: int, fill: string = " "): string {
   return s + repeat(fill, max(0, width - len(s)));
 }
 
