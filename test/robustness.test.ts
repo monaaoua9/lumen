@@ -662,3 +662,12 @@ test('structs without fields work as trait carriers on every engine', () => {
     assert.equal(u.stdout.replace(/\r\n/g, '\n'), 'U {}\ntrue\n', engine);
   }
 });
+
+test('the editor grammar is valid json and knows every keyword of the lexer', () => {
+  const dir = new URL('../editors/vscode/', import.meta.url);
+  for (const f of ['package.json', 'language-configuration.json', 'syntaxes/lumen.tmLanguage.json']) JSON.parse(readFileSync(new URL(f, dir), 'utf8'));
+  const grammar = readFileSync(new URL('syntaxes/lumen.tmLanguage.json', dir), 'utf8');
+  const lexer = readFileSync(new URL('../src/lexer.ts', import.meta.url), 'utf8');
+  const kws = /const KEYWORDS = new Set\(\[([^\]]*)\]\)/.exec(lexer)![1].match(/'([a-z]+)'/g)!.map(k => k.slice(1, -1));
+  for (const k of kws) assert.ok(new RegExp(`(^|[^a-z])${k}([^a-z]|$)`).test(grammar), `keyword ${k} missing from the grammar`);
+});
