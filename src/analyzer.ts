@@ -1823,6 +1823,14 @@ class Analyzer {
     }
 
     const fn = this.fns.get(e.name);
+    // left-out trailing arguments take the parameter's default, evaluated here at the call
+    if (fn && e.args.length < fn.params.length) {
+      for (let i = e.args.length; i < fn.decl.params.length; i++) {
+        const d = fn.decl.params[i].def;
+        if (!d) break;
+        e.args.push(structuredClone(d));
+      }
+    }
     const argTys = e.args.map((a, i) => this.expr(a, fn?.params[i]));
 
     if (!fn) {

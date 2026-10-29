@@ -484,6 +484,15 @@ test('struct update syntax', () => {
   assert.deepEqual(errs(S + 'let c = Q { z: 1 }; let b = P { x: 5, ..c };'), ['E003', 'E019']);
 });
 
+test('default arguments', () => {
+  const F = 'fn f(a: int, b: int = 2): int { return a + b; } ';
+  assert.deepEqual(errs(F + 'print(f(1)); print(f(1, 5));'), []);
+  assert.deepEqual(errs(F + 'print(f());'), ['E004']);
+  assert.deepEqual(errs(F + 'print(f(1, 2, 3));'), ['E004']);
+  assert.deepEqual(errs('fn g(a: int = "s"): int { return a; } print(g());'), ['E003']);
+  assert.deepEqual(diagCodes('fn h(a: int = 1, b: int): int { return a + b; }'), ['P001']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

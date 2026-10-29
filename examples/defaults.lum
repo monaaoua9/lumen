@@ -1,0 +1,15 @@
+fn greet(name: string, greeting: string = "hello", times: int = 1): string {
+  return repeat(greeting + " " + name + ". ", times);
+}
+
+print(greet("ana"));
+print(greet("omar", "hi"));
+print(greet("lina", "hey", 2));
+
+fn clamp_to(x: int, lo: int = 0, hi: int = 100): int {
+  return max(lo, min(hi, x));
+}
+print(clamp_to(150));
+print(clamp_to(-5));
+print(clamp_to(7, 10));
+print(clamp_to(1000, 0, 500));

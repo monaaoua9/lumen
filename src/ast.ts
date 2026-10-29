@@ -108,6 +108,7 @@ export interface Param {
   box?: Type; // closure capture of a boxed var
   from?: VarSym;
   mutable?: boolean;
+  def?: Expr; // default value, filled in at the call when the argument is left out
 }
 
 export interface FnDecl {

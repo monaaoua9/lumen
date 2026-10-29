@@ -786,7 +786,10 @@ class Parser {
           continue;
         }
         this.expect(':');
-        params.push({ name: p.text, span: p.span, ty: this.type() });
+        const ty = this.type();
+        const def = this.eat('=') ? this.expr() : undefined;
+        if (!def && params.some(q => q.def)) this.diags.push({ severity: 'error', code: 'P001', message: `parameter '${p.text}' needs a default value because an earlier parameter has one`, span: p.span });
+        params.push({ name: p.text, span: p.span, ty, def });
       } while (this.eat(',') && !this.at(')'));
     }
     this.expect(')');
