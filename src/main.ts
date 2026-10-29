@@ -15,6 +15,7 @@ import { format } from './fmt.ts';
 import { serve } from './lsp.ts';
 import { programArgs } from './runtime.ts';
 import { createInterface } from 'node:readline';
+import { findManifest, init as pkgInit, install as pkgInstall } from './package.ts';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 
 const USAGE = `lumen <command> <file.lum> [options]
@@ -31,6 +32,8 @@ commands
   bench    run on both engines and compare timings
   repl     interactive prompt (no file)
   fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
+  init     create a lumen.toml here   [name]
+  install  fetch the git dependencies listed in lumen.toml
   lsp      language server on stdin/stdout (diagnostics, hover, definition, formatting)
   explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
@@ -71,6 +74,26 @@ function main(): number | Promise<number> {
     process.stdout.write(`lumen ${pkg.version}
 `);
     return 0;
+  }
+  if (cmd === 'init') {
+    const dir = process.cwd();
+    try {
+      process.stdout.write(`created ${pkgInit(dir, args[1] ?? basename(dir))}\n`);
+      return 0;
+    } catch (err) {
+      process.stderr.write(`${(err as Error).message}\n`);
+      return 1;
+    }
+  }
+  if (cmd === 'install') {
+    const m = findManifest(process.cwd());
+    if (!m) {
+      process.stderr.write('no lumen.toml here or in a parent directory (lumen init creates one)\n');
+      return 1;
+    }
+    const lines = pkgInstall(m);
+    process.stdout.write(lines.length ? lines.join('\n') + '\n' : 'no dependencies\n');
+    return lines.some(l => l.includes('failed') || l.includes('missing')) ? 1 : 0;
   }
   if (cmd === 'repl') return repl();
   if (cmd === 'fmt') return fmtFiles();

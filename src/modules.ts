@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { depsFor } from './package.ts';
 import type { Diagnostic, Segment } from './diagnostics.ts';
 
 export interface Bundle {
@@ -27,6 +28,7 @@ const IMPORT = /^[ \t]*import[ \t]+"([^"\n]*)"[ \t]*;?[ \t]*$/gm;
 export function bundle(entry: string, entryText?: string): Bundle {
   const parts: Part[] = [];
   const seen = new Set<string>();
+  const pkgs = depsFor(entry);
 
   const visit = (path: string) => {
     const abs = resolve(path);
@@ -35,7 +37,10 @@ export function bundle(entry: string, entryText?: string): Bundle {
     const deps: string[] = [];
     const part: Part = { name: basename(abs), std: abs.startsWith(STD), text: '', bad: [] };
     part.text = (entryText !== undefined && abs === resolve(entry) ? entryText : readFileSync(abs, 'utf8')).replace(IMPORT, (m, rel: string, off: number) => {
-      const target = rel.startsWith('std/') ? resolve(STD, rel.slice(4)) : resolve(dirname(abs), rel);
+      const head = rel.split('/')[0];
+      const target = rel.startsWith('std/') ? resolve(STD, rel.slice(4))
+        : pkgs.has(head) && rel.includes('/') ? resolve(pkgs.get(head)!, rel.slice(head.length + 1))
+        : resolve(dirname(abs), rel);
       if (existsSync(target)) deps.push(target);
       else part.bad.push({ start: off + m.indexOf('"'), end: off + m.lastIndexOf('"') + 1, msg: `cannot find module '${rel}'` });
       return m;

@@ -217,6 +217,18 @@ Missing-return detection is a real flow analysis (`diverges` / `returns` per sta
 `while true { }` without `break` counts as terminating and `if` needs both branches to return.
 Typos get a "did you mean" suggestion (edit distance).
 
+## Packages
+
+`lumen init [name]` writes a `lumen.toml`. Dependencies are listed by name, either as a local path or as a git url:
+
+```toml
+[dependencies]
+colors = "../colors"
+json5 = "https://github.com/someone/json5.git"
+```
+
+`lumen install` clones the git ones into `.lumen/deps/<name>` (path dependencies need nothing). After that `import "colors/palette.lum"` works from any file under the manifest, the same way `std/` does. There are no version numbers or lockfile: a git dependency is whatever its default branch had when it was cloned, delete the folder under `.lumen/deps` to fetch again.
+
 ## Usage
 
 ```

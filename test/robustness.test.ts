@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -959,6 +959,42 @@ test('http_get fetches a url on every engine and rejects odd ones', () => {
         assert.ok(b.stderr.includes('bad url'), engine + b.stderr);
       }
     }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('lumen.toml path dependencies are importable by name on every engine', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-pkg-'));
+  try {
+    mkdirSync(join(dir, 'app'));
+    mkdirSync(join(dir, 'colors'));
+    writeFileSync(join(dir, 'colors', 'palette.lum'), 'pub fn red(): string {\n  return "#ff0000";\n}\n');
+    writeFileSync(join(dir, 'app', 'lumen.toml'), '[package]\nname = "app"\n\n[dependencies]\ncolors = "../colors" # local\n');
+    writeFileSync(join(dir, 'app', 'main.lum'), 'import "colors/palette.lum"\n\nprint(palette.red());\n');
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', join(dir, 'app', 'main.lum'), '--engine', engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), '#ff0000\n', engine + r.stderr);
+    }
+    const inst = spawnSync(process.execPath, [join(process.cwd(), 'src/cli.ts'), 'install'], { cwd: join(dir, 'app'), encoding: 'utf8' });
+    assert.equal(inst.status, 0, inst.stderr);
+    assert.ok(inst.stdout.startsWith('colors:'), inst.stdout);
+    writeFileSync(join(dir, 'app', 'other.lum'), 'import "ghost/x.lum"\nprint(1);\n');
+    const bad = cli('check', join(dir, 'app', 'other.lum'));
+    assert.equal(bad.status, 1);
+    assert.ok(bad.stderr.includes("cannot find module 'ghost/x.lum'") || bad.stdout.includes("cannot find module 'ghost/x.lum'"));
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('lumen init writes a manifest once', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-init-'));
+  try {
+    const run = () => spawnSync(process.execPath, [join(process.cwd(), 'src/cli.ts'), 'init', 'demo'], { cwd: dir, encoding: 'utf8' });
+    assert.equal(run().status, 0);
+    assert.ok(readFileSync(join(dir, 'lumen.toml'), 'utf8').includes('name = "demo"'));
+    assert.equal(run().status, 1);
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
