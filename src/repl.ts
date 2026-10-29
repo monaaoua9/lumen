@@ -21,7 +21,9 @@ export class Repl {
       try {
         const fe = checked(`${this.program}let _repl_t = ${arg};\n`);
         const last = fe.program.body[fe.program.body.length - 1];
-        return (last.k === 'let' ? last.init.ty.replace(/[@#]/g, '') : '?') + '\n';
+        const ty = last.k === 'let' ? last.init.ty.replace(/[@#]/g, '') : '?';
+        const tup = /^Tuple\d+__(.+)$/.exec(ty);
+        return (tup ? `(${tup[1].split('__').join(', ')})` : ty) + '\n';
       } catch (e) {
         if (!(e instanceof CompileError)) throw e;
         return e.diags.filter(d => d.severity === 'error').map(d => `error[${d.code}]: ${d.message}`).join('\n') + '\n';
