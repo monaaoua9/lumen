@@ -27,6 +27,7 @@ Newest first. The README has the full description of every feature.
 - Generic enums (`option.Result<Task>`) can carry a struct that the program itself declares, also when the struct is not `pub`.
 - Same for generic structs: `map.Map<Item>` with a private `Item` no longer reports E027.
 - The E024 hint writes out the type to annotate (`let x: Queue<int> = ...`) instead of a placeholder.
+- C backend: `len(s)`, `byte` and `substr` no longer rescan a long string on every call (parsing a 600 KB JSON text took 40 s, now 1.5 s).
 - Labelled loops: `outer: for ... { for ... { break outer; } }` and `continue outer;`.
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, open and inclusive ends (`a[1..]`, `a[..2]`, `a[2..=3]`), `s[i]` reads one character.
