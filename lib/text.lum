@@ -187,3 +187,12 @@ pub fn glob(pattern: string, s: string): bool {
   }
   return ok[len(t)];
 }
+
+// code point of the first character, the opposite of chr
+pub fn ord(ch: string): int {
+  let b = byte(ch, 0);
+  if b < 128 { return b; }
+  if b < 224 { return (b - 192) * 64 + byte(ch, 1) - 128; }
+  if b < 240 { return (b - 224) * 4096 + (byte(ch, 1) - 128) * 64 + byte(ch, 2) - 128; }
+  return (b - 240) * 262144 + (byte(ch, 1) - 128) * 4096 + (byte(ch, 2) - 128) * 64 + byte(ch, 3) - 128;
+}
