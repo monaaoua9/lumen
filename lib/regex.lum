@@ -247,3 +247,25 @@ pub fn sub(pat: string, text: string, with: string): string {
   if at <= len(text) { out += substr(text, at, len(text) - at); }
   return out;
 }
+
+// the pieces between matches; an empty match never splits
+pub fn pieces(pat: string, text: string): string[] {
+  let out: string[] = [];
+  var from = 0;
+  var at = 0;
+  while at <= len(text) {
+    let r = search_from(pat, text, at);
+    if r.0 < 0 { break; }
+    if r.1 == r.0 {
+      let n = char_len(text, r.1);
+      if n < 0 { break; }
+      at = r.1 + n;
+      continue;
+    }
+    push(out, substr(text, from, r.0 - from));
+    from = r.1;
+    at = r.1;
+  }
+  push(out, substr(text, from, len(text) - from));
+  return out;
+}
