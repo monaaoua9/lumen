@@ -1,0 +1,44 @@
+import "std/list.lum"
+
+fn identity(n: int): int[][] {
+  let m: int[][] = [];
+  for i in 0..n {
+    let row: int[] = [];
+    for j in 0..n { push(row, if i == j { 1 } else { 0 }); }
+    push(m, row);
+  }
+  return m;
+}
+
+fn mul(a: int[][], b: int[][]): int[][] {
+  let n = len(a);
+  let out: int[][] = [];
+  for i in 0..n {
+    let row: int[] = [];
+    for j in 0..n {
+      var s = 0;
+      for k in 0..n { s += a[i][k] * b[k][j]; }
+      push(row, s);
+    }
+    push(out, row);
+  }
+  return out;
+}
+
+// fibonacci through matrix power
+fn fib(n: int): int {
+  var result = identity(2);
+  var base = [[1, 1], [1, 0]];
+  var e = n;
+  while e > 0 {
+    if e % 2 == 1 { result = mul(result, base); }
+    base = mul(base, base);
+    e /= 2;
+  }
+  return result[0][1];
+}
+
+let fibs = list.map(list.range(0, 15), fn(n) => fib(n));
+print(fibs);
+print(fib(60));
+print(list.sum(list.map(mul(identity(3), identity(3)), fn(row) => list.sum(row))));
