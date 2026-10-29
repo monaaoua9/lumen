@@ -800,13 +800,28 @@ class Parser {
         return { pats, guard };
       }
     }
+    // a guard may read the names the tuple pattern binds: they become the parts of the value they stand for
+    if (guard && binds.length) {
+      const parts = new Map(binds.map(b => [(b as { name: string }).name, (b as { init: Expr }).init]));
+      const swap = (o: unknown): unknown => {
+        if (Array.isArray(o)) return o.map(swap);
+        if (!o || typeof o !== 'object') return o;
+        const n = o as Record<string, unknown>;
+        if (n.k === 'var' && parts.has(n.name as string)) {
+          // the guard now reads the value itself, so the arm's own binding may end up unused: no warning for it
+          for (const b of binds) if ((b as { name: string }).name === n.name) (b as { quiet?: boolean }).quiet = true;
+          return structuredClone(parts.get(n.name as string));
+        }
+        return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, k === 'span' ? v : swap(v)]));
+      };
+      guard = swap(guard) as Expr;
+    }
     let all = conds.reduce((a, b) => ({ k: 'binary', op: '||', l: a, r: b, span: sp, ty: 'error' }) as Expr);
     // (a, b) with only names and _ always matches, so it stays a plain wildcard arm
     if (conds.some(c => c.k === 'bool')) {
       return { pats: [{ k: 'wild', span: sp }], guard, binds: binds.length ? binds : undefined };
     }
     if (guard) all = { k: 'binary', op: '&&', l: all, r: guard, span: sp, ty: 'error' };
-    if (binds.length && guard) this.diags.push({ severity: 'error', code: 'P001', message: 'a guard cannot use names bound by a tuple pattern, test them with an if in the arm', span: guard.span });
     return { pats: [{ k: 'wild', span: sp }], guard: all, binds: binds.length ? binds : undefined };
   }
 
