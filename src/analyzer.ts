@@ -1753,6 +1753,12 @@ class Analyzer {
 
   genericCall(e: Extract<Expr, { k: 'call' }>, gen: FnDecl, want?: Type): Type {
     // lambdas that leave types out wait until the other arguments have bound the type parameters
+    if (e.argNames) this.placeNamed(e, { decl: gen } as FnSym);
+    for (let i = e.args.length; i < gen.params.length; i++) {
+      const d = gen.params[i].def;
+      if (!d) break;
+      e.args.push(structuredClone(d));
+    }
     const late = (a: Expr) => a.k === 'lambda' && (a.fn.ret === '?' || a.fn.params.some(p => p.ty === '?'));
     const tys = e.args.map(a => late(a) ? ('error' as Type) : this.expr(a));
     if (e.args.length !== gen.params.length) {
@@ -1812,7 +1818,7 @@ class Analyzer {
   }
 
   call(e: Extract<Expr, { k: 'call' }>, want?: Type): Type {
-    if (e.argNames && (isBuiltin(e.name) || this.generics.has(e.name) || e.callee || !this.fns.has(e.name) || this.scope.lookup(e.name))) {
+    if (e.argNames && (isBuiltin(e.name) || (this.generics.has(e.name) && !!this.scope.lookup(e.name)) || e.callee || !(this.fns.has(e.name) || this.generics.has(e.name)) || this.scope.lookup(e.name))) {
       this.err('E004', 'named arguments only work when calling a plain function', e.span);
       e.argNames = undefined;
     }
