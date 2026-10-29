@@ -36,7 +36,7 @@ pub fn table(rows: string[][]): string {
 
 fn trim_end_spaces(s: string): string {
   var n = len(s);
-  while n > 0 && substr(s, n - 1, 1) == " " { n -= 1; }
+  while n > 0 && byte(s, n - 1) == 32 { n -= 1; }
   return substr(s, 0, n);
 }
 
