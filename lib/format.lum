@@ -1,0 +1,46 @@
+import "std/text.lum"
+
+// 1234567 -> "1,234,567"
+pub fn commas(n: int): string {
+  let neg = n < 0;
+  let digits = str(if neg { -n } else { n });
+  var out = "";
+  var count = 0;
+  var i = len(digits) - 1;
+  while i >= 0 {
+    if count > 0 && count % 3 == 0 { out = "," + out; }
+    out = substr(digits, i, 1) + out;
+    count += 1;
+    i -= 1;
+  }
+  return if neg { "-" + out } else { out };
+}
+
+// rows of cells, each column as wide as its longest cell
+pub fn table(rows: string[][]): string {
+  let widths: int[] = [];
+  for r in rows {
+    for i in 0..len(r) {
+      let w = text.char_count(r[i]);
+      if i >= len(widths) { push(widths, w); } else if w > widths[i] { widths[i] = w; }
+    }
+  }
+  var out = "";
+  for r in rows {
+    let cells: string[] = [];
+    for i in 0..len(r) { push(cells, text.pad_right(r[i], widths[i])); }
+    out += trim_end_spaces(join(cells, "  ")) + "\n";
+  }
+  return out;
+}
+
+fn trim_end_spaces(s: string): string {
+  var n = len(s);
+  while n > 0 && substr(s, n - 1, 1) == " " { n -= 1; }
+  return substr(s, 0, n);
+}
+
+pub fn percent(part: int, whole: int): string {
+  if whole == 0 { return "0%"; }
+  return str(part * 100 / whole) + "%";
+}
