@@ -1,0 +1,69 @@
+import "std/option.lum"
+
+enum Tok { Num(int), Plus, Star, LP, RP }
+
+fn lex(s: string): option.Result<Tok[]> {
+  let out: Tok[] = [];
+  var i = 0;
+  while i < len(s) {
+    let c = s[i];
+    if c == " " { i += 1; continue; }
+    if c == "+" { push(out, Tok.Plus); }
+    else if c == "*" { push(out, Tok.Star); }
+    else if c == "(" { push(out, Tok.LP); }
+    else if c == ")" { push(out, Tok.RP); }
+    else if c >= "0" && c <= "9" {
+      var n = 0;
+      while i < len(s) && s[i] >= "0" && s[i] <= "9" { n = n * 10 + (byte(s, i) - 48); i += 1; }
+      push(out, Tok.Num(n));
+      continue;
+    } else { return option.Result.Err("bad char " + c); }
+    i += 1;
+  }
+  return option.Result.Ok(out);
+}
+
+struct P { toks: Tok[], at: int }
+
+fn expr(p: P): option.Result<int> {
+  var v = try term(p);
+  while p.at < len(p.toks) {
+    match p.toks[p.at] { Plus => { p.at += 1; let r = try term(p); v += r; } _ => { break; } }
+  }
+  return option.Result.Ok(v);
+}
+
+fn term(p: P): option.Result<int> {
+  var v = try atom(p);
+  while p.at < len(p.toks) {
+    match p.toks[p.at] { Star => { p.at += 1; let r = try atom(p); v *= r; } _ => { break; } }
+  }
+  return option.Result.Ok(v);
+}
+
+fn atom(p: P): option.Result<int> {
+  if p.at >= len(p.toks) { return option.Result.Err("unexpected end"); }
+  let t = p.toks[p.at];
+  p.at += 1;
+  match t {
+    Num(n) => { return option.Result.Ok(n); }
+    LP => {
+      let v = try expr(p);
+      p.at += 1;
+      return option.Result.Ok(v);
+    }
+    _ => { return option.Result.Err("unexpected token"); }
+  }
+}
+
+fn eval(s: string): option.Result<int> {
+  let ts = try lex(s);
+  return expr(P { toks: ts, at: 0 });
+}
+
+fn main() {
+  for s in ["1 + 2 * 3", "(1+2)*3", "2 *", "4 $ 4"] {
+    match eval(s) { Ok(n) => { print(s, "=", n); } Err(m) => { print(s, "->", m); } }
+  }
+}
+main();
