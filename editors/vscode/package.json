@@ -1,22 +1,57 @@
 {
   "name": "lumen-lang",
   "displayName": "Lumen",
-  "description": "Syntax highlighting for Lumen (.lum)",
+  "description": "Syntax highlighting and language server for Lumen (.lum)",
   "version": "0.1.0",
   "publisher": "lumen",
-  "engines": { "vscode": "^1.80.0" },
-  "categories": ["Programming Languages"],
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
   "contributes": {
-    "languages": [{
-      "id": "lumen",
-      "aliases": ["Lumen", "lumen"],
-      "extensions": [".lum"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "lumen",
-      "scopeName": "source.lumen",
-      "path": "./syntaxes/lumen.tmLanguage.json"
-    }]
+    "languages": [
+      {
+        "id": "lumen",
+        "aliases": [
+          "Lumen",
+          "lumen"
+        ],
+        "extensions": [
+          ".lum"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "lumen",
+        "scopeName": "source.lumen",
+        "path": "./syntaxes/lumen.tmLanguage.json"
+      }
+    ],
+    "configuration": {
+      "title": "Lumen",
+      "properties": {
+        "lumen.path": {
+          "type": "string",
+          "default": "",
+          "description": "A `lumen` executable on the PATH. Leave empty to run `node <lumen.cli> lsp`."
+        },
+        "lumen.cli": {
+          "type": "string",
+          "default": "src/cli.ts",
+          "description": "Path to cli.ts of a Lumen checkout (used when lumen.path is empty)."
+        }
+      }
+    }
+  },
+  "main": "./extension.js",
+  "activationEvents": [
+    "onLanguage:lumen"
+  ],
+  "dependencies": {
+    "vscode-languageclient": "^9.0.1"
   }
 }
