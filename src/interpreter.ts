@@ -17,6 +17,7 @@ export class Interpreter {
   globals: Value[];
   io: IO;
   depth = 0;
+  names: string[] = [];
 
   constructor(prog: Program, io: IO) {
     this.io = io;
@@ -230,8 +231,16 @@ export class Interpreter {
     const locals = new Array(fn.nlocals).fill(null);
     for (let i = 0; i < args.length; i++) locals[i] = args[i];
     const frame: Frame = { locals, ret: null };
+    const d = this.depth;
+    this.names[d] = fn.name;
     this.depth++;
-    this.exec(fn.body, frame);
+    try {
+      this.exec(fn.body, frame);
+    } catch (e) {
+      // unwinding: each level adds the call it was in, same shape as the vm trace
+      if (e instanceof RuntimeError) (e.trace ??= []).push({ fn: d > 0 ? this.names[d - 1] : '<main>', span });
+      throw e;
+    }
     this.depth--;
     return frame.ret;
   }
