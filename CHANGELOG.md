@@ -8,6 +8,7 @@ Newest first. The README has the full description of every feature.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
 - `try e;` as a statement: same early return, the unwrapped value is dropped.
+- `try` also works inside a function value that is declared to return a `Result` or an `Option`.
 - `const NAME = value;` declares an immutable binding (a `let` under another name).
 - A guard on a tuple pattern may read the names the pattern binds (`(x, 0) if x > 3 =>`).
 - Tuple pattern alternatives can bind names: `(x, 0) | (0, x) => x`, as long as each alternative binds the same ones.
