@@ -1,0 +1,28 @@
+struct Point { x: int, y: int }
+
+fn min_max(xs: int[]): int[] {
+  var lo = xs[0];
+  var hi = xs[0];
+  for v in xs {
+    if v < lo { lo = v; }
+    if v > hi { hi = v; }
+  }
+  return [lo, hi];
+}
+
+let [lo, hi] = min_max([4, 9, 2, 7]);
+print(str(lo) + ".." + str(hi));
+
+let Point { x, y: height } = Point { x: 3, y: 8 };
+print(x * height);
+
+var [a, b] = [1, 2];
+a += b;
+b += 1;
+print(a + b);
+
+fn sum_pair(): int {
+  let [p, _, q] = [10, 20, 30];
+  return p + q;
+}
+print(sum_pair());

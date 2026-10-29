@@ -470,6 +470,13 @@ test('indexing a string', () => {
   assert.deepEqual(errs('var s = "abc"; s[0] = "x";'), ['E003']);
 });
 
+test('destructuring lets', () => {
+  assert.deepEqual(errs('let [a, b] = [1, 2]; print(a + b);'), []);
+  assert.deepEqual(errs('struct P { x: int } let P { x } = P { x: 1 }; print(x);'), []);
+  assert.deepEqual(errs('let [a, b] = 5; print(a);'), ['E003']);
+  assert.deepEqual(errs('struct P { x: int } let P { z } = P { x: 1 }; print(z);'), ['E019']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

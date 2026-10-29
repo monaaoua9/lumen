@@ -43,6 +43,7 @@ class Parser {
   lambdas = 0;
   recs: { name: string; mangled: string; used: boolean }[] = [];
   hoisted: Stmt[] = [];
+  queue: Stmt[] = []; // statements a desugaring adds right after the one being returned
   structs: StructDecl[] = [];
   traits: TraitDecl[] = [];
   qualified: Qualified[] = [];
@@ -177,7 +178,7 @@ class Parser {
     while (!this.at('eof')) {
       const before = this.pos;
       const s = this.statementRecovering();
-      if (s) body.push(s);
+      if (s) body.push(s, ...this.queue.splice(0));
       else if (this.pos === before) this.next(); // stray '}' etc, make progress
     }
     body.push(...this.hoisted);
@@ -210,7 +211,7 @@ class Parser {
     const out: Stmt[] = [];
     while (!this.at('}') && !this.at('eof')) {
       const s = this.statementRecovering();
-      if (s) out.push(s);
+      if (s) out.push(s, ...this.queue.splice(0));
     }
     this.depth--;
     this.expect('}');
@@ -543,7 +544,7 @@ class Parser {
         [this.pos, this.diags.length, this.fns.length, this.qualified.length, this.lambdas, this.forId, this.hoisted.length] = snap;
       }
       const s = this.statementRecovering();
-      if (s) body.push(s);
+      if (s) body.push(s, ...this.queue.splice(0));
     }
     this.depth--;
     const close = this.expect('}');
@@ -799,6 +800,7 @@ class Parser {
 
   letStmt(): Stmt {
     const kw = this.next();
+    if (this.at('[') || (this.cur.kind === 'ident' && this.peek().kind === '{')) return this.destructure(kw);
     const name = this.vn(this.expect('ident', 'a variable name'));
     let annot: Type | undefined;
     let annotSpan: Span | undefined;
@@ -813,6 +815,41 @@ class Parser {
       k: 'let', span: this.join(kw.span, this.prevSpan()), name: name.text, nameSpan: name.span,
       mutable: kw.kind === 'var', annot, annotSpan, init,
     };
+  }
+
+  // let [a, b] = e;  and  let P { x, y: z } = e;  bind a hidden copy first, then one let per name
+  destructure(kw: Token): Stmt {
+    const id = this.forId++;
+    const tmp = `_$d${id}`;
+    const picks: { name: Token; at: (obj: Expr) => Expr }[] = [];
+    const mk = (obj: Expr, e: Omit<Extract<Expr, { k: 'index' }>, 'k' | 'arr' | 'span' | 'ty'>): Expr => ({ k: 'index', arr: obj, ...e, span: obj.span, ty: 'error' });
+    if (this.eat('[')) {
+      let i = 0;
+      do {
+        const n = this.vn(this.expect('ident', 'a variable name'));
+        const at = i++;
+        if (n.text !== '_') picks.push({ name: n, at: obj => mk(obj, { idx: { k: 'int', value: at, span: n.span, ty: 'error' } }) });
+      } while (this.eat(',') && !this.at(']'));
+      this.expect(']');
+    } else {
+      this.next();
+      this.expect('{');
+      do {
+        const f = this.expect('ident', 'a field name');
+        const n = this.eat(':') ? this.vn(this.expect('ident', 'a variable name')) : this.vn(f);
+        picks.push({ name: n, at: obj => ({ k: 'field', obj, name: f.text, nameSpan: f.span, idx: -1, span: f.span, ty: 'error' }) });
+      } while (this.eat(',') && !this.at('}'));
+      this.expect('}');
+    }
+    this.expect('=');
+    const init = this.expr();
+    this.expect(';');
+    const sp = this.join(kw.span, this.prevSpan());
+    const ref: Expr = { k: 'var', name: tmp, span: sp, ty: 'error' };
+    for (const p of picks) {
+      this.queue.push({ k: 'let', span: sp, name: p.name.text, nameSpan: p.name.span, mutable: kw.kind === 'var', init: p.at({ ...ref }) });
+    }
+    return { k: 'let', span: sp, name: tmp, nameSpan: sp, mutable: false, init };
   }
 
   ifStmt(): Stmt {
