@@ -178,7 +178,7 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
 
-`std/regex.lum`: a small backtracking matcher (`.`, `[a-z]`, `[^x]`, `\d \w \s`, `* + ? {n} {n,m}` (braces need `\{` `\}` in a string literal), `^`, `$`, `|` between whole alternatives, no groups; write `"\\d+"` in a string, because `\d` alone is not a string escape): `is_match`, `full_match`, `search` (start and end as a tuple), `all_matches`, `pieces` (split on matches) and `sub`.
+`std/regex.lum`: a small backtracking matcher (`.`, `[a-z]`, `[^x]`, `\d \w \s`, `* + ? {n} {n,m}` (braces need `\{` `\}` in a string literal), `^`, `$`, `|` between alternatives, groups `(...)` and `(?:...)` (with `|` and quantifiers on them), no lazy quantifiers or backreferences; write `"\\d+"` in a string, because `\d` alone is not a string escape): `is_match`, `full_match`, `search` (start and end as a tuple), `all_matches`, `pieces` (split on matches), `sub`, and `captures(pat, text)` (the first match followed by what each group matched, `""` for a group that did not take part, empty when nothing matches).
 
 `std/path.lum`: text-only helpers for `/` separated paths, `basename`, `dirname`, `ext` and `combine(a, b)` (named so because `join` is a builtin).
 

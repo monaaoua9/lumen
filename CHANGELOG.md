@@ -4,6 +4,7 @@ Newest first. The README has the full description of every feature.
 
 ## Language
 
+- std/regex groups: `(...)`, `(?:...)`, alternation and quantifiers on groups, and `regex.captures`.
 - `let r: int = loop { ... break value; }`: a loop that gives a value (the variable's type must be written).
 - `lumen lsp`: a language server over stdio with live diagnostics, hover, go to definition and formatting.
 - `match (a, b) { (Red, true) => ... }`: variants (with bindings, literals, nesting) may appear as the parts of a tuple pattern. A capitalised name inside a tuple pattern used to bind silently; inside a variant's payload tuple it is now a P001 error.

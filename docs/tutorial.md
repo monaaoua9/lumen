@@ -252,7 +252,7 @@ apple 1
 15
 ```
 
-Patterns for text live in `std/regex.lum`: `.`, classes, `\d \w \s`, `* + ? {n,m}`, anchors and `|`. A backslash is doubled in a string, and a literal brace is written `\{`.
+Patterns for text live in `std/regex.lum`: `.`, classes, `\d \w \s`, `* + ? {n,m}`, anchors, `|` and groups `(ab)+` with `captures`. A backslash is doubled in a string, and a literal brace is written `\{`.
 
 ```lum
 import "std/regex.lum"
