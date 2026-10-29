@@ -368,6 +368,8 @@ test('run -e takes code from the command line', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'x 3\n');
   assert.equal(cli('check', '-e', 'let n: int = "s";').status, 1);
+  assert.ok(cli('disasm', '-e', 'print(1);').stdout.includes('PRINT'));
+  assert.ok(cli('emit-c', '-e', 'print(1);').stdout.includes('int main'));
 });
 
 test('lumen test runs each test_ function and reports failures', () => {
