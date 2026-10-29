@@ -927,3 +927,10 @@ test('the E028 hint shows module items by their written names', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('explicit type arguments on a struct literal inside a generic function', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/generic_literal_in_fn.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'x 1\nhi hi\n', engine);
+  }
+});

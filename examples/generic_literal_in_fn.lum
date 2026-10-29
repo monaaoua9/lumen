@@ -1,0 +1,14 @@
+struct Pair<A, B> { a: A, b: B }
+
+fn swap<A, B>(p: Pair<A, B>): Pair<B, A> {
+  return Pair<B, A> { a: p.b, b: p.a };
+}
+
+fn twice<T>(x: T): Pair<T, T> {
+  return Pair<T, T> { a: x, b: x };
+}
+
+let p = swap(Pair<int, string> { a: 1, b: "x" });
+print(p.a, p.b);
+let q = twice("hi");
+print(q.a, q.b);
