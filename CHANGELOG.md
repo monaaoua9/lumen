@@ -8,6 +8,7 @@ Newest first. The README has the full description of every feature.
 - `if let`, `while let`, `loop { }`, range patterns in `match` (`1..5`, `1..=9`).
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, open and inclusive ends (`a[1..]`, `a[..2]`, `a[2..=3]`), `s[i]` reads one character.
+- `for ch in text` and `s[i]` work on whole UTF-8 characters (`s[i]` reads the character that starts at byte i), so Arabic and other non-ASCII text no longer traps.
 - `==` and `!=` on structs, `\x41` and `\u{1F600}` string escapes, `assert(cond)` quotes its condition.
 - `print(a, b, c)` prints its values separated by spaces.
 - Lambda parameter and return types are inferred where the expected type is known (`list.map(xs, fn(x) => x * x)`).
