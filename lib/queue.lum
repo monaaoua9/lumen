@@ -1,0 +1,29 @@
+// first in, first out. the front moves forward instead of shifting the array, and the
+// consumed part is dropped once it is more than half of it
+pub struct Queue<T> { items: T[], head: int }
+
+pub fn new<T>(): Queue<T> {
+  let items: T[] = [];
+  return Queue { items: items, head: 0 };
+}
+
+pub fn size<T>(q: Queue<T>): int {
+  return len(q.items) - q.head;
+}
+
+pub fn put<T>(q: Queue<T>, x: T) {
+  push(q.items, x);
+}
+
+// traps when the queue is empty
+pub fn next<T>(q: Queue<T>): T {
+  assert(q.head < len(q.items), "next on an empty queue");
+  let x = q.items[q.head];
+  q.head += 1;
+  if q.head * 2 > len(q.items) {
+    let rest = q.items[q.head..];
+    q.items = rest;
+    q.head = 0;
+  }
+  return x;
+}
