@@ -605,6 +605,13 @@ test('generic struct literals with explicit type arguments agree on every engine
   }
 });
 
+test('try inside block expressions agrees on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/try_in_block.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'ok 3\nerr odd 3\nerr odd 3\nSome(200) None\n', engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);

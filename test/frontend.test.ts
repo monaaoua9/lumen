@@ -737,10 +737,10 @@ test('generic enum instantiated with a struct declared in the same file', () => 
   assert.deepEqual(diagCodes(S + 'fn mk(): Res<Nope> { return Res.Err("x"); } print(1);').filter(c => c === 'E016'), ['E016']);
 });
 
-test('try inside a block expression is an error and does not swallow later statements', () => {
-  const R = 'enum Res<T> { Ok(T), Err(string) } fn p(): Res<int> { return Res.Ok(1); } ';
-  const codes = diagCodes(R + 'fn f(): Res<int> { let v = { let x = try p(); x + 1 }; return Res.Ok(v); } print(str(f()));');
-  assert.deepEqual(codes, ['P001']);
+test('try inside a block expression keeps the statements after it', () => {
+  const R = 'enum Result<T> { Ok(T), Err(string) } fn p(): Result<int> { return Result.Ok(1); } ';
+  assert.deepEqual(diagCodes(R + 'fn f(): Result<int> { let v = { let x = try p(); x + 1 }; return Result.Ok(v); } print(str(f()));'), []);
+  assert.deepEqual(diagCodes(R + 'fn f(): int { let v = { let x = try p(); x + 1 }; return v; } print(f());'), ['P001']);
 });
 
 test('lint: an uncalled generic still reports names declared nowhere', () => {
