@@ -20,7 +20,13 @@ function intExpr(r: (n: number) => number, depth: number): string {
   if (depth === 0 || r(4) === 0) return r(3) === 0 ? `(0 - v${r(9)})` : `v${r(12)}`;
   const a = intExpr(r, depth - 1);
   const b = intExpr(r, depth - 1);
-  switch (r(9)) {
+  switch (r(15)) {
+    case 9: return `(${a} & ${b})`;
+    case 10: return `(${a} | ${b})`;
+    case 11: return `(${a} ^ ${b})`;
+    case 12: return `(${a} << ${b})`;
+    case 13: return `(${a} >> ${b})`;
+    case 14: return `(~${a})`;
     case 0: return `(${a} + ${b})`;
     case 1: return `(${a} - ${b})`;
     case 2: return `(${a} * ${b})`;
