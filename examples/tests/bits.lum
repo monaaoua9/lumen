@@ -18,3 +18,9 @@ fn test_popcount() {
   test.eq_int(bits.popcount(255), 8);
   test.eq_int(bits.popcount(0), 0);
 }
+
+fn test_bit_set() {
+  test.eq_bool(bits.bit_set(5, 0), true);
+  test.eq_bool(bits.bit_set(5, 1), false);
+  test.eq_bool(bits.bit_set(5, 2), true);
+}
