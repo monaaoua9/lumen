@@ -773,6 +773,8 @@ class Parser {
     const cmp = (op: BinOp, v: number): Expr => ({ k: 'binary', op, l: structuredClone(scrut), r: int(v), span: sp, ty: 'error' });
     const conds: Expr[] = [];
     const binds: Stmt[] = [];
+    // `(x, 0) | (0, x)`: every alternative has to bind the same names, each one reads from the part where it matched
+    const alts: { cond: Expr; binds: Stmt[]; span: Span }[] = [];
     const lcmp = (l: Expr, v: Pat & { k: 'lit' }): Expr => {
       const r: Expr = v.ty === 'string' ? { k: 'str', value: v.value as string, span: sp, ty: 'error' }
         : v.ty === 'bool' ? { k: 'bool', value: v.value as boolean, span: sp, ty: 'error' } : int(v.value as number);
@@ -783,16 +785,18 @@ class Parser {
       const tp = this.tuples.get(p);
       if (tp) {
         const parts: Expr[] = [];
+        const mine: Stmt[] = [];
         tp.forEach((q, i) => {
           if (!('bind' in q) && q.k !== 'lit') return;
           const at: Expr = lit ? structuredClone(lit.fields[i]?.value ?? int(0)) : { k: 'field', obj: structuredClone(scrut), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
-          if ('bind' in q) {
-            if (pats.length > 1) this.diags.push({ severity: 'error', code: 'P001', message: 'names in a tuple pattern cannot be combined with |', span: q.span });
-            binds.push({ k: 'let', span: q.span, name: q.bind, nameSpan: q.span, mutable: false, init: at });
-          } else parts.push(lcmp(at, q));
+          if ('bind' in q) mine.push({ k: 'let', span: q.span, name: q.bind, nameSpan: q.span, mutable: false, init: at });
+          else parts.push(lcmp(at, q));
         });
         if (lit && tp.length !== lit.fields.length) this.diags.push({ severity: 'error', code: 'P001', message: `this pattern has ${tp.length} parts, the value has ${lit.fields.length}`, span: p.span });
-        conds.push(parts.length ? parts.reduce((a, b) => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' }) as Expr) : { k: 'bool', value: true, span: sp, ty: 'error' });
+        const cond: Expr = parts.length ? parts.reduce((a, b) => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' }) as Expr) : { k: 'bool', value: true, span: sp, ty: 'error' };
+        conds.push(cond);
+        if (pats.length === 1) binds.push(...mine);
+        else alts.push({ cond, binds: mine, span: p.span });
       } else if (r) conds.push({ k: 'binary', op: '&&', l: cmp('>=', r.lo), r: cmp(r.inclusive ? '<=' : '<', r.hi), span: sp, ty: 'error' });
       else if (p.k === 'lit' && p.ty === 'int' && !lit) conds.push(cmp('==', p.value as number));
       else {
@@ -815,6 +819,25 @@ class Parser {
         return Object.fromEntries(Object.entries(n).map(([k, v]) => [k, k === 'span' ? v : swap(v)]));
       };
       guard = swap(guard) as Expr;
+    }
+    if (alts.some(a => a.binds.length)) {
+      const names = (a: { binds: Stmt[] }) => a.binds.map(b => (b as { name: string }).name).sort().join(',');
+      if (alts.some(a => names(a) !== names(alts[0]))) {
+        this.diags.push({ severity: 'error', code: 'P001', message: 'every alternative of | has to bind the same names', span: alts[0].span });
+      } else {
+        for (const b of alts[0].binds as (Stmt & { k: 'let' })[]) {
+          let init: Expr = alts[alts.length - 1].binds.find(x => (x as { name: string }).name === b.name) !== undefined
+            ? (alts[alts.length - 1].binds.find(x => (x as { name: string }).name === b.name) as { init: Expr }).init : b.init;
+          for (let i = alts.length - 2; i >= 0; i--) {
+            const mine = (alts[i].binds.find(x => (x as { name: string }).name === b.name) as { init: Expr }).init;
+            init = { k: 'matchx', scrut: alts[i].cond, tmp: -1, span: sp, ty: 'error', arms: [
+              { pats: [{ k: 'lit', value: true, span: sp, ty: 'bool' }], value: mine, span: sp },
+              { pats: [{ k: 'wild', span: sp }], value: init, span: sp },
+            ] };
+          }
+          binds.push({ ...b, init });
+        }
+      }
     }
     let all = conds.reduce((a, b) => ({ k: 'binary', op: '||', l: a, r: b, span: sp, ty: 'error' }) as Expr);
     // (a, b) with only names and _ always matches, so it stays a plain wildcard arm
