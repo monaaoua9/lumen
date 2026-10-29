@@ -165,6 +165,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/date.lum`: calendar arithmetic on plain ints, `to_days(y, m, d)` / `from_days(n)` (days since 1970-01-01, a `(y, m, d)` tuple), `add_days`, `weekday` (0 is monday), `is_leap`, `days_in_month` and `iso(y, m, d)`.
 
+`std/encoding.lum`: `to_hex(n)`, `from_hex(s)` (-1 when it is not hex), `hex_encode(s)` (two digits per byte) and `base64_encode(s)`.
+
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
