@@ -1,0 +1,49 @@
+fn sieve(n: int): int[] {
+  let composite = repeat_bool(n + 1);
+  let out: int[] = [];
+  for i in 2..n + 1 {
+    if composite[i] { continue; }
+    push(out, i);
+    var j = i * i;
+    while j <= n { composite[j] = true; j += i; }
+  }
+  return out;
+}
+
+fn repeat_bool(n: int): bool[] {
+  let b: bool[] = [];
+  for _i in 0..n { push(b, false); }
+  return b;
+}
+
+fn qsort<T>(xs: T[], lt: fn(T, T): bool): T[] {
+  if len(xs) <= 1 { return xs; }
+  let pivot = xs[0];
+  let less: T[] = [];
+  let more: T[] = [];
+  for x in xs[1..] {
+    if lt(x, pivot) { push(less, x); } else { push(more, x); }
+  }
+  let out = qsort(less, lt);
+  push(out, pivot);
+  for x in qsort(more, lt) { push(out, x); }
+  return out;
+}
+
+fn main() {
+  let ps = sieve(20000);
+  print(len(ps));
+  print(ps[len(ps) - 1]);
+  let words = qsort(["pear", "apple", "fig", "kiwi"], fn(a, b) => a < b);
+  print(words.join(","));
+  let data: int[] = [];
+  var seed = 12345;
+  for _i in 0..20000 {
+    seed = (seed * 1103 + 12345) % 100003;
+    push(data, seed);
+  }
+  let sorted = qsort(data[..2000], fn(a, b) => a < b);
+  print(sorted[0] <= sorted[1]);
+  print(len(sorted));
+}
+main();
