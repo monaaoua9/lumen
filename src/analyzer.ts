@@ -240,6 +240,11 @@ class Analyzer {
     // generic instances re-check the same source, report each problem once
     let msg = showTypes(message);
     for (const [inst, info] of this.structInst) msg = msg.replaceAll(inst, `${info.tmpl}<${info.args.map(a => showTypes(a)).join(', ')}>`);
+    // tuples are Tuple2<A, B> structs inside, but nobody wrote them that way
+    for (let prev = ''; prev !== msg;) {
+      prev = msg;
+      msg = msg.replace(/Tuple\d+<([^<>]*)>/g, '($1)');
+    }
     if (this.diags.some(d => d.code === code && d.span.start === span.start && d.span.end === span.end && d.message === msg)) return;
     this.diags.push({ severity, code, message: msg, span, hint });
   }
