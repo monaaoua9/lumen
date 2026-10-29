@@ -907,3 +907,11 @@ test('std/json accessors follow a path with fallbacks on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('an expression calculator with try, closures and block arms agrees on every engine', () => {
+  const want = '1 + 2 * 3 = 7\n(1 + 2) * 3 = 9\n10 / (5 - 5): divide by zero\n2 * (3 + 4) - 5 = 9\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/shunting_yard.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
