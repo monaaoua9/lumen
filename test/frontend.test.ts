@@ -813,3 +813,13 @@ test('variants inside tuple patterns work, inside payload tuples a capitalised n
   const bad = 'enum C { Red, Green } enum W { Pair((int, C)), Nil } fn f(w: W): int { return match w { Pair((0, Red)) => 1, _ => 2 }; }';
   assert.ok(diagCodes(bad).includes('P001'));
 });
+
+test('tuple matches that list every combination of variants and bools need no catch-all', () => {
+  const head = 'enum C { R, G } ';
+  const all = head + 'fn f(c: C, b: bool): int { return match (c, b) { (R, true) => 1, (R, false) => 2, (G, _) => 3 }; }';
+  assert.deepEqual(diagCodes(all).filter(c => c === 'E020'), []);
+  const missing = head + 'fn f(c: C, b: bool): int { return match (c, b) { (R, true) => 1, (G, _) => 3 }; }';
+  assert.deepEqual(diagCodes(missing).filter(c => c === 'E020'), ['E020']);
+  const guarded = head + 'fn f(c: C, b: bool): int { return match (c, b) { (R, true) => 1, (R, false) if b => 2, (G, _) => 3 }; }';
+  assert.deepEqual(diagCodes(guarded).filter(c => c === 'E020'), ['E020']);
+});

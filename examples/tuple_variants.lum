@@ -7,7 +7,6 @@ fn next(l: Light, emergency: bool): string {
     (Red, false) => "go green",
     (Green, _) => "go yellow",
     (Yellow, _) => "go red",
-    _ => "unreachable",
   };
 }
 
@@ -16,7 +15,7 @@ fn pair(a: Opt, b: Opt): int {
     (Some(x), Some(y)) => x + y,
     (Some(x), None) => x,
     (None, Some(y)) => y,
-    _ => 0,
+    (None, None) => 0,
   };
 }
 
