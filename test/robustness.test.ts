@@ -798,7 +798,7 @@ test('names may be written in Arabic and agree on every engine', () => {
 });
 
 test('bitwise operators agree on every engine', () => {
-  const want = '8 1 true false\n2 7 5 -6 -4\n14900230 13489600\n5 false true\n3\n';
+  const want = '8 1 true false\n2 7 5 -6 -4\n14900230 13489600\n5 false true\n3\n7\n';
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/bit_ops.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
