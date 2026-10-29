@@ -194,3 +194,46 @@ fn pairs(keys: string[], vals: Json[]): string[] {
   for i, k in keys { push(out, quote(k) + ":" + stringify(vals[i])); }
   return out;
 }
+
+// reading a parsed value: a missing key or the wrong kind gives Null, so a path can be followed without checking each step
+pub fn field(j: Json, key: string): Json {
+  return match j {
+    Obj(keys, vals) => {
+      var found = Json.Null;
+      for i, k in keys { if k == key { found = vals[i]; break; } }
+      found
+    },
+    _ => Json.Null,
+  };
+}
+
+pub fn at(j: Json, i: int): Json {
+  return match j {
+    Arr(items) => if i >= 0 && i < len(items) { items[i] } else { Json.Null },
+    _ => Json.Null,
+  };
+}
+
+pub fn size(j: Json): int {
+  return match j {
+    Arr(items) => len(items),
+    Obj(keys, _vals) => len(keys),
+    _ => 0,
+  };
+}
+
+pub fn as_str(j: Json, fallback: string): string {
+  return match j { Str(s) => s, _ => fallback };
+}
+
+pub fn as_num(j: Json, fallback: float): float {
+  return match j { Num(n) => n, _ => fallback };
+}
+
+pub fn as_int(j: Json, fallback: int): int {
+  return match j { Num(n) => int(n), _ => fallback };
+}
+
+pub fn as_bool(j: Json, fallback: bool): bool {
+  return match j { Bool(b) => b, _ => fallback };
+}
