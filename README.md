@@ -44,7 +44,7 @@ src/
   fmt.ts           whitespace formatter behind `lumen fmt`
   repl.ts          the `lumen repl` loop
   pipeline.ts      glue
-  cli.ts           the `lumen` command
+  cli.ts           the `lumen` command (turns on the V8 compile cache, then loads main.ts)
 examples/  test/
 ```
 
