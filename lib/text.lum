@@ -1,10 +1,17 @@
-// byte-based text helpers (ASCII, like the string builtins)
+// text helpers. chars, reversed, char_count and pad_* walk UTF-8 characters, the rest is ASCII like the string builtins
+// characters, not bytes: "مرحبا" is 5
+pub fn char_count(s: string): int {
+  var n = 0;
+  for _c in s { n += 1; }
+  return n;
+}
+
 pub fn pad_left(s: string, width: int, fill: string = " "): string {
-  return repeat(fill, max(0, width - len(s))) + s;
+  return repeat(fill, max(0, width - char_count(s))) + s;
 }
 
 pub fn pad_right(s: string, width: int, fill: string = " "): string {
-  return s + repeat(fill, max(0, width - len(s)));
+  return s + repeat(fill, max(0, width - char_count(s)));
 }
 
 pub fn is_digits(s: string): bool {
