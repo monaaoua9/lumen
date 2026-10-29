@@ -424,9 +424,10 @@ class Parser {
           const body = this.block();
           const sp = this.join(t.span, this.prevSpan());
           const stop: Stmt = { k: 'break', span: t.span };
+          const { binds, ...head } = this.rangeArm(scrut, [pat], undefined);
           const m: Stmt = {
             k: 'match', span: sp, scrut, tmp: -1,
-            arms: [{ pats: [pat], body, span: sp }, { pats: [{ k: 'wild', span: t.span }], body: [stop], span: sp }],
+            arms: [{ ...head, body: binds ? [...binds, ...body] : body, span: sp }, { pats: [{ k: 'wild', span: t.span }], body: [stop], span: sp }],
           };
           return { k: 'while', span: sp, cond: { k: 'bool', value: true, span: t.span, ty: 'error' }, body: [m] };
         }
@@ -760,6 +761,9 @@ class Parser {
   // `Num(0)`: the literal part binds a hidden name and the arm gets a guard comparing it, see litGuard
   varLits = new Map<Pat, { name: string; lit: Pat & { k: 'lit' } }[]>();
 
+  // `Some(Some(v))`: the inner variant pattern binds a hidden name, see nestedArm
+  varNested = new Map<Pat, { name: string; pat: Extract<Pat, { k: 'variant' }> }[]>();
+
   pattern(): Pat {
     const p = this.basePattern();
     if (p.k === 'lit' && p.ty === 'int' && this.at('..')) {
@@ -798,6 +802,99 @@ class Parser {
 
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
   rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[] } {
+    const n = this.nestedArm(pats, guard);
+    const r = this.rangeArm0(scrut, n.pats, n.guard);
+    const binds = [...(r.binds ?? []), ...n.binds];
+    return { ...r, binds: binds.length ? binds : undefined };
+  }
+
+  // `Some(Some(v))`: the arm matches the outer variant, a guard tests the inner one and `v` is read out of the hidden binding in front of the body
+  nestedArm(pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard: Expr | undefined; binds: Stmt[] } {
+    const top = pats.map(p => this.varNested.get(p));
+    if (!top.some(x => x)) return { pats, guard, binds: [] };
+    const sp = pats[0].span;
+    if (pats.length > 1) {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'a nested variant pattern cannot be used in a | alternative', span: sp });
+      return { pats, guard, binds: [] };
+    }
+    const hidden = (name: string): Expr => ({ k: 'var', name, span: sp, ty: 'error' });
+    const conds: Expr[] = [];
+    const binds: Stmt[] = [];
+    for (const { name, pat } of top[0]!) {
+      conds.push(this.nestedCond(hidden(name), pat));
+      binds.push(...this.nestedLets(hidden(name), pat));
+    }
+    const and = (a: Expr, b: Expr): Expr => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' });
+    const test = conds.reduce(and);
+    // a guard written by the user may read the nested names, which only exist in the body: it reads what they stand for
+    const parts = new Map(binds.map(b => [(b as { name: string }).name, (b as { init: Expr }).init]));
+    const swap = (o: unknown): unknown => {
+      if (Array.isArray(o)) return o.map(swap);
+      if (!o || typeof o !== 'object') return o;
+      const x = o as Record<string, unknown>;
+      if (x.k === 'var' && parts.has(x.name as string)) {
+        for (const b of binds) if ((b as { name: string }).name === x.name) (b as { quiet?: boolean }).quiet = true;
+        return structuredClone(parts.get(x.name as string));
+      }
+      return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, k === 'span' ? v : swap(v)]));
+    };
+    return { pats, guard: guard ? and(test, swap(guard) as Expr) : test, binds };
+  }
+
+  // true when `e` holds the variant `q` with all the literals and inner variants it spells out
+  nestedCond(e: Expr, q: Extract<Pat, { k: 'variant' }>): Expr {
+    const sp = q.span;
+    const lits = this.varLits.get(q) ?? [];
+    const nests = this.varNested.get(q) ?? [];
+    const conds: Expr[] = [];
+    const binds = q.binds?.map(b => {
+      if (!b) return null;
+      const lit = lits.find(l => l.name === b.name);
+      const nest = nests.find(n => n.name === b.name);
+      if (!lit && !nest) return null;
+      const h = `_$c${this.forId++}`;
+      const hv: Expr = { k: 'var', name: h, span: sp, ty: 'error' };
+      if (nest) conds.push(this.nestedCond(hv, nest.pat));
+      else {
+        const l = lit!.lit;
+        const r: Expr = l.ty === 'string' ? { k: 'str', value: l.value as string, span: sp, ty: 'error' }
+          : l.ty === 'bool' ? { k: 'bool', value: l.value as boolean, span: sp, ty: 'error' } : { k: 'int', value: l.value as number, span: sp, ty: 'error' };
+        conds.push({ k: 'binary', op: '==', l: hv, r, span: sp, ty: 'error' });
+      }
+      return { name: h, span: sp };
+    }) ?? null;
+    const yes: Expr = conds.length ? conds.reduce((a, b): Expr => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' })) : { k: 'bool', value: true, span: sp, ty: 'error' };
+    return {
+      k: 'matchx', scrut: e, tmp: -1, span: sp, ty: 'error', arms: [
+        { pats: [{ k: 'variant', span: sp, name: q.name, idx: -1, binds, tys: [], boxed: false }], value: yes, span: sp },
+        { pats: [{ k: 'wild', span: sp }], value: { k: 'bool', value: false, span: sp, ty: 'error' }, span: sp },
+      ],
+    };
+  }
+
+  // the names a nested pattern binds, each read out of `e` with a match that cannot fail once nestedCond held
+  nestedLets(e: Expr, q: Extract<Pat, { k: 'variant' }>): Stmt[] {
+    const sp = q.span;
+    const lits = this.varLits.get(q) ?? [];
+    const nests = this.varNested.get(q) ?? [];
+    const out: Stmt[] = [];
+    (q.binds ?? []).forEach((b, i) => {
+      if (!b || lits.some(l => l.name === b.name)) return;
+      const h = `_$x${this.forId++}`;
+      const picked: Expr = {
+        k: 'matchx', scrut: structuredClone(e), tmp: -1, partial: true, span: sp, ty: 'error', arms: [{
+          pats: [{ k: 'variant', span: sp, name: q.name, idx: -1, binds: q.binds!.map((_, j) => j === i ? { name: h, span: sp } : null), tys: [], boxed: false }],
+          value: { k: 'var', name: h, span: sp, ty: 'error' }, span: sp,
+        }],
+      };
+      const nest = nests.find(n => n.name === b.name);
+      if (nest) out.push(...this.nestedLets(picked, nest.pat));
+      else out.push({ k: 'let', span: b.span, name: b.name, nameSpan: b.span, mutable: false, init: picked });
+    });
+    return out;
+  }
+
+  rangeArm0(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[] } {
     ({ pats, guard } = this.litGuard(pats, guard));
     if (!pats.some(p => this.ranges.has(p) || this.tuples.has(p))) return { pats, guard };
     const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
@@ -897,6 +994,7 @@ class Parser {
         if (t.text === '_') return { k: 'wild', span: t.span };
         let binds: Extract<Pat, { k: 'variant' }>['binds'] = null;
         const lits: { name: string; lit: Pat & { k: 'lit' } }[] = [];
+        const nests: { name: string; pat: Extract<Pat, { k: 'variant' }> }[] = [];
         let end = t.span;
         if (this.eat('(')) {
           binds = [];
@@ -909,6 +1007,14 @@ class Parser {
                 lits.push({ name, lit });
                 continue;
               }
+              // `Op(Add)` and `Some(Some(v))`: a capital letter or a `(` after the name makes it a variant pattern
+              if (this.cur.kind === 'ident' && this.cur.text !== '_' && (this.peek().kind === '(' || /^[A-Z]/.test(this.cur.text))) {
+                const q = this.basePattern() as Extract<Pat, { k: 'variant' }>;
+                const name = `_$n${binds.length}`;
+                binds.push({ name, span: q.span });
+                nests.push({ name, pat: q });
+                continue;
+              }
               const b = this.vn(this.expect('ident', 'a binding name'));
               binds.push(b.text === '_' ? null : { name: b.text, span: b.span });
             } while (this.eat(',') && !this.at(')'));
@@ -917,6 +1023,7 @@ class Parser {
         }
         const vp: Pat = { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
         if (lits.length) this.varLits.set(vp, lits);
+        if (nests.length) this.varNested.set(vp, nests);
         return vp;
       }
       case '(': {
@@ -1329,9 +1436,10 @@ class Parser {
       let els: Stmt[] = [];
       if (this.eat('else')) els = this.at('if') ? [this.ifStmt()] : this.block();
       const sp = this.join(kw.span, this.prevSpan());
+      const { binds, ...head } = this.rangeArm(scrut, [pat], undefined);
       return {
         k: 'match', span: sp, scrut, tmp: -1,
-        arms: [{ pats: [pat], body: then, span: sp }, { pats: [{ k: 'wild', span: kw.span }], body: els, span: sp }],
+        arms: [{ ...head, body: binds ? [...binds, ...then] : then, span: sp }, { pats: [{ k: 'wild', span: kw.span }], body: els, span: sp }],
       };
     }
     const cond = this.condExpr();
