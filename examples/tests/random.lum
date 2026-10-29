@@ -23,3 +23,11 @@ fn test_shuffle_keeps_items() {
   test.eq_int(list.sum(xs), 435);
   test.eq_int(len(list.unique(xs)), 30);
 }
+
+fn test_pick() {
+  let r = random.new(5);
+  let xs = [10, 20, 30];
+  for _i in 0..20 {
+    test.eq_bool(contains(xs, random.pick(r, xs)), true);
+  }
+}

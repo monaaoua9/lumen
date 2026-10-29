@@ -14,3 +14,7 @@ pub fn eq_float(got: float, want: float, eps: float) {
 pub fn is_true(cond: bool, what: string) {
   assert(cond, what);
 }
+
+pub fn eq_bool(got: bool, want: bool) {
+  assert(got == want, "expected " + str(want) + ", got " + str(got));
+}

@@ -31,3 +31,7 @@ pub fn shuffle<T>(r: Rng, xs: T[]) {
     i -= 1;
   }
 }
+
+pub fn pick<T>(r: Rng, xs: T[]): T {
+  return xs[below(r, len(xs))];
+}

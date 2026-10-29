@@ -23,3 +23,11 @@ fn test_algebra() {
   test.eq_str(join(set.items(set.intersect(a, b)), ""), "3");
   test.eq_str(join(set.items(set.minus(a, b)), ""), "12");
 }
+
+fn test_subset_equal() {
+  let a = set.from(["a", "b"]);
+  let b = set.from(["b", "a", "c"]);
+  test.eq_bool(set.is_subset(a, b), true);
+  test.eq_bool(set.is_subset(b, a), false);
+  test.eq_bool(set.equal(a, set.from(["b", "a"])), true);
+}

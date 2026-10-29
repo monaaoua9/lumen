@@ -18,3 +18,10 @@ fn test_isqrt() {
   assert(math.isqrt(999999) == 999, "just below");
   assert(math.factorial(5) == 120, "factorial");
 }
+
+fn test_mod_pow_fib() {
+  assert(math.mod_pow(2, 10, 1000) == 24, "mod_pow/fib");
+  assert(math.mod_pow(7, 0, 13) == 1, "mod_pow/fib");
+  assert(math.fib(10) == 55, "mod_pow/fib");
+  assert(math.fib(0) == 0, "mod_pow/fib");
+}

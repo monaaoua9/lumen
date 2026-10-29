@@ -61,3 +61,14 @@ pub fn minus(a: Set, b: Set): Set {
   }
   return out;
 }
+
+pub fn is_subset(a: Set, b: Set): bool {
+  for x in a.items {
+    if !has(b, x) { return false; }
+  }
+  return true;
+}
+
+pub fn equal(a: Set, b: Set): bool {
+  return size(a) == size(b) && is_subset(a, b);
+}

@@ -351,9 +351,9 @@ test('std/text.lum helpers agree on every engine', () => {
 test('lumen test runs each test_ function and reports failures', () => {
   const good = cli('test', 'examples/tests/arith.lum');
   assert.equal(good.status, 0, good.stdout + good.stderr);
-  assert.ok(good.stdout.includes('4 passed, 0 failed'), good.stdout);
+  assert.ok(good.stdout.includes('5 passed, 0 failed'), good.stdout);
 
-  const only = cli('test', 'examples/tests/arith.lum', '--only', 'pow');
+  const only = cli('test', 'examples/tests/arith.lum', '--only', 'test_pow');
   assert.ok(only.stdout.includes('1 passed, 0 failed'), only.stdout);
 
   const dir = mkdtempSync(join(tmpdir(), 'lumen-test-'));

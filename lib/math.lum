@@ -65,3 +65,23 @@ pub fn digit_sum(n: int): int {
   }
   return total;
 }
+
+// base^exp mod m without overflowing for m below ~9e7
+pub fn mod_pow(base: int, exp: int, m: int): int {
+  var result = 1 % m;
+  var b = base % m;
+  var e = exp;
+  while e > 0 {
+    if e % 2 == 1 { result = result * b % m; }
+    b = b * b % m;
+    e = e / 2;
+  }
+  return result;
+}
+
+pub fn fib(n: int): int {
+  var a = 0;
+  var b = 1;
+  for _i in 0..n { a, b = b, a + b; }
+  return a;
+}
