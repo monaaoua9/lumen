@@ -7,6 +7,14 @@ import type { Elem, Type } from './types.ts';
 
 class Bail extends Error {}
 
+interface LoopInfo {
+  label?: string;
+  id: number;
+  brk: boolean;
+  cnt: boolean;
+  crossing: Set<LoopInfo>;
+}
+
 function hasCall(e: Expr): boolean {
   switch (e.k) {
     case 'call': return true;
