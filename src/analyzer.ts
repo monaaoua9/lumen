@@ -882,6 +882,12 @@ class Analyzer {
         Object.assign(e, { k: 'call', callee: field });
         return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
       }
+      // xs.len() and s.upper() read as len(xs) and upper(s); same for plain functions taking the value first
+      if (!fn && !fld && !owner && (e.name in BUILTINS || this.fns.get(e.name)?.params[0] === ot)) {
+        this.keep.set(e.obj, ot);
+        Object.assign(e, { k: 'call', args: [e.obj, ...e.args] });
+        return this.call(e as unknown as Extract<Expr, { k: 'call' }>);
+      }
       if (!fn || fn.params[0] !== ot || fn.decl.params[0].name !== 'self') {
         rest.forEach(a => this.expr(a));
         const cands = owner ? [...this.fns.values()].filter(f => f.name.startsWith(owner + '$') && f.decl.params[0]?.name === 'self').map(f => f.name.slice(owner.length + 1)) : [];
