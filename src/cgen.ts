@@ -25,6 +25,21 @@ static const char *lm_pos = 0;
 static const char *lm_tn[LM_MAXDEPTH + 2];
 static const char *lm_tp[LM_MAXDEPTH + 2];
 
+/* strings are NUL terminated, so len() would rescan them; parsers call it once per character.
+   the cache is dropped whenever the collector frees something, an address may be reused */
+static const char *lm_ls = 0;
+static size_t lm_ln = 0;
+static size_t lm_strlen(const char *s) {
+  if (s == lm_ls) return lm_ln;
+  size_t n = strlen(s);
+  // short strings are cheap to rescan and must not push the long one out of the cache
+  if (n >= 256) {
+    lm_ls = s;
+    lm_ln = n;
+  }
+  return n;
+}
+
 static void lm_die(const char *msg) {
   fflush(stdout);
   fprintf(stderr, "runtime error: %s\n", msg);
@@ -114,6 +129,7 @@ static void __attribute__((noinline)) lm_collect(void) {
     }
   }
   lm_nobj = j;
+  lm_ls = 0;
   lm_live = live;
   lm_since = 0;
   lm_limit = lm_stress ? 0 : (live > ((size_t)4 << 20) ? live : ((size_t)4 << 20));
@@ -180,7 +196,7 @@ static long long lm_f2i(double v) {
 }
 
 static const char *lm_cat(const char *a, const char *b) {
-  size_t la = strlen(a), lb = strlen(b);
+  size_t la = lm_strlen(a), lb = strlen(b);
   char *r = (char *)lm_alloc(la + lb + 1, 1);
   memcpy(r, a, la);
   memcpy(r + la, b, lb + 1);
@@ -493,7 +509,7 @@ static const char *lm_read_line(void) {
   return r;
 }
 static long long lm_byte(const char *s, long long i) {
-  if (i < 0 || i >= (long long)strlen(s)) lm_die("byte index out of range");
+  if (i < 0 || i >= (long long)lm_strlen(s)) lm_die("byte index out of range");
   return (unsigned char)s[i];
 }
 static const char *lm_chr(long long n) {
@@ -503,7 +519,7 @@ static const char *lm_chr(long long n) {
   return r;
 }
 static const char *lm_substr(const char *s, long long start, long long n) {
-  long long len = (long long)strlen(s);
+  long long len = (long long)lm_strlen(s);
   if (start < 0 || n < 0 || start + n > len) lm_die("substring out of range");
   if ((start < len && (s[start] & 0xc0) == 0x80) || (start + n < len && (s[start + n] & 0xc0) == 0x80)) lm_die("substring splits a character");
   char *r = (char *)lm_alloc((size_t)n + 1, 1);
@@ -529,7 +545,7 @@ static lm_arr *lm_split(const char *s, const char *sep) {
   }
   return out;
 }
-static long long lm_len(const char *s) { return (long long)strlen(s); }
+static long long lm_len(const char *s) { return (long long)lm_strlen(s); }
 `;
 
 function ctype(t: Type): string {
