@@ -1,3 +1,4 @@
+import { bitOp } from './runtime.ts';
 import type { Expr, Program, Stmt } from './ast.ts';
 
 // constant folding + dead branch removal on the typed AST. only touches
@@ -60,6 +61,13 @@ function foldExpr(e: Expr): Expr {
           if (isInt) return b === 0 ? e : lit(e, Math.trunc(a / b));
           return lit(e, a / b);
         case '%': return b === 0 ? e : lit(e, a % b);
+        case '&': case '|': case '^': case '<<': case '>>': {
+          try {
+            return lit(e, bitOp(e.op, a, b));
+          } catch {
+            return e; // bad shift or overflow stays for the runtime to report
+          }
+        }
         case '==': return lit(e, e.l.value === e.r.value);
         case '!=': return lit(e, e.l.value !== e.r.value);
         case '<': return lit(e, a < b);

@@ -1,6 +1,6 @@
 import { RuntimeError } from './diagnostics.ts';
 import type { Expr, FnDecl, Program, Stmt } from './ast.ts';
-import { MAX_DEPTH, callBuiltin, checkIndex, checkInt, cmpStr, intDiv, intMod, registerTypes } from './runtime.ts';
+import { MAX_DEPTH, bitOp, callBuiltin, checkIndex, checkInt, cmpStr, intDiv, intMod, registerTypes } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const NORMAL = 0;
@@ -150,6 +150,7 @@ export class Interpreter {
           case '*': return isInt ? checkInt(a * b, e.span) : a * b;
           case '/': return isInt ? intDiv(a, b, e.span) : a / b;
           case '%': return intMod(a, b, e.span);
+          case '&': case '|': case '^': case '<<': case '>>': return bitOp(e.op, a, b, e.span);
           case '==': return a === b;
           case '!=': return a !== b;
           case '<': return a < b;

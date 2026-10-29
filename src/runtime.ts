@@ -93,6 +93,21 @@ export function intMod(a: number, b: number, span?: Span): number {
   return a % b;
 }
 
+export const BIT_OPS = ['&', '|', '^', '<<', '>>'];
+
+export function bitOp(op: string, a: number, b: number, span?: Span): number {
+  if (op === '<<' || op === '>>') {
+    if (b < 0 || b > 62) throw new RuntimeError('shift count out of range', span);
+    // scaling by a power of two is exact in a double, so no BigInt needed
+    return op === '<<' ? checkInt(a * 2 ** b, span) : Math.floor(a / 2 ** b);
+  }
+  if (a >= -0x80000000 && a <= 0x7fffffff && b >= -0x80000000 && b <= 0x7fffffff) {
+    return op === '&' ? a & b : op === '|' ? a | b : a ^ b;
+  }
+  const x = BigInt(a), y = BigInt(b);
+  return Number(op === '&' ? x & y : op === '|' ? x | y : x ^ y);
+}
+
 export function floatToInt(v: number, span?: Span): number {
   if (!Number.isFinite(v) || Math.abs(v) > Number.MAX_SAFE_INTEGER) {
     throw new RuntimeError('float out of range for int', span);
