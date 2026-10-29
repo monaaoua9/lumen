@@ -9,6 +9,7 @@ Newest first. The README has the full description of every feature.
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
 - `try e;` as a statement: same early return, the unwrapped value is dropped.
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
+- Runtime errors in the C backend print the same call trace as the interpreter and the VM.
 - Generic enums (`option.Result<Task>`) can carry a struct that the program itself declares, also when the struct is not `pub`.
 - Labelled loops: `outer: for ... { for ... { break outer; } }` and `continue outer;`.
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
