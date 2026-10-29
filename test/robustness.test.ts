@@ -520,3 +520,11 @@ test('math and text extras give the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('list extras give the same output on every engine', () => {
+  const want = '24 1\n[3, 4, 5, 1, 2] [3, 1, 2] [2, 3, 1]\na 2\nb 2\nc 1\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/list_extra.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
