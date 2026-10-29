@@ -729,3 +729,8 @@ test('lint: an uncalled generic still reports names declared nowhere', () => {
   assert.deepEqual(diagCodes('fn id<T>(x: T): T { let y = x; return y; }').filter(c => c === 'E001'), []);
   assert.deepEqual(diagCodes('fn id<T>(xs: T[]): int { var n = 0; for x in xs { n += 1; } return n; }').filter(c => c === 'E001'), []);
 });
+
+test('const is a let that cannot be reassigned', () => {
+  assert.deepEqual(diagCodes('const N = 3; fn f(): int { return N * 2; } print(f());'), []);
+  assert.deepEqual(diagCodes('const N: int = 3; N = 4; print(N);'), ['E005']);
+});
