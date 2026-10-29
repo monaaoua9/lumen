@@ -856,3 +856,9 @@ test('using Option without the import hints at the import on every error', () =>
   assert.ok(errs.length >= 2);
   assert.ok(errs.every(d => d.hint?.includes('std/option.lum')), JSON.stringify(errs.map(d => d.hint)));
 });
+
+test('xs.map without importing std/list says which import is missing', () => {
+  const fe = frontend('let xs = [1, 2];\nlet ys = xs.map(fn(x: int): int { return x; });', 'x.lum', []);
+  const e = fe.diagnostics.find(d => d.code === 'E019');
+  assert.ok(e?.hint?.includes('std/list.lum'), JSON.stringify(e));
+});
