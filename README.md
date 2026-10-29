@@ -2,7 +2,7 @@
 
 A small statically-typed language with the whole toolchain in one repo: lexer, parser,
 static analyzer, tree-walking interpreter, bytecode compiler + VM, and a C backend.
-TypeScript, no runtime dependencies, Node >= 22.18. Arabic summary: [README.ar.md](README.ar.md).
+TypeScript, no runtime dependencies, Node >= 22.18. Arabic summary: [README.ar.md](README.ar.md). New to the language? Start with [docs/tutorial.md](docs/tutorial.md), its examples are run by the tests.
 
 ## Why TypeScript
 
