@@ -397,8 +397,9 @@ test('lexer: number forms and block comments', () => {
 test('local functions', () => {
   assert.deepEqual(errs('fn f(k: int): int { fn g(x: int): int { return x * k; } return g(2); } print(f(3));'), []);
   assert.deepEqual(errs('fn f(): int { fn g(k: int): int { return if k == 0 { 0 } else { g(k - 1) }; } return g(3); } print(f());'), []);
-  // a recursive one is a real function, so it cannot see the enclosing locals
-  assert.deepEqual(errs('fn f(): int { let b = 1; fn g(k: int): int { return if k == 0 { b } else { g(k - 1) }; } return g(3); } print(f());'), ['E001']);
+  // a recursive one reads the enclosing lets through the closure it is bound to
+  assert.deepEqual(errs('fn f(): int { let b = 1; fn g(k: int): int { return if k == 0 { b } else { g(k - 1) }; } return g(3); } print(f());'), []);
+  assert.deepEqual(errs('fn f(): int { var b = 1; fn g(k: int): int { return if k == 0 { b } else { g(k - 1) }; } return g(3); } print(f());'), ['E023']);
 });
 
 test('syntax: trailing commas and field shorthand', () => {
