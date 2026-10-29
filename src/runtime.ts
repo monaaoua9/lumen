@@ -183,7 +183,16 @@ export function substrOf(s: string, start: number, n: number, span?: Span): stri
 
 // utf-8 byte order, same as strcmp on the C side (js `<` would compare utf-16 units)
 export function cmpStr(a: string, b: string): number {
-  return a === b ? 0 : Buffer.compare(Buffer.from(a), Buffer.from(b));
+  if (a === b) return 0;
+  // below the surrogate range utf-16 order and utf-8 order agree, only past it do the bytes have to be compared
+  const n = Math.min(a.length, b.length);
+  let i = 0;
+  while (i < n && a.charCodeAt(i) === b.charCodeAt(i)) i++;
+  if (i === n) return a.length < b.length ? -1 : 1;
+  const x = a.charCodeAt(i);
+  const y = b.charCodeAt(i);
+  if (x < 0xd800 && y < 0xd800) return x < y ? -1 : 1;
+  return Buffer.compare(Buffer.from(a), Buffer.from(b));
 }
 
 // stdin is read once, on first use, and handed out a line at a time
