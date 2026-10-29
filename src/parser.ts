@@ -927,14 +927,22 @@ class Parser {
     const picks: { name: Token; at: (obj: Expr) => Expr }[] = [];
     const mk = (obj: Expr, e: Omit<Extract<Expr, { k: 'index' }>, 'k' | 'arr' | 'span' | 'ty'>): Expr => ({ k: 'index', arr: obj, ...e, span: obj.span, ty: 'error' });
     if (this.eat('(')) {
-      // let (a, b) = e;  reads _0, _1, ...
-      let i = 0;
-      do {
-        const n = this.vn(this.expect('ident', 'a variable name'));
-        const at = i++;
-        if (n.text !== '_') picks.push({ name: n, at: obj => ({ k: 'field', obj, name: `_${at}`, nameSpan: n.span, idx: -1, span: n.span, ty: 'error' }) });
-      } while (this.eat(',') && !this.at(')'));
-      this.expect(')');
+      // let (a, b) = e;  reads _0, _1, ... and nested tuples compose the accessors
+      const tuple = (outer: (obj: Expr) => Expr) => {
+        let i = 0;
+        do {
+          const at = i++;
+          const get = (obj: Expr): Expr => ({ k: 'field', obj: outer(obj), name: `_${at}`, nameSpan: this.cur.span, idx: -1, span: this.cur.span, ty: 'error' });
+          if (this.eat('(')) {
+            tuple(get);
+            continue;
+          }
+          const n = this.vn(this.expect('ident', 'a variable name'));
+          if (n.text !== '_') picks.push({ name: n, at: get });
+        } while (this.eat(',') && !this.at(')'));
+        this.expect(')');
+      };
+      tuple(o => o);
     } else if (this.eat('[')) {
       let i = 0;
       do {
@@ -1069,7 +1077,15 @@ class Parser {
         e = { k: 'call', name: 'call', nameSpan: e.span, args, callee: e, span: this.join(e.span, close.span), ty: 'error' };
       } else if (this.at('.')) {
         this.next();
-        // t.0 reads a tuple element
+        // t.0 reads a tuple element; t.0.1 lexes as the float 0.1, so split it
+        if (this.cur.kind === 'float' && /^\d+\.\d+$/.test(this.cur.text)) {
+          const ft = this.next();
+          const [a, b] = ft.text.split('.');
+          const sp = ft.span;
+          const first = { k: 'field', obj: e, name: `_${a}`, nameSpan: sp, idx: -1, span: this.join(e.span, sp), ty: 'error' } as Expr;
+          e = { k: 'field', obj: first, name: `_${b}`, nameSpan: sp, idx: -1, span: this.join(e.span, sp), ty: 'error' };
+          continue;
+        }
         const f = this.cur.kind === 'int' ? (tok => ({ ...tok, text: `_${tok.text}` }))(this.next()) : this.expect('ident', 'a field name');
         if (this.at('(')) {
           this.next();

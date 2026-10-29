@@ -44,3 +44,7 @@ for (word, n) in [("one", 1), ("two", 2)] {
 for i, (word, _) in [("x", 0), ("y", 0)] {
   print(str(i) + word);
 }
+
+let deep = ((1, 2), "z");
+let ((p, q), tag) = deep;
+print(str(p + q) + tag + str(deep.0.1));

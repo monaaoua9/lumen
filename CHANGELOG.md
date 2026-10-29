@@ -13,6 +13,7 @@ Newest first. The README has the full description of every feature.
 - Local functions can call themselves.
 - Tuples: `(int, string)`, `(1, "a")`, `t.0`, `let (a, b) = t;`.
 - `for (a, b) in pairs` and `for i, (a, b) in xs` take tuples apart in the loop head.
+- Nested tuple patterns (`let ((a, b), c) = t;`) and chained access (`t.0.1`).
 
 ## Builtins
 
