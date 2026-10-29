@@ -1,0 +1,16 @@
+const LIMIT = 10;
+const NAMES = ["a", "b"];
+struct V { x: int, y: int }
+impl V {
+  fn add(self, o: V): V { return V { x: self.x + o.x, y: self.y + o.y }; }
+}
+fn main() {
+  print(LIMIT, NAMES[1]);
+  let v = V { x: 1, y: 2 }.add(V { x: 3, y: 4 });
+  print(v);
+  let m = [[1, 2], [3, 4]];
+  for row in m { print(row); }
+  let s = "x=" + str(v.x) + ", y=${v.y}";
+  print(s);
+}
+main();
