@@ -934,3 +934,10 @@ test('explicit type arguments on a struct literal inside a generic function', ()
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'x 1\nhi hi\n', engine);
   }
 });
+
+test('explicit type arguments on generic calls agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/explicit_type_args.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '[5] ["lumen"] x\ntrue true\n', engine);
+  }
+});

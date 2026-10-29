@@ -1,0 +1,18 @@
+fn zero<T>(): T[] {
+  let xs: T[] = [];
+  return xs;
+}
+
+fn pick<A, B>(a: A, _b: B): A {
+  return a;
+}
+
+let a = zero<int>();
+push(a, 5);
+let names = zero<string>();
+push(names, "lumen");
+print(a, names, pick<string, int>("x", 2));
+
+let i = 3;
+let n = 9;
+print(i < n, n > i && i < (n + 1));

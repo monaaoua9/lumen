@@ -862,3 +862,10 @@ test('xs.map without importing std/list says which import is missing', () => {
   const e = fe.diagnostics.find(d => d.code === 'E019');
   assert.ok(e?.hint?.includes('std/list.lum'), JSON.stringify(e));
 });
+
+test('explicit type arguments: count is checked, plain functions are not generic', () => {
+  assert.deepEqual(diagCodes('fn f<T>(x: T): T { return x; } print(f<int>(1));').filter(c => c.startsWith('E') || c.startsWith('P')), []);
+  assert.ok(diagCodes('fn f<T>(x: T): T { return x; } print(f<int, int>(1));').includes('E016'));
+  assert.ok(diagCodes('print(len<int>("a"));').includes('E016'));
+  assert.deepEqual(diagCodes('let i = 1; let n = 2; print(i < n && n > (i));').filter(c => c.startsWith('E') || c.startsWith('P')), []);
+});
