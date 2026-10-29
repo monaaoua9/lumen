@@ -999,10 +999,13 @@ class Parser {
         const parts: Expr[] = [];
         const mine: Stmt[] = [];
         tp.forEach((q, i) => {
-          if (!('bind' in q) && q.k !== 'lit') return;
+          if (!('bind' in q) && q.k === 'wild') return;
           const at: Expr = lit ? structuredClone(lit.fields[i]?.value ?? int(0)) : { k: 'field', obj: structuredClone(scrut), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
           if ('bind' in q) mine.push({ k: 'let', span: q.span, name: q.bind, nameSpan: q.span, mutable: false, init: at });
-          else parts.push(lcmp(at, q));
+          else if (q.k === 'variant') {
+            parts.push(this.nestedCond(structuredClone(at), q));
+            mine.push(...this.nestedLets(structuredClone(at), q));
+          } else parts.push(lcmp(at, q));
         });
         if (lit && tp.length !== lit.fields.length) this.diags.push({ severity: 'error', code: 'P001', message: `this pattern has ${tp.length} parts, the value has ${lit.fields.length}`, span: p.span });
         const cond: Expr = parts.length ? parts.reduce((a, b) => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' }) as Expr) : { k: 'bool', value: true, span: sp, ty: 'error' };
@@ -1111,15 +1114,13 @@ class Parser {
       case '(': {
         const parts: (Pat | { bind: string; span: Span })[] = [];
         do {
-          if (this.cur.kind === 'ident' && this.cur.text !== '_' && this.peek().kind !== '(') {
+          // a capital letter makes it a variant (`(0, Red)`), like inside `Op(Add)`
+          if (this.cur.kind === 'ident' && this.cur.text !== '_' && this.peek().kind !== '(' && !/^[A-Z]/.test(this.cur.text)) {
             const b = this.vn(this.next());
-            this.notVariant(b);
             parts.push({ bind: b.text, span: b.span });
             continue;
           }
-          const q = this.basePattern();
-          if (q.k === 'variant') this.fail('tuple patterns hold literals, names and _', q.span);
-          parts.push(q);
+          parts.push(this.basePattern());
         } while (this.eat(',') && !this.at(')'));
         const close = this.expect(')');
         const w: Pat = { k: 'wild', span: this.join(t.span, close.span) };
