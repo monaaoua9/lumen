@@ -849,3 +849,10 @@ test('one bad type in a signature does not drag along missing-return and unknown
   assert.ok(!codes.includes('E007'));
   assert.ok(!codes.includes('E001'));
 });
+
+test('using Option without the import hints at the import on every error', () => {
+  const fe = frontend('fn f(): Option<int> { return Option.None; }\nprint(f());', 'x.lum', []);
+  const errs = fe.diagnostics.filter(d => d.severity === 'error');
+  assert.ok(errs.length >= 2);
+  assert.ok(errs.every(d => d.hint?.includes('std/option.lum')), JSON.stringify(errs.map(d => d.hint)));
+});
