@@ -9,6 +9,7 @@ Newest first. The README has the full description of every feature.
 - `let x = try e;` unwraps an `Ok` / `Some` and otherwise returns the `Err` / `None` from the enclosing function (a P001 error outside a `Result` / `Option` function).
 - `try e;` as a statement: same early return, the unwrapped value is dropped.
 - `const NAME = value;` declares an immutable binding (a `let` under another name).
+- A guard on a tuple pattern may read the names the pattern binds (`(x, 0) if x > 3 =>`).
 - The test suite now builds every examples/std program in C and checks it again with a collection on every allocation.
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
 - std/math: `lerp`, `hypot`, `fpow`; std/text: `truncate`, `title`.
