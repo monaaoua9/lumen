@@ -915,3 +915,15 @@ test('an expression calculator with try, closures and block arms agrees on every
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('the E028 hint shows module items by their written names', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-hint-'));
+  try {
+    writeFileSync(join(dir, 'main.lum'), 'import "std/heap.lum"\nlet h = heap.new(fn(a: int, b: int): bool { return a < b; });\nheap.push(h, 1);\n');
+    const r = cli('check', join(dir, 'main.lum'));
+    assert.ok(r.stdout.includes('available: new, size'), r.stdout);
+    assert.ok(!r.stdout.includes('heap$'), r.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
