@@ -1,0 +1,13 @@
+import "std/regex.lum"
+
+// "key=value" pairs and dates pulled out with groups
+let line = "name=lumen; version=0.1; date=2026-10-30";
+for pair in regex.pieces("; ", line) {
+  let c = regex.captures("(\\w+)=(.*)", pair);
+  print("{c[1]} -> {c[2]}");
+}
+
+let d = regex.captures("(\\d\{4\})-(\\d\{2\})-(\\d\{2\})", line);
+print("{d[3]}/{d[2]}/{d[1]}");
+print(regex.sub("(ha)+", "hahaha ha", "!"));
+print(regex.full_match("(cat|dog)s?", "dogs"), regex.full_match("(cat|dog)s?", "bird"));

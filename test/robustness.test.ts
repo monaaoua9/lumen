@@ -891,3 +891,11 @@ test('a loop can give a value with break on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '10\n64\ndone\n', engine);
   }
 });
+
+test('std/regex groups and captures give the same output on every engine', () => {
+  const want = 'name -> lumen\nversion -> 0.1\ndate -> 2026-10-30\n30/10/2026\n! !\ntrue false\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/regex_groups.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
