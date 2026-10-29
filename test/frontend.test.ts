@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { lex } from '../src/lexer.ts';
 import { parse } from '../src/parser.ts';
-import { diagCodes } from './helpers.ts';
+import { diagCodes, runSrc } from './helpers.ts';
 import { frontend } from '../src/pipeline.ts';
 
 test('lexer: tokens, comments, escapes', () => {
@@ -513,6 +513,14 @@ test('multiple assignment', () => {
   assert.deepEqual(errs('var a = 1; var b = 2; a, b = b, a; print(a + b);'), []);
   assert.deepEqual(diagCodes('var a = 1; var b = 2; a, b = 1; print(a + b);'), ['P001']);
   assert.deepEqual(errs('var a = 1; a, b = 1, 2;'), ['E001']);
+});
+
+test('unicode and hex escapes', () => {
+  assert.deepEqual(diagCodes('print("\\u{1F600}\\x41");'), []);
+  assert.deepEqual(diagCodes('print("\\xff");'), ['L002']);
+  assert.deepEqual(diagCodes('print("\\u{D800}");'), ['L002']);
+  assert.deepEqual(diagCodes('print("\\u{110000}");'), ['L002']);
+  assert.equal(runSrc('print(len("\\u{627}") + len("\\x41"));', 'vm'), '3\n');
 });
 
 test('closures: capturing', () => {

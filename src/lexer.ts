@@ -104,6 +104,20 @@ export function lex(src: string): { tokens: Token[]; diags: Diagnostic[] } {
         if (ch === '\\') {
           const nx = src[i + 1];
           const map: Record<string, string> = { n: '\n', t: '\t', r: '\r', '\\': '\\', '"': '"', '0': '\0', '{': '{', '}': '}' };
+          // \u{1F600} and \x41 (ASCII only, a lone high byte would not be valid UTF-8)
+          const wide = nx === 'u' && src[i + 2] === '{' ? /^([0-9a-fA-F]{1,6})\}/.exec(src.slice(i + 3, i + 10)) : null;
+          const code = wide ? parseInt(wide[1], 16) : -1;
+          const narrow = nx === 'x' ? /^[0-7][0-9a-fA-F]/.exec(src.slice(i + 2, i + 4)) : null;
+          if (wide && code <= 0x10ffff && !(code >= 0xd800 && code <= 0xdfff)) {
+            val += String.fromCodePoint(code);
+            i += 4 + wide[1].length;
+            continue;
+          }
+          if (narrow) {
+            val += String.fromCharCode(parseInt(narrow[0], 16));
+            i += 4;
+            continue;
+          }
           if (nx !== undefined && nx in map) {
             val += map[nx];
           } else {
