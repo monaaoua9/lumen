@@ -134,6 +134,7 @@ Semantics worth knowing:
 - `/` on ints truncates toward zero; division and modulo by zero trap.
 - Operands evaluate left to right; `&&` / `||` short-circuit.
 - Functions see globals declared *before* them. Recursion works, call depth is capped at 1000 (`run --engine interp` runs on a thread with a large stack so it reaches the same cap).
+- A loop can carry a label, `rows: for r in grid { for c in r { if c < 0 { continue rows; } if c > 9 { break rows; } } }`. The parser turns the jump into a flag that each loop in between checks right after it ends, so the backends see ordinary loops.
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
 - Tuple patterns in `match`: `match (n % 3, n % 5) { (0, 0) => ..., (0, _) => ..., _ => ... }`. Parts are int, string or bool literals, `_`, or a name that binds that part inside the arm (`(x, 0) => x`; not with `|` or a guard). They become guards, so the written tuple may only hold variables, fields and arithmetic (it is re-evaluated per arm) and a final `_` arm is needed.
 - `x.f(args)` on a value with no such method falls back to `f(x, args)` when `f` is a builtin, a function whose first parameter has x's type, or a generic function whose first parameter accepts it, so `xs.len()`, `s.trim().upper()` and `xs.map(fn(x) => x * 2)` (after importing `std/list.lum`) work. Real methods win.
