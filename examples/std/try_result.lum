@@ -1,0 +1,19 @@
+import "std/option.lum"
+
+fn parse_num(s: string): option.Result<int> {
+  let n = parse_int(s, -1);
+  return if n < 0 { option.Result.Err("bad number: " + s) } else { option.Result.Ok(n) };
+}
+
+fn sum_two(a: string, b: string): option.Result<int> {
+  let x = try parse_num(a);
+  let y = try parse_num(b);
+  return option.Result.Ok(x + y);
+}
+
+fn main() {
+  match sum_two("4", "5") { Ok(n) => { print("sum", n); } Err(m) => { print(m); } }
+  match sum_two("4", "x") { Ok(n) => { print("sum", n); } Err(m) => { print(m); } }
+  match sum_two("y", "5") { Ok(n) => { print("sum", n); } Err(m) => { print(m); } }
+}
+main();

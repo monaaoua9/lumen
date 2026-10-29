@@ -1,0 +1,18 @@
+import "std/option.lum"
+
+fn first_even(xs: int[]): option.Option<int> {
+  for x in xs { if x % 2 == 0 { return option.Option.Some(x); } }
+  return option.Option.None;
+}
+
+fn double_first(xs: int[]): option.Option<int> {
+  var v = try first_even(xs);
+  v *= 2;
+  return option.Option.Some(v);
+}
+
+fn main() {
+  match double_first([1, 3, 4]) { Some(n) => { print(n); } None => { print("none"); } }
+  match double_first([1, 3]) { Some(n) => { print(n); } None => { print("none"); } }
+}
+main();
