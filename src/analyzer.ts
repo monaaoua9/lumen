@@ -154,7 +154,7 @@ function constInt(e: Expr): number | undefined {
 }
 
 // builtins that do something besides returning a value
-const EFFECTS = new Set(['print', 'push', 'pop', 'insert', 'remove', 'sort', 'reverse', 'assert', 'exit', 'read_line', 'read_file', 'write_file', 'clock']);
+const EFFECTS = new Set(['print', 'push', 'pop', 'insert', 'remove', 'sort', 'reverse', 'assert', 'exit', 'read_line', 'read_file', 'write_file', 'append_file', 'remove_file', 'clock']);
 
 // internal type spellings (@Name, <fn(int):int>) back to what the user wrote
 function showTypes(msg: string): string {
@@ -1506,7 +1506,7 @@ class Analyzer {
     e.builtin = name;
     const tys = e.args.map(a => this.expr(a));
     const arity = BUILTINS[name].arity;
-    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', args: 'string[]', clock: 'int', read_file: 'string', write_file: 'void', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error', upper: 'string', lower: 'string', replace: 'string', starts_with: 'bool', ends_with: 'bool', repeat: 'string', parse_int: 'int', parse_float: 'float' }[name] as Type;
+    const ret: Type = { print: 'void', str: 'string', int: 'int', float: 'float', len: 'int', push: 'void', pop: 'error', sqrt: 'float', abs: 'error', min: 'error', max: 'error', substr: 'string', find: 'int', split: 'string[]', byte: 'int', chr: 'string', join: 'string', trim: 'string', assert: 'void', read_line: 'string', at_eof: 'bool', args: 'string[]', clock: 'int', read_file: 'string', write_file: 'void', append_file: 'void', remove_file: 'void', file_exists: 'bool', list_dir: 'string[]', env: 'string', exit: 'void', sort: 'void', reverse: 'void', contains: 'bool', slice: 'error', floor: 'float', ceil: 'float', insert: 'void', remove: 'error', upper: 'string', lower: 'string', replace: 'string', starts_with: 'bool', ends_with: 'bool', repeat: 'string', parse_int: 'int', parse_float: 'float' }[name] as Type;
 
     if (e.args.length !== arity) {
       this.err('E004', `'${name}' takes ${arity} argument${arity === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1559,6 +1559,11 @@ class Analyzer {
         return ret;
       case 'read_file':
       case 'write_file':
+      case 'append_file':
+      case 'remove_file':
+      case 'file_exists':
+      case 'list_dir':
+      case 'env':
         tys.forEach((t, i) => {
           if (t !== 'error' && t !== 'string') this.mismatch('string', t, e.args[i].span, `in argument ${i + 1} of '${name}'`);
         });

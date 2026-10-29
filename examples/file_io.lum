@@ -1,0 +1,19 @@
+let path = "lumen_io_demo.txt";
+
+write_file(path, "first\n");
+append_file(path, "second\n");
+append_file(path, "third\n");
+
+let lines = read_file(path).trim().split("\n");
+print(len(lines), lines[0], lines[2]);
+print(file_exists(path), file_exists("nope_not_here.txt"));
+
+var found = false;
+for name in list_dir(".") {
+  if name == path { found = true; }
+}
+print("listed:", found);
+
+remove_file(path);
+print("after remove:", file_exists(path));
+print("unset env is empty:", env("LUMEN_SURELY_NOT_SET_42") == "");

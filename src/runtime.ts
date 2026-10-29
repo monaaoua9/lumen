@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, existsSync, unlinkSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { ExitSignal, RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
 import type { BuiltinName, Type } from './types.ts';
@@ -135,6 +135,11 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'at_eof': return atEof();
     case 'read_file': return readFileOf(a as string, span);
     case 'write_file': writeFileOf(a as string, args[1] as string, span); return null;
+    case 'append_file': appendFileOf(a as string, args[1] as string, span); return null;
+    case 'file_exists': return fileExists(a as string);
+    case 'list_dir': return listDir(a as string, span);
+    case 'remove_file': removeFileOf(a as string, span); return null;
+    case 'env': return envOf(a as string);
     case 'args': return [...programArgs];
     case 'clock': return Date.now();
     case 'sort': sortArr(a as Value[]); return null;
@@ -288,6 +293,39 @@ export function writeFileOf(path: string, text: string, span?: Span) {
   } catch {
     throw new RuntimeError(`cannot write '${path}'`, span);
   }
+}
+
+export function appendFileOf(path: string, text: string, span?: Span) {
+  try {
+    appendFileSync(path, text);
+  } catch {
+    throw new RuntimeError(`cannot write '${path}'`, span);
+  }
+}
+
+export function removeFileOf(path: string, span?: Span) {
+  try {
+    unlinkSync(path);
+  } catch {
+    throw new RuntimeError(`cannot remove '${path}'`, span);
+  }
+}
+
+export function fileExists(path: string): boolean {
+  return existsSync(path);
+}
+
+// sorted so the three engines agree; readdir order is up to the OS
+export function listDir(path: string, span?: Span): string[] {
+  try {
+    return readdirSync(path).sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));
+  } catch {
+    throw new RuntimeError(`cannot list '${path}'`, span);
+  }
+}
+
+export function envOf(name: string): string {
+  return process.env[name] ?? '';
 }
 
 export function trimOf(s: string): string {

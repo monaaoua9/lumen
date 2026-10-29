@@ -432,6 +432,11 @@ class FnCompiler {
           case 'clock': this.emit(Op.CLOCK); break;
           case 'read_file': this.emit(Op.READF); break;
           case 'write_file': this.emit(Op.WRITEF); break;
+          case 'append_file': this.emit(Op.APPENDF); break;
+          case 'file_exists': this.emit(Op.FEXISTS); break;
+          case 'list_dir': this.emit(Op.LISTDIR); break;
+          case 'env': this.emit(Op.ENV); break;
+          case 'remove_file': this.emit(Op.RMFILE); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;
