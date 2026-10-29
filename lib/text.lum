@@ -25,27 +25,22 @@ pub fn is_alpha(s: string): bool {
   return true;
 }
 
+// whole characters, so UTF-8 text survives
 pub fn reversed(s: string): string {
   var out = "";
-  var i = len(s);
-  while i > 0 {
-    i -= 1;
-    out = out + chr(byte(s, i));
-  }
+  for ch in s { out = ch + out; }
   return out;
 }
 
 pub fn count(s: string, needle: string): int {
   if len(needle) == 0 { return 0; }
   var n = 0;
-  var at = 0;
-  while at + len(needle) <= len(s) {
-    if substr(s, at, len(needle)) == needle {
-      n += 1;
-      at += len(needle);
-    } else {
-      at += 1;
-    }
+  var rest = s;
+  var at = find(rest, needle);
+  while at >= 0 {
+    n += 1;
+    rest = rest[at + len(needle)..];
+    at = find(rest, needle);
   }
   return n;
 }
@@ -79,7 +74,7 @@ pub fn center(s: string, width: int, fill: string): string {
 
 pub fn chars(s: string): string[] {
   let out: string[] = [];
-  for i in 0..len(s) { push(out, substr(s, i, 1)); }
+  for ch in s { push(out, ch); }
   return out;
 }
 
