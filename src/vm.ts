@@ -155,6 +155,7 @@ export function run(m: Module, io: IO) {
         case Op.ATEOF: stack[sp++] = atEof(); break;
         case Op.READF: stack[sp - 1] = readFileOf(stack[sp - 1] as string); break;
         case Op.WRITEF: sp -= 2; writeFileOf(stack[sp] as string, stack[sp + 1] as string); break;
+        case Op.CLOCK: stack[sp++] = Date.now(); break;
         case Op.ARGS: stack[sp++] = [...programArgs]; break;
         case Op.EXIT: throw exitWith(num(--sp));
         case Op.SORT: sortArr(stack[--sp] as Value[]); break;

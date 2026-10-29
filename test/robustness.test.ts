@@ -428,3 +428,11 @@ test('read_file and write_file agree on every engine', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('clock() runs on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/io/clock.lum', '--engine', engine);
+    assert.equal(r.status, 0, engine + r.stderr);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '599994\ntrue\n', engine);
+  }
+});

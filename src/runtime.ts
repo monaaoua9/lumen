@@ -119,6 +119,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'read_file': return readFileOf(a as string, span);
     case 'write_file': writeFileOf(a as string, args[1] as string, span); return null;
     case 'args': return [...programArgs];
+    case 'clock': return Date.now();
     case 'sort': sortArr(a as Value[]); return null;
     case 'reverse': (a as Value[]).reverse(); return null;
     case 'contains': return (a as Value[]).includes(args[1]);

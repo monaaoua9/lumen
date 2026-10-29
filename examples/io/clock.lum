@@ -1,0 +1,6 @@
+let t0 = clock();
+var s = 0;
+for i in 0..200000 { s += i % 7; }
+let ms = clock() - t0;
+print(s);
+print(ms >= 0 && ms < 60000);
