@@ -871,7 +871,7 @@ class Analyzer {
       const generic = instInfo ? this.generics.get(`${instInfo.tmpl}$${e.name}`) : undefined;
       if (generic && generic.params[0]?.name === 'self') {
         this.keep.set(e.obj, ot);
-        Object.assign(e, { k: 'call', name: generic.name, args: [e.obj, ...e.args] });
+        Object.assign(e, { k: 'call', name: generic.name, args: [e.obj, ...e.args], argNames: e.argNames && [undefined, ...e.argNames] });
         return this.genericCall(e as unknown as Extract<Expr, { k: 'call' }>, generic);
       }
       const owner = isStruct(ot) ? structName(ot) : isEnum(ot) ? ot.slice(1) : null;
