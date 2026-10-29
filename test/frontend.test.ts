@@ -501,6 +501,15 @@ test('range patterns', () => {
   assert.deepEqual(diagCodes('let n = 5; print(match n + 1 { 0..3 => 1, _ => 0 });'), ['P001']);
 });
 
+test('tuple patterns', () => {
+  assert.deepEqual(errs('let t = (1, "a"); print(match t { (1, "a") => 1, (_, _) => 2, _ => 3 });'), []);
+  assert.deepEqual(errs('let n = 4; print(match (n % 2, n) { (0, 4) => 1, _ => 0 });'), []);
+  assert.deepEqual(errs('let n = 4; print(match (n % 2, n) { (0, 4) => 1 });'), ['E020']);
+  assert.ok(diagCodes('fn f(): int { return 1; } print(match (f(), 2) { (1, 2) => 1, _ => 0 });').includes('P001'));
+  assert.ok(diagCodes('let n = 1; print(match (n, n) { (1, 2, 3) => 1, _ => 0 });').includes('P001'));
+  assert.ok(diagCodes('let n = 1; print(match (n, n) { (Some, 2) => 1, _ => 0 });').includes('P001'));
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
