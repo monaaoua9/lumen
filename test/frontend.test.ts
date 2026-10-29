@@ -735,3 +735,8 @@ test('const is a let that cannot be reassigned', () => {
   assert.deepEqual(diagCodes('const N = 3; fn f(): int { return N * 2; } print(f());'), []);
   assert.deepEqual(diagCodes('const N: int = 3; N = 4; print(N);'), ['E005']);
 });
+
+test('recursive local function reading locals of a generic function is E031', () => {
+  const src = 'fn n<T>(xs: T[]): int { fn go(i: int): int { if i >= len(xs) { return 0; } return 1 + go(i + 1); } return go(0); } print(n([1]));';
+  assert.ok(diagCodes(src).includes('E031'));
+});
