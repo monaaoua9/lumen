@@ -504,3 +504,11 @@ test('employees report agrees on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('labelled loops, closures per iteration and try together agree everywhere', () => {
+  const want = '0\n10\n20\nrow 1 col 1\nnone\nnone\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/labels_try.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
