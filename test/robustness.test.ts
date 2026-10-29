@@ -552,3 +552,11 @@ test('std/encoding gives the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('const globals, impl methods and nested arrays agree on every engine', () => {
+  const want = '10 b\nV { x: 4, y: 6 }\n[1, 2]\n[3, 4]\nx=4, y=$6\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/consts_methods.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
