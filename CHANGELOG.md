@@ -2,11 +2,12 @@
 
 Newest first. The README has the full description of every feature.
 
-## Unreleased
+## 1.1.0
 
 - File and environment builtins: `append_file`, `file_exists`, `list_dir`, `remove_file`, `env`.
 - `http_get(url)`, through curl.
 - Packages: `lumen.toml`, `lumen init`, `lumen install`, `import "name/file.lum"` for dependencies.
+- The call depth cap is 10000 instead of 1000 on every engine; native builds on Windows get a 64MB stack.
 
 ## 1.0.0
 
