@@ -1,0 +1,51 @@
+let digits = "0123456789abcdef";
+let b64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+pub fn to_hex(n: int): string {
+  if n == 0 { return "0"; }
+  var out = "";
+  var v = if n < 0 { -n } else { n };
+  while v > 0 {
+    out = substr(digits, v % 16, 1) + out;
+    v = v / 16;
+  }
+  return if n < 0 { "-" + out } else { out };
+}
+
+// -1 when s is not hex
+pub fn from_hex(s: string): int {
+  if len(s) == 0 { return -1; }
+  var v = 0;
+  for ch in lower(s) {
+    let at = find(digits, ch);
+    if at < 0 { return -1; }
+    v = v * 16 + at;
+  }
+  return v;
+}
+
+// two hex digits per byte
+pub fn hex_encode(s: string): string {
+  var out = "";
+  for i in 0..len(s) {
+    let b = byte(s, i);
+    out += substr(digits, b / 16, 1) + substr(digits, b % 16, 1);
+  }
+  return out;
+}
+
+pub fn base64_encode(s: string): string {
+  var out = "";
+  var i = 0;
+  while i < len(s) {
+    let b0 = byte(s, i);
+    let b1 = if i + 1 < len(s) { byte(s, i + 1) } else { 0 };
+    let b2 = if i + 2 < len(s) { byte(s, i + 2) } else { 0 };
+    let n = b0 * 65536 + b1 * 256 + b2;
+    out += substr(b64, n / 262144, 1) + substr(b64, n / 4096 % 64, 1);
+    out += if i + 1 < len(s) { substr(b64, n / 64 % 64, 1) } else { "=" };
+    out += if i + 2 < len(s) { substr(b64, n % 64, 1) } else { "=" };
+    i += 3;
+  }
+  return out;
+}
