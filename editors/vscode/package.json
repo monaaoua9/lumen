@@ -1,0 +1,22 @@
+{
+  "name": "lumen-lang",
+  "displayName": "Lumen",
+  "description": "Syntax highlighting for Lumen (.lum)",
+  "version": "0.1.0",
+  "publisher": "lumen",
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [{
+      "id": "lumen",
+      "aliases": ["Lumen", "lumen"],
+      "extensions": [".lum"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "lumen",
+      "scopeName": "source.lumen",
+      "path": "./syntaxes/lumen.tmLanguage.json"
+    }]
+  }
+}
