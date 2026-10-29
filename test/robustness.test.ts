@@ -846,3 +846,26 @@ test('lsp publishes diagnostics for an unsaved buffer and answers formatting', (
   assert.deepEqual(e3.range.start, { line: 0, character: 13 });
   assert.deepEqual(msgs.find(m => m.id === 2).result, []);
 });
+
+test('lsp hover shows types and definition jumps to the declaration', () => {
+  const frame = (o: object) => {
+    const b = JSON.stringify(o);
+    return `Content-Length: ${Buffer.byteLength(b)}\r\n\r\n${b}`;
+  };
+  const uri = pathToFileURL(join(tmpdir(), 'lumen-lsp-y.lum')).href;
+  const text = 'fn area(w: int, h: int): int {\n  return w * h;\n}\nlet room = area(4, 5);\nprint(room);\n';
+  const at = (line: number, character: number) => ({ textDocument: { uri }, position: { line, character } });
+  const input = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, text } } },
+    { jsonrpc: '2.0', id: 2, method: 'textDocument/hover', params: at(3, 12) },
+    { jsonrpc: '2.0', id: 3, method: 'textDocument/definition', params: at(3, 12) },
+    { jsonrpc: '2.0', id: 4, method: 'textDocument/hover', params: at(1, 9) },
+    { jsonrpc: '2.0', method: 'exit' },
+  ].map(frame).join('');
+  const r = spawnSync(process.execPath, ['src/cli.ts', 'lsp'], { input, encoding: 'utf8' });
+  const msgs = [...r.stdout.matchAll(/Content-Length: \d+\r\n\r\n(\{.*\})/g)].map(m => JSON.parse(m[1]));
+  assert.ok(msgs.find(m => m.id === 2).result.contents.value.includes('fn area(int, int): int'));
+  assert.deepEqual(msgs.find(m => m.id === 3).result.range.start, { line: 0, character: 3 });
+  assert.ok(msgs.find(m => m.id === 4).result.contents.value.includes('let w: int'));
+});
