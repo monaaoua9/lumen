@@ -98,7 +98,7 @@ let area = match s { Circle(r) => 3.0 * r * r, Rect(w, h) => w * h, Unit => 1.0 
 Patterns bind names (`Rect(w, _)`), `Circle` alone ignores the data. An arm with several patterns cannot bind names (`E022`).
 Enums with data are references and cannot be compared with `==`; use `match`. Structs compare field by field with `==` and `!=` when every field is a scalar, a plain enum or another such struct (a generated `Name$eq` function does it); arrays and structs holding arrays or data enums still cannot be compared.
 
-Arms are variants (unqualified), literals, or `_`. The analyzer requires the match to be exhaustive Int arms can also be ranges, `0..10` (end excluded) or `1..=9` (end included), mixed with literals as `0 | 5..9`; they work as guards on the match value, so that value must be a variable or field, and a final `_` arm is still required.
+Arms are variants (unqualified), literals, or `_`. A variant's parts may be names, `_` or int/string/bool literals: `Num(0) => ...`, `Op("+") | Op("-") => ...` (alternatives with literals must be the same variant, other parts `_`). A literal part works as a guard on a hidden name, so such an arm does not count towards exhaustiveness. The analyzer requires the match to be exhaustive Int arms can also be ranges, `0..10` (end excluded) or `1..=9` (end included), mixed with literals as `0 | 5..9`; they work as guards on the match value, so that value must be a variable or field, and a final `_` arm is still required.
 (`E020`, with the missing variants listed) and warns about unreachable patterns (`W010`). A function whose
 every arm returns counts as returning on all paths.
 Methods: `impl Counter { fn new(step: int): Counter { ... } fn tick(self) { self.n += 1; } }`, called as
