@@ -889,6 +889,10 @@ class Analyzer {
           cands.length ? closestHint(e.name, cands) : undefined);
         return 'error';
       }
+      if (e.argNames) {
+        this.placeNamed(e, fn, 1);
+        rest.splice(0, rest.length, ...e.args);
+      }
       for (let i = e.args.length + 1; i < fn.decl.params.length; i++) {
         const d = fn.decl.params[i].def;
         if (!d) break;
@@ -1860,11 +1864,11 @@ class Analyzer {
   }
 
   // f(b: 1, a: 2) becomes f(2, 1); arguments are then evaluated in parameter order
-  placeNamed(e: Extract<Expr, { k: 'call' }>, fn: FnSym | undefined) {
+  placeNamed(e: { name: string; args: Expr[]; argNames?: (string | undefined)[]; span: Span }, fn: FnSym | undefined, skip = 0) {
     const names = e.argNames!;
     e.argNames = undefined;
     if (!fn) return;
-    const params = fn.decl.params;
+    const params = fn.decl.params.slice(skip);
     const slots: (Expr | undefined)[] = new Array(params.length).fill(undefined);
     let at = 0;
     let named = false;

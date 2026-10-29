@@ -7,3 +7,18 @@ print(box(3, label: "wide"));
 print(box(height: 5, width: 4));
 print(box(2, 3, label: "full"));
 print(box(label: "x", width: 1));
+
+struct Rect { w: int, h: int }
+impl Rect {
+  fn scaled(self, by: int = 2, extra: int = 0): int {
+    return self.w * self.h * by + extra;
+  }
+  fn square(side: int, fill: int = 1): Rect {
+    return Rect { w: side * fill, h: side * fill };
+  }
+}
+let rc = Rect.square(side: 3);
+print(rc.scaled());
+print(rc.scaled(extra: 5));
+print(rc.scaled(extra: 1, by: 3));
+print(Rect.square(fill: 2, side: 2).w);

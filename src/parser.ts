@@ -1038,11 +1038,17 @@ class Parser {
         if (this.at('(')) {
           this.next();
           const args: Expr[] = [];
+          const argNames: (string | undefined)[] = [];
           if (!this.at(')')) {
-            do args.push(this.allowStruct(() => this.expr())); while (this.eat(',') && !this.at(')'));
+            do {
+              const named = this.cur.kind === 'ident' && this.peek().kind === ':';
+              argNames.push(named ? this.next().text : undefined);
+              if (named) this.next();
+              args.push(this.allowStruct(() => this.expr()));
+            } while (this.eat(',') && !this.at(')'));
           }
           const close = this.expect(')');
-          e = { k: 'mcall', obj: e, name: f.text, nameSpan: f.span, args, span: this.join(e.span, close.span), ty: 'error' };
+          e = { k: 'mcall', obj: e, name: f.text, nameSpan: f.span, args, argNames: argNames.some(Boolean) ? argNames : undefined, span: this.join(e.span, close.span), ty: 'error' };
         } else {
           e = { k: 'field', obj: e, name: f.text, nameSpan: f.span, idx: -1, span: this.join(e.span, f.span), ty: 'error' };
         }
