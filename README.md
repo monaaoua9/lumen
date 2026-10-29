@@ -82,7 +82,7 @@ match light {
 
 `match` also works as an expression, `let n = match c { Red => 1, _ => 0 };` (comma separated arms, same exhaustiveness rules, all arms must have one type, only the chosen arm runs). `if` works as an expression too, `let s = if n < 0 { "neg" } else { "pos" };`: both branches are required, `else if` chains, and it is sugar for a match on the condition. `if let Some(x) = opt { ... } else { ... }` matches one pattern and ignores the rest (sugar for a match with a `_` arm); `while let Some(x) = next() { ... }` loops until the pattern stops matching.
 
-A block can be a value: `let n = { let a = 20; a + 22 };`, as a `match` arm (`Add(n) => { total += n; "added" }`) or an `if` branch. The last item is the result; `return` cannot leave it (`E029`) and `break`/`continue` only reach loops inside the block. An arm may carry a guard, `Circle(r) if r > 1.0 => ...`; the guard runs after the pattern bound its names, and if it is false the next arm is tried. A guarded arm does not count towards exhaustiveness (`E020`) or reachability (`W010`).
+A block can be a value: `let n = { let a = 20; a + 22 };`, as a `match` arm (`Add(n) => { total += n; "added" }`) or an `if` branch. The last item is the result; `return` leaves the whole function (`let v = { if n < 0 { return -1; } n * 2 };`) and `break`/`continue` only reach loops inside the block. An arm may carry a guard, `Circle(r) if r > 1.0 => ...`; the guard runs after the pattern bound its names, and if it is false the next arm is tried. A guarded arm does not count towards exhaustiveness (`E020`) or reachability (`W010`).
 
 Variants can carry data, which `match` takes apart (recursive types work):
 
@@ -261,7 +261,7 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 ## Known limits / next steps
 
 - A generic function body is only type checked when it is instantiated (an uncalled one still gets its undeclared names reported); a global is private to its file, traits are namespaced per file and need `pub` to be used from another file.
-- A local function that calls itself reads the enclosing function's `let` locals and parameters (copied in when it is defined; arrays and structs still share, a `var` has to be copied into a `let` first, E023); a block expression cannot `return` out of its function.
+- A local function that calls itself reads the enclosing function's `let` locals and parameters (copied in when it is defined; arrays and structs still share, a `var` has to be copied into a `let` first, E023).
 - The VM is a switch loop with fused compare-and-jump and increment ops (one try/catch around the whole loop); a register VM would be the next speed step. `fib(30)` plus a 3M iteration loop takes about 1.2s on the VM.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).
 - There is no `?` operator; use `let x = try e;` instead (see "try"), or match / `and_then`. `try` works as the initializer of a `let` / `var` (also a destructuring one) or as a statement, never inside a block expression, and the function must return a `Result` or an `Option`.
