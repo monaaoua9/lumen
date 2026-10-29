@@ -433,6 +433,14 @@ test('literal parts in variant patterns', () => {
   assert.deepEqual(diagCodes(E + 'let t = T.A(1); match t { A(1) | B(1, _) => print(1), _ => print(0) }'), ['P001']);
 });
 
+test('explicit type arguments on a struct literal', () => {
+  const B = 'struct Box<T> { v: T } ';
+  assert.deepEqual(errs(B + 'let b = Box<int> { v: 1 }; print(b.v);'), []);
+  assert.deepEqual(errs(B + 'let b = Box<string> { v: 1 }; print(b.v);'), ['E003']);
+  assert.deepEqual(errs(B + 'let b = Box<int, int> { v: 1 }; print(b.v);'), ['E016']);
+  assert.deepEqual(errs('let a = 1; let B = 2; print(a < B);'), []);
+});
+
 test('block expressions', () => {
   assert.deepEqual(errs('let a = { let x = 1; x + 1 }; print(a);'), []);
   assert.deepEqual(errs('let a: int = { 1 }; print(a);'), []);

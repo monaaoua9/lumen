@@ -1,0 +1,13 @@
+struct Stack<T> { items: T[] }
+impl<T> Stack<T> {
+  fn push_item(self, x: T) { push(self.items, x); }
+  fn top(self): T { return self.items[len(self.items) - 1]; }
+}
+let s = Stack<int> { items: [] };
+s.push_item(4);
+print(s.top());
+let t = Stack<(int, string)> { items: [] };
+t.push_item((1, "a"));
+print(t.top());
+let a = 3; let b = 5; let c = 9;
+print(a < b, b > c);

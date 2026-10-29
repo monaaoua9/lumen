@@ -598,6 +598,13 @@ test('literals inside variant patterns agree on every engine', () => {
   }
 });
 
+test('generic struct literals with explicit type arguments agree on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/generic_literal_args.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '4\n(1, "a")\ntrue false\n', engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
