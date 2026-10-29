@@ -21,6 +21,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 commands
   check    static analysis only (types, scopes, lints)
   run      analyze, then execute        [--engine interp|vm|c]  (default: vm)   [-- program args]
+           lumen run -e 'print(1 + 2);'   runs code given on the command line
   disasm   print the bytecode
   test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm] [--only substr]
   emit-c   translate to C              [-o out.c]
@@ -52,6 +53,14 @@ const color = !!process.stdout.isTTY && !process.env.NO_COLOR;
 
 function main(): number | Promise<number> {
   const cmd = args[0];
+  // lumen run -e 'print(1 + 2);' writes the code to a scratch file and runs that
+  const e = args.indexOf('-e');
+  if (e > 0 && args[e + 1] !== undefined && (cmd === 'run' || cmd === 'check')) {
+    const dir = mkdtempSync(join(tmpdir(), 'lumen-e-'));
+    process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
+    writeFileSync(join(dir, 'expr.lum'), args[e + 1] + '\n');
+    args.splice(e, 2, join(dir, 'expr.lum'));
+  }
   if (cmd === 'repl') return repl();
   if (cmd === 'fmt') return fmtFiles();
   if (cmd === 'explain') {
