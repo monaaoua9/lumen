@@ -236,3 +236,29 @@ pub fn chunks<T>(xs: T[], size: int): T[][] {
   if len(cur) > 0 { push(out, cur); }
   return out;
 }
+
+pub fn max_by<T>(xs: T[], key: fn(T): int): T {
+  var best = xs[0];
+  for x in xs {
+    if key(x) > key(best) { best = x; }
+  }
+  return best;
+}
+
+pub fn min_by<T>(xs: T[], key: fn(T): int): T {
+  var best = xs[0];
+  for x in xs {
+    if key(x) < key(best) { best = x; }
+  }
+  return best;
+}
+
+pub fn last<T>(xs: T[]): T {
+  return xs[len(xs) - 1];
+}
+
+pub fn sum_by<T>(xs: T[], key: fn(T): int): int {
+  var total = 0;
+  for x in xs { total += key(x); }
+  return total;
+}
