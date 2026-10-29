@@ -1201,7 +1201,9 @@ class Analyzer {
     const sug = closest(name, names);
     // a local function that calls itself is a plain top-level function (name$rN), see the parser
     const recursive = /\$r\d+$/.test(this.ctx.name);
-    const hint = recursive ? 'a local function that calls itself cannot use the locals around it; pass the value as a parameter' : sug ? `did you mean '${sug}'?` : undefined;
+    const stdName = (name === 'Option' || name === 'Result') && !this.enumTemplates.has(name);
+    const hint = recursive ? 'a local function that calls itself cannot use the locals around it; pass the value as a parameter'
+      : stdName ? 'add: import "std/option.lum";' : sug ? `did you mean '${sug}'?` : undefined;
     this.err('E001', `cannot find variable '${name}'`, span, hint);
   }
 
