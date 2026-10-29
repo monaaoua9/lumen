@@ -1,8 +1,25 @@
-// string-keyed map, kept as two parallel arrays. lookups are linear, which is fine for small tables
-pub struct Map<V> { keys: string[], vals: V[] }
+// string-keyed map. keys and vals keep insertion order, index is a hash table of positions into them
+// (bucket count doubles twice over as it fills, delete rebuilds it because positions shift)
+pub struct Map<V> { keys: string[], vals: V[], index: int[][] }
+
+fn hash(key: string): int {
+  var h = 7;
+  for i in 0..len(key) { h = (h * 31 + byte(key, i)) % 1000003; }
+  return h;
+}
+
+fn rebuild<V>(m: Map<V>, buckets: int) {
+  let idx: int[][] = [];
+  for _b in 0..buckets {
+    let empty: int[] = [];
+    push(idx, empty);
+  }
+  for i, k in m.keys { push(idx[hash(k) % buckets], i); }
+  m.index = idx;
+}
 
 fn slot<V>(m: Map<V>, key: string): int {
-  for i in 0..len(m.keys) {
+  for i in m.index[hash(key) % len(m.index)] {
     if m.keys[i] == key { return i; }
   }
   return -1;
@@ -10,12 +27,14 @@ fn slot<V>(m: Map<V>, key: string): int {
 
 pub fn set<V>(m: Map<V>, key: string, value: V) {
   let at = slot(m, key);
-  if at < 0 {
-    push(m.keys, key);
-    push(m.vals, value);
-  } else {
+  if at >= 0 {
     m.vals[at] = value;
+    return;
   }
+  push(m.keys, key);
+  push(m.vals, value);
+  push(m.index[hash(key) % len(m.index)], len(m.keys) - 1);
+  if len(m.keys) > 2 * len(m.index) { rebuild(m, len(m.index) * 4); }
 }
 
 pub fn get<V>(m: Map<V>, key: string, fallback: V): V {
@@ -32,6 +51,7 @@ pub fn delete<V>(m: Map<V>, key: string): bool {
   if at < 0 { return false; }
   remove(m.keys, at);
   remove(m.vals, at);
+  rebuild(m, len(m.index));
   return true;
 }
 
@@ -59,7 +79,9 @@ pub fn update<V>(m: Map<V>, key: string, start: V, f: fn(V): V) {
 
 // the type comes from the annotation: let m: map.Map<int> = map.new();
 pub fn new<V>(): Map<V> {
-  return Map { keys: [], vals: [] };
+  let m: Map<V> = Map { keys: [], vals: [], index: [] };
+  rebuild(m, 8);
+  return m;
 }
 
 pub fn entries<V>(m: Map<V>): (string, V)[] {
