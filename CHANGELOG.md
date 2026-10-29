@@ -4,6 +4,7 @@ Newest first. The README has the full description of every feature.
 
 ## Language
 
+- Explicit type arguments on generic calls: `zero<int>()`, `map.new<string>()`.
 - std/json readers: `field`, `at`, `size`, `as_str`, `as_num`, `as_int`, `as_bool`.
 - std/regex groups: `(...)`, `(?:...)`, alternation and quantifiers on groups, and `regex.captures`.
 - `let r: int = loop { ... break value; }`: a loop that gives a value (the variable's type must be written).
