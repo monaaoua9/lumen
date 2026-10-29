@@ -705,3 +705,9 @@ test('lint: generic function never instantiated', () => {
   assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x + x + nope; }'), ['W011']);
   assert.deepEqual(diagCodes('fn id<T>(x: T): T { return x; } print(id(1));'), []);
 });
+
+test('try: bails out of Result and Option functions, errors elsewhere', () => {
+  const R = 'enum Result<T> { Ok(T), Err(string) } fn p(s: string): Result<int> { return Result.Ok(len(s)); } ';
+  assert.deepEqual(diagCodes(R + 'fn f(): Result<int> { let x = try p("ab"); return Result.Ok(x); } print(str(f()));'), []);
+  assert.deepEqual(diagCodes(R + 'fn f(): int { let x = try p("ab"); return x; } print(f());'), ['P001']);
+});
