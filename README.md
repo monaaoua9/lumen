@@ -168,6 +168,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/heap.lum`: a priority queue, `heap.new(before)` takes the ordering (`fn(a, b) => a < b` pops the smallest first), then `add`, `take`, `peek` and `size`.
 
+`std/queue.lum`: a FIFO queue, `queue.new()`, `put`, `next` (traps when empty) and `size`.
+
 `std/set.lum`: a set of strings (`new`, `from`, `add`, `has`, `drop`, `size`, `items`, `union`, `intersect`, `minus`), insertion ordered, linear lookups.
 
 `std/random.lum`: a seeded Park-Miller generator, `new(seed)`, `step`, `below(r, n)`, `between(r, lo, hi)` and `shuffle(r, xs)`. The same seed gives the same numbers on every engine.
