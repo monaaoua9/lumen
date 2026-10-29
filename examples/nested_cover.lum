@@ -1,0 +1,23 @@
+enum Opt { Some(int), None }
+enum Box { Wrap(Opt), Empty }
+
+fn show(b: Box): string {
+  return match b {
+    Wrap(Some(n)) => "some {n}",
+    Wrap(None) => "none",
+    Empty => "empty",
+  };
+}
+
+fn count(b: Box): int {
+  match b {
+    Wrap(Some(n)) => { return n; }
+    Wrap(None) => { return 0; }
+    Empty => { return -1; }
+  }
+}
+
+print(show(Box.Wrap(Opt.Some(4))));
+print(show(Box.Wrap(Opt.None)));
+print(show(Box.Empty));
+print(count(Box.Wrap(Opt.Some(9))) + count(Box.Empty));
