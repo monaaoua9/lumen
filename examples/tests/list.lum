@@ -68,3 +68,12 @@ fn test_by_helpers() {
   test.eq_str(list.last(ws), "banana");
   test.eq_int(list.sum_by(ws, fn(w) => len(w)), 13);
 }
+
+struct Row { id: int }
+
+fn test_private_struct_in_generics() {
+  let rows = [Row { id: 3 }, Row { id: 1 }];
+  let ids = list.map(rows, fn(r) => r.id);
+  test.eq_int(list.sum(ids), 4);
+  test.eq_int(len(list.chunks(rows, 1)), 2);
+}
