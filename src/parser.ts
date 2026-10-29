@@ -613,7 +613,8 @@ class Parser {
       this.expect('=>');
       const body = this.block();
       this.eat(',');
-      arms.push({ ...this.rangeArm(scrut, pats, guard), body, span: this.join(first, this.prevSpan()) });
+      const { binds, ...head } = this.rangeArm(scrut, pats, guard);
+      arms.push({ ...head, body: binds ? [...binds, ...body] : body, span: this.join(first, this.prevSpan()) });
     }
     const close = this.expect('}');
     return { k: 'match', span: this.join(kw.span, close.span), scrut, arms, tmp: -1 };
@@ -623,7 +624,7 @@ class Parser {
   ranges = new Map<Pat, { lo: number; hi: number; inclusive: boolean }>();
 
   // `(0, _)` patterns also become guards: one comparison per literal element
-  tuples = new Map<Pat, Pat[]>();
+  tuples = new Map<Pat, (Pat | { bind: string; span: Span })[]>();
 
   pattern(): Pat {
     const p = this.basePattern();
@@ -640,7 +641,7 @@ class Parser {
   }
 
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
-  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr } {
+  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[] } {
     if (!pats.some(p => this.ranges.has(p) || this.tuples.has(p))) return { pats, guard };
     const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
     const sp = pats[0].span;
@@ -656,6 +657,7 @@ class Parser {
     const int = (value: number): Expr => ({ k: 'int', value, span: sp, ty: 'error' });
     const cmp = (op: BinOp, v: number): Expr => ({ k: 'binary', op, l: structuredClone(scrut), r: int(v), span: sp, ty: 'error' });
     const conds: Expr[] = [];
+    const binds: Stmt[] = [];
     const lcmp = (l: Expr, v: Pat & { k: 'lit' }): Expr => {
       const r: Expr = v.ty === 'string' ? { k: 'str', value: v.value as string, span: sp, ty: 'error' }
         : v.ty === 'bool' ? { k: 'bool', value: v.value as boolean, span: sp, ty: 'error' } : int(v.value as number);
@@ -667,9 +669,12 @@ class Parser {
       if (tp) {
         const parts: Expr[] = [];
         tp.forEach((q, i) => {
-          if (q.k !== 'lit') return;
-          const at: Expr = lit ? lit.fields[i]?.value ?? int(0) : { k: 'field', obj: structuredClone(scrut), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
-          parts.push(lcmp(at, q));
+          if (!('bind' in q) && q.k !== 'lit') return;
+          const at: Expr = lit ? structuredClone(lit.fields[i]?.value ?? int(0)) : { k: 'field', obj: structuredClone(scrut), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+          if ('bind' in q) {
+            if (pats.length > 1) this.diags.push({ severity: 'error', code: 'P001', message: 'names in a tuple pattern cannot be combined with |', span: q.span });
+            binds.push({ k: 'let', span: q.span, name: q.bind, nameSpan: q.span, mutable: false, init: at });
+          } else parts.push(lcmp(at, q));
         });
         if (lit && tp.length !== lit.fields.length) this.diags.push({ severity: 'error', code: 'P001', message: `this pattern has ${tp.length} parts, the value has ${lit.fields.length}`, span: p.span });
         conds.push(parts.length ? parts.reduce((a, b) => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' }) as Expr) : { k: 'bool', value: true, span: sp, ty: 'error' });
@@ -681,8 +686,13 @@ class Parser {
       }
     }
     let all = conds.reduce((a, b) => ({ k: 'binary', op: '||', l: a, r: b, span: sp, ty: 'error' }) as Expr);
+    // (a, b) with only names and _ always matches, so it stays a plain wildcard arm
+    if (conds.some(c => c.k === 'bool')) {
+      return { pats: [{ k: 'wild', span: sp }], guard, binds: binds.length ? binds : undefined };
+    }
     if (guard) all = { k: 'binary', op: '&&', l: all, r: guard, span: sp, ty: 'error' };
-    return { pats: [{ k: 'wild', span: sp }], guard: all };
+    if (binds.length && guard) this.diags.push({ severity: 'error', code: 'P001', message: 'a guard cannot use names bound by a tuple pattern, test them with an if in the arm', span: guard.span });
+    return { pats: [{ k: 'wild', span: sp }], guard: all, binds: binds.length ? binds : undefined };
   }
 
   basePattern(): Pat {
@@ -705,10 +715,15 @@ class Parser {
         return { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
       }
       case '(': {
-        const parts: Pat[] = [];
+        const parts: (Pat | { bind: string; span: Span })[] = [];
         do {
+          if (this.cur.kind === 'ident' && this.cur.text !== '_' && this.peek().kind !== '(') {
+            const b = this.vn(this.next());
+            parts.push({ bind: b.text, span: b.span });
+            continue;
+          }
           const q = this.basePattern();
-          if (q.k === 'variant') this.fail('tuple patterns hold literals and _', q.span);
+          if (q.k === 'variant') this.fail('tuple patterns hold literals, names and _', q.span);
           parts.push(q);
         } while (this.eat(',') && !this.at(')'));
         const close = this.expect(')');
@@ -1181,7 +1196,8 @@ class Parser {
           this.expect('=>');
           const braces = this.at('{');
           const value = braces ? this.blockExpr(this.next()) : this.allowStruct(() => this.expr());
-          arms.push({ ...this.rangeArm(scrut, pats, guard), value, span: this.join(first, value.span) });
+          const { binds, ...head } = this.rangeArm(scrut, pats, guard);
+          arms.push({ ...head, value: binds ? { k: 'blockx', body: binds, value, span: value.span, ty: 'error' } : value, span: this.join(first, value.span) });
           if (!this.eat(',') && !braces) break;
         }
         const close = this.expect('}');
