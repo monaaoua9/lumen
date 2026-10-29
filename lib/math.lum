@@ -85,3 +85,18 @@ pub fn fib(n: int): int {
   for _i in 0..n { a, b = b, a + b; }
   return a;
 }
+
+pub fn lerp(a: float, b: float, t: float): float {
+  return a + (b - a) * t;
+}
+
+pub fn hypot(x: float, y: float): float {
+  return sqrt(x * x + y * y);
+}
+
+// float base, whole exponent; negative exponents divide
+pub fn fpow(base: float, exp: int): float {
+  var r = 1.0;
+  for _i in 0..abs(exp) { r *= base; }
+  return if exp < 0 { 1.0 / r } else { r };
+}
