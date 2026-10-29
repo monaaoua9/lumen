@@ -348,6 +348,19 @@ test('std/text.lum helpers agree on every engine', () => {
   assert.equal(outs[0].split('\n')[0], '[000042]');
 });
 
+test('runtime errors on the vm list the calling functions', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-trace-'));
+  try {
+    writeFileSync(join(dir, 't.lum'), 'fn inner(xs: int[]): int { return xs[5]; }\nfn outer(xs: int[]): int { return inner(xs) + 1; }\nprint(outer([1]));\n');
+    const r = cli('run', join(dir, 't.lum'));
+    assert.equal(r.status, 1);
+    assert.ok(r.stderr.includes('index out of bounds'), r.stderr);
+    assert.ok(/in outer \(.*t\.lum:2:/.test(r.stderr), r.stderr);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test('lumen test runs each test_ function and reports failures', () => {
   const good = cli('test', 'examples/tests/arith.lum');
   assert.equal(good.status, 0, good.stdout + good.stderr);
