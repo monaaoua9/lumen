@@ -335,6 +335,8 @@ class Parser {
 
   // `outer: for ...` loops that a labelled break/continue targets, see loopStmt
   loops: LoopInfo[] = [];
+  // set while the body of `let x: T = loop { ... }` is parsed: `break v;` pushes v on this one-element array
+  valued: { tmp: string; depth: number } | null = null;
 
   loopStart(k: number): boolean {
     const t = this.toks[this.pos + k];
@@ -448,6 +450,22 @@ class Parser {
       case 'break':
       case 'continue': {
         this.next();
+        const isLabel = this.cur.kind === 'ident' && this.peek().kind === ';' && this.loops.some(l => l.label === this.cur.text);
+        if (t.kind === 'break' && !this.at(';') && !isLabel) {
+          const v = this.valued;
+          if (!v || this.loops.length !== v.depth) {
+            this.diags.push({ severity: 'error', code: 'P001', message: "'break' with a value only works directly inside `let x: T = loop { ... }`", span: t.span });
+          }
+          const value = this.expr();
+          this.expect(';');
+          if (!v || this.loops.length !== v.depth) return { k: 'break', span: t.span };
+          const sp = this.join(t.span, this.prevSpan());
+          const push: Stmt = { k: 'expr', span: sp, e: { k: 'call', name: 'push', nameSpan: sp, args: [{ k: 'var', name: v.tmp, span: sp, ty: 'error' }, value], span: sp, ty: 'error' } };
+          return { k: 'block', span: sp, body: [push, { k: 'break', span: t.span }] };
+        }
+        if (t.kind === 'break' && this.at(';') && this.valued && this.loops.length === this.valued.depth) {
+          this.diags.push({ severity: 'error', code: 'P001', message: "this loop gives a value, so 'break' needs one", span: t.span });
+        }
         if (this.cur.kind === 'ident') {
           const lab = this.next();
           this.expect(';');
@@ -1411,6 +1429,13 @@ class Parser {
       annot = this.type();
     }
     this.expect('=');
+    if (this.cur.kind === 'ident' && this.cur.text === 'loop' && this.peek().kind === '{') {
+      if (!annot) {
+        this.diags.push({ severity: 'error', code: 'P001', message: 'a loop that gives a value needs the type of the variable', span: this.cur.span, hint: 'write `let x: int = loop { ... break 1; }`' });
+      } else {
+        return this.valuedLoop(kw, name, annot, annotSpan);
+      }
+    }
     if (this.cur.kind === 'ident' && this.cur.text === 'try' && ![';', '=', '.', ',', ')'].includes(this.peek().kind)) {
       return this.tryLet(kw, name, annot, annotSpan);
     }
@@ -1420,6 +1445,26 @@ class Parser {
       k: 'let', span: this.join(kw.span, this.prevSpan()), name: name.text, nameSpan: name.span,
       mutable: kw.kind === 'var', annot, annotSpan, init,
     };
+  }
+
+  // let x: T = loop { ... break v; ... }  becomes  let tmp: T[] = []; loop { ... push(tmp, v); break; ... }  let x: T = tmp[0];
+  valuedLoop(kw: Token, name: Token, annot: Type, annotSpan: Span | undefined): Stmt {
+    const id = this.forId++;
+    const tmp = `_$lv${id}`;
+    const outer = this.valued;
+    this.valued = { tmp, depth: this.loops.length + 1 };
+    const stray = this.queue.splice(0);
+    const s = this.statement();
+    this.valued = outer;
+    const after = this.queue.splice(0);
+    this.eat(';');
+    const sp = this.join(kw.span, this.prevSpan());
+    const arr: Expr = { k: 'var', name: tmp, span: sp, ty: 'error' };
+    this.queue.push(...stray, s, ...after, {
+      k: 'let', span: sp, name: name.text, nameSpan: name.span, mutable: kw.kind === 'var', annot, annotSpan,
+      init: { k: 'index', arr, idx: { k: 'int', value: 0, span: sp, ty: 'error' }, span: sp, ty: 'error' },
+    });
+    return { k: 'let', span: sp, name: tmp, nameSpan: sp, mutable: false, annot: arrayOf(annot as Elem), annotSpan, init: { k: 'array', elems: [], span: sp, ty: 'error' }, quiet: true };
   }
 
   // let v = try e;  continues with v only when e is Ok (or Some); otherwise the function returns the Err (or None):
