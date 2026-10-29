@@ -1347,6 +1347,19 @@ class Parser {
     return this.postfix();
   }
 
+  typeArgsBeforeBrace(): Type[] | null {
+    try {
+      this.expect('<');
+      const out: Type[] = [this.type()];
+      while (this.eat(',')) out.push(this.type());
+      this.expect('>');
+      return this.at('{') ? out : null;
+    } catch (err) {
+      if (err instanceof Bail) return null;
+      throw err;
+    }
+  }
+
   structLit(nameTok: Token): Expr {
     this.expect('{');
     const fields: FieldInit[] = [];
@@ -1519,6 +1532,13 @@ class Parser {
       }
     }
     if (this.at('{') && !this.noStruct) return this.structLit(t);
+    if (this.at('<') && !this.noStruct && /^[A-Z]/.test(t.text)) {
+      // `Stack<int> { items: [] }`; anything that does not end in `{` was a comparison after all
+      const save = [this.pos, this.diags.length];
+      const typeArgs = this.typeArgsBeforeBrace();
+      if (typeArgs) return { ...this.structLit(t), typeArgs } as Expr;
+      [this.pos, this.diags.length] = save;
+    }
     if (!this.at('(')) return { k: 'var', name: t.text, span: t.span, ty: 'error' };
     this.next();
     const args: Expr[] = [];

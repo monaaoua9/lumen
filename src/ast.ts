@@ -51,7 +51,7 @@ export type Expr =
   | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })
   | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[]; argNames?: (string | undefined)[] })
   | (Base & { k: 'field'; obj: Expr; name: string; nameSpan: Span; idx: number })
-  | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[]; base?: Expr })
+  | (Base & { k: 'structlit'; name: string; nameSpan: Span; fields: FieldInit[]; base?: Expr; typeArgs?: Type[] })
   | (Base & { k: 'call'; name: string; nameSpan: Span; args: Expr[]; argNames?: (string | undefined)[]; fn?: FnSym; builtin?: BuiltinName; callee?: Expr });
 
 export interface FieldInit {

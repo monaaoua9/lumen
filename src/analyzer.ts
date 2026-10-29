@@ -1303,8 +1303,15 @@ class Analyzer {
         if (tmpl) {
           const binds = new Map<string, Type>();
           const params = new Set(tmpl.typeParams!);
-          const info = want && isStruct(want) ? this.structInst.get(structName(want)) : undefined;
-          if (info && info.tmpl === tmpl.name) tmpl.typeParams!.forEach((p, i) => binds.set(p, info.args[i]));
+          let info = want && isStruct(want) ? this.structInst.get(structName(want)) : undefined;
+          if (e.typeArgs) {
+            if (e.typeArgs.length !== tmpl.typeParams!.length) {
+              this.err('E016', `struct '${e.name}' takes ${tmpl.typeParams!.length} type argument${tmpl.typeParams!.length === 1 ? '' : 's'}, but ${e.typeArgs.length} ${e.typeArgs.length === 1 ? 'was' : 'were'} given`, e.nameSpan);
+              return 'error';
+            }
+            info = { tmpl: tmpl.name, args: e.typeArgs.map(a => this.canon(a, e.nameSpan) as Type) } as typeof info;
+          }
+          if (info && info.tmpl === tmpl.name) tmpl.typeParams!.forEach((p, i) => binds.set(p, info!.args[i]));
           for (const f of e.fields) {
             const fd = tmpl.fields.find(d => d.name === f.name);
             if (!fd) continue;
