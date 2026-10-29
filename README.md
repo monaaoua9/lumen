@@ -163,6 +163,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/format.lum`: `commas(n)` (`1,234,567`), `table(rows)` (columns padded to the widest cell by characters, no trailing spaces) and `percent(part, whole)`.
 
+`std/date.lum`: calendar arithmetic on plain ints, `to_days(y, m, d)` / `from_days(n)` (days since 1970-01-01, a `(y, m, d)` tuple), `add_days`, `weekday` (0 is monday), `is_leap`, `days_in_month` and `iso(y, m, d)`.
+
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
