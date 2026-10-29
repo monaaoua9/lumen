@@ -5,6 +5,7 @@ Newest first. The README has the full description of every feature.
 ## Language
 
 - `lumen lsp`: a language server over stdio with live diagnostics, hover, go to definition and formatting.
+- `match (a, b) { (Red, true) => ... }`: variants (with bindings, literals, nesting) may appear as the parts of a tuple pattern. A capitalised name inside a tuple pattern used to bind silently; inside a variant's payload tuple it is now a P001 error.
 - Bitwise operators on ints: `&`, `|`, `^`, `<<`, `>>`, `~`, on every engine and in `-O` folding.
 - Names may be written with any letters, Arabic included (`struct طالب { اسم: string }`).
 - Arms like `Wrap(Some(n))` and `Wrap(None)` together count as covering `Wrap`, so the match no longer needs a `_` arm (plain bindings only, one nested variant per arm).
