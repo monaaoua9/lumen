@@ -11,6 +11,7 @@ Newest first. The README has the full description of every feature.
 - `let (a, b) = try e;` works too: the destructuring happens after the unwrap.
 - std/math: `lerp`, `hypot`, `fpow`; std/text: `truncate`, `title`.
 - std/list: `product`, `rotate`, `count_by`.
+- New std/format: `commas`, `table`, `percent`.
 - A generic function nobody calls still gets its undeclared names reported (E001), the rest of its body is checked once it is called.
 - `try` inside a block expression is a P001 error instead of silently capturing the statements after it.
 - Runtime errors in the C backend print the same call trace as the interpreter and the VM.
