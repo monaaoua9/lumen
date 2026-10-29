@@ -236,7 +236,12 @@ export function run(m: Module, io: IO) {
       }
     }
   } catch (e) {
-    if (e instanceof RuntimeError && !e.span) e.span = proto.spans[pc - 1];
+    if (e instanceof RuntimeError) {
+      if (!e.span) e.span = proto.spans[pc - 1];
+      // fPc[d] is where frame d resumes, so the call that is still running sits just before it
+      e.trace = [];
+      for (let d = depth - 1; d >= 0; d--) e.trace.push({ fn: fProto[d].name, span: fProto[d].spans[fPc[d] - 1] });
+    }
     throw e;
   }
 }
