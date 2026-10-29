@@ -161,6 +161,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/list.lum` also has `product`, `rotate(xs, k)` and `count_by(xs, key)` (a `Map<int>`).
 
+`std/format.lum`: `commas(n)` (`1,234,567`), `table(rows)` (columns padded to the widest cell by characters, no trailing spaces) and `percent(part, whole)`.
+
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
