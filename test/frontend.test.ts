@@ -806,3 +806,10 @@ test('bitwise operators: int only, precedence like Rust, >> still closes generic
   assert.deepEqual(diagCodes('print(1 | 2 ^ 3 & 4 << 1 + 1);'), []);
   assert.deepEqual(diagCodes('struct B<T> { v: T } let x: B<B<int>> = B<B<int>> { v: B<int> { v: 1 } }; print(x.v.v >> 0);'), []);
 });
+
+test('a capitalised name in a tuple pattern is an error instead of a silent catch-all', () => {
+  const src = 'enum C { Red, Green } fn f(a: int, c: C): int { return match (a, c) { (0, Red) => 1, (_, _) => 2 }; }';
+  assert.deepEqual(diagCodes(src).filter(c => c === 'P001').length > 0, true);
+  const ok = 'fn f(a: int, b: int): int { return match (a, b) { (0, n) => n, (_, _) => 2 }; }';
+  assert.deepEqual(diagCodes(ok).filter(c => c.startsWith('E') || c.startsWith('P')), []);
+});
