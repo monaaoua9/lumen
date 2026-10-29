@@ -31,7 +31,7 @@ Newest first. The README has the full description of every feature.
 - New std/date: calendar arithmetic (`to_days`, `from_days`, `weekday`, `add_days`, `iso`).
 - New std/encoding: `to_hex`, `from_hex`, `hex_encode`, `base64_encode`.
 - A generic function nobody calls still gets its undeclared names reported (E001), the rest of its body is checked once it is called.
-- `try` inside a block expression is a P001 error instead of silently capturing the statements after it.
+- `try` works directly inside a block expression: `let v = { let h = try half(n); h + 1 };` leaves the function with the `Err` / `None` like anywhere else.
 - Runtime errors in the C backend print the same call trace as the interpreter and the VM.
 - Generic enums (`option.Result<Task>`) can carry a struct that the program itself declares, also when the struct is not `pub`.
 - Same for generic structs: `map.Map<Item>` with a private `Item` no longer reports E027.
