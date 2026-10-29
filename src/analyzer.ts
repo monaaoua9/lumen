@@ -1916,7 +1916,7 @@ class Analyzer {
     if (want && want !== 'error' && names.some(n => !binds.has(n))) unify(gen.ret, want, new Set(names), binds, this.structInst);
     const missing = names.find(n => !binds.has(n));
     if (missing) {
-      this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, 'no argument mentions it; annotating the result type (let x: T<int> = ...) is enough');
+      this.err('E024', `cannot infer type parameter '${missing}' of '${e.name}'`, e.nameSpan, `no argument mentions it; annotate the result type, e.g. let x: ${showTypes(gen.ret).replace(new RegExp(`(?<![A-Za-z0-9_])${missing}(?![A-Za-z0-9_])`, 'g'), 'int')} = ...`);
       return 'error';
     }
 
