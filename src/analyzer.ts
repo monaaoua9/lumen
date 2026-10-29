@@ -1395,7 +1395,12 @@ class Analyzer {
         if (t1 !== 'error' && t1 !== 'int') this.mismatch('int', t1, e.args[1].span, `in argument 2 of 'slice'`);
         if (t2 !== 'error' && t2 !== 'int') this.mismatch('int', t2, e.args[2].span, `in argument 3 of 'slice'`);
         if (t0 === 'error') return 'error';
-        if (!isArray(t0)) { bad('expects an array'); return 'error'; }
+        // on a string it is substr, so s[a..b] works for both
+        if (t0 === 'string') {
+          e.builtin = 'substr';
+          return 'string';
+        }
+        if (!isArray(t0)) { bad('expects an array or a string'); return 'error'; }
         return t0;
       case 'exit':
         if (t0 !== 'error' && t0 !== 'int') this.mismatch('int', t0, e.args[0].span, `in argument 1 of 'exit'`);

@@ -455,7 +455,8 @@ test('for with an index variable', () => {
 
 test('array slice syntax', () => {
   assert.deepEqual(errs('let a = [1, 2, 3]; let b: int[] = a[0..2]; print(b);'), []);
-  assert.deepEqual(errs('print("abc"[0..1]);'), ['E003']);
+  assert.deepEqual(errs('let s: string = "abc"[0..1]; print(s);'), []);
+  assert.deepEqual(errs('print(slice(1, 0, 1));'), ['E003']);
 });
 
 test('if let', () => {
