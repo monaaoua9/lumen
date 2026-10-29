@@ -1,7 +1,7 @@
 import { RuntimeError } from './diagnostics.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
-import { MAX_DEPTH, bytesOf, byteLen, programArgs, readFileOf, writeFileOf, byteAt, parseFloatOr, parseIntOr, lowerOf, repeatOf, replaceOf, upperOf, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
+import { BIT_OPS, MAX_DEPTH, bitOp, bytesOf, byteLen, programArgs, readFileOf, writeFileOf, byteAt, parseFloatOr, parseIntOr, lowerOf, repeatOf, replaceOf, upperOf, sliceOf, sortArr, exitWith, readLine, atEof, checkIndex, chrOf, cmpStr, checkInt, floatToInt, format, intDiv, intMod, registerTypes, splitOf, sqrtOf, substrOf, trimOf } from './runtime.ts';
 import type { IO, Value } from './runtime.ts';
 
 const STACK_SIZE = 1 << 16;
@@ -59,6 +59,7 @@ export function run(m: Module, io: IO) {
         case Op.SUB: { sp--; const r = num(sp - 1) - num(sp); if (!Number.isSafeInteger(r)) checkInt(r); stack[sp - 1] = r; break; }
         case Op.MUL: { sp--; const r = num(sp - 1) * num(sp); if (!Number.isSafeInteger(r)) checkInt(r); stack[sp - 1] = r; break; }
         case Op.DIV: sp--; stack[sp - 1] = intDiv(num(sp - 1), num(sp)); break;
+        case Op.BIT: sp--; stack[sp - 1] = bitOp(BIT_OPS[code[pc++]], num(sp - 1), num(sp)); break;
         case Op.MOD: sp--; stack[sp - 1] = intMod(num(sp - 1), num(sp)); break;
         case Op.NEG: stack[sp - 1] = -num(sp - 1); break;
 

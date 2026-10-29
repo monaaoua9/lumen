@@ -3,6 +3,7 @@ import type { Expr, Pat, Program, Stmt } from './ast.ts';
 import { Op } from './bytecode.ts';
 import type { Module, Proto } from './bytecode.ts';
 import type { Type } from './types.ts';
+import { BIT_OPS } from './runtime.ts';
 import type { Value } from './runtime.ts';
 
 const strOrder = (e: Extract<Expr, { k: 'binary' }>) => e.l.ty === 'string' && ['<', '<=', '>', '>='].includes(e.op);
@@ -292,7 +293,8 @@ class FnCompiler {
           this.emit(Op.SCMP);
           this.konst(0);
         }
-        this.emit(this.binOp(e));
+        if (BIT_OPS.includes(e.op)) this.emit(Op.BIT, BIT_OPS.indexOf(e.op));
+        else this.emit(this.binOp(e));
         return;
       }
 
