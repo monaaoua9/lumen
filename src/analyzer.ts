@@ -1293,9 +1293,11 @@ class Analyzer {
         this.negativeIndex(e.idx);
         if (at === 'error') return 'error';
         if (at === 'string') {
-          // s[i] is the one-character string substr(s, i, 1)
-          const one: Expr = { k: 'int', value: 1, span: e.span, ty: 'int' };
-          Object.assign(e, { k: 'call', name: 'substr', nameSpan: e.span, args: [e.arr, e.idx, one], builtin: 'substr' });
+          // s[i] is the character that starts at byte i: substr(s, i, its width in bytes)
+          const width = this.charWidth(e.arr, e.idx, e.span);
+          const n: Expr = width ?? { k: 'int', value: 1, span: e.span, ty: 'int' };
+          if (width) this.expr(width);
+          Object.assign(e, { k: 'call', name: 'substr', nameSpan: e.span, args: [e.arr, e.idx, n], builtin: 'substr' });
           return 'string';
         }
         if (!isArray(at)) {
@@ -1697,6 +1699,30 @@ class Analyzer {
     }
   }
 
+  // UTF-8 width of the character at byte i, read off its first byte. null when s or i is not simple
+  // enough to be written twice
+  charWidth(arr: Expr, idx: Expr, span: Span): Expr | null {
+    const again = (x: Expr): Expr | null => {
+      if (x.k === 'var') return { k: 'var', name: x.name, span, ty: 'error' };
+      if (x.k === 'int') return { k: 'int', value: x.value, span, ty: 'error' };
+      if (x.k === 'field') {
+        const o = again(x.obj);
+        return o && { k: 'field', obj: o, name: x.name, nameSpan: span, idx: -1, span, ty: 'error' };
+      }
+      return null;
+    };
+    const a = again(arr);
+    const i = again(idx);
+    if (!a || !i) return null;
+    const lead = (): Expr => ({ k: 'call', name: 'byte', nameSpan: span, args: [structuredClone(a), structuredClone(i)], span, ty: 'error' });
+    const below = (limit: number, yes: Expr, no: Expr): Expr => ({
+      k: 'matchx', scrut: { k: 'binary', op: '<', l: lead(), r: { k: 'int', value: limit, span, ty: 'error' }, span, ty: 'error' }, tmp: -1, span, ty: 'error',
+      arms: [{ pats: [{ k: 'lit', value: true, span, ty: 'bool' }], value: yes, span }, { pats: [{ k: 'wild', span }], value: no, span }],
+    });
+    const n = (value: number): Expr => ({ k: 'int', value, span, ty: 'error' });
+    return below(128, n(1), below(224, n(2), below(240, n(3), n(4))));
+  }
+
   // a generic function whose first parameter accepts a value of type `ot`, for the xs.map(f) form
   takesFirst(name: string, ot: Type): boolean {
     const gen = this.generics.get(name);
@@ -1838,6 +1864,17 @@ class Analyzer {
   }
 
   call(e: Extract<Expr, { k: 'call' }>, want?: Type): Type {
+    // the step of a for loop: strings advance by whole characters, arrays by one
+    if (e.name === '$step') {
+      const over = this.expr(e.args[0]);
+      const width = over === 'string' ? this.charWidth(e.args[0], e.args[1], e.span) : null;
+      if (width) {
+        Object.assign(e, width);
+        return this.expr(e);
+      }
+      Object.assign(e, { k: 'int', value: 1 });
+      return 'int';
+    }
     if (e.argNames && (isBuiltin(e.name) || (this.generics.has(e.name) && !!this.scope.lookup(e.name)) || e.callee || !(this.fns.has(e.name) || this.generics.has(e.name)) || this.scope.lookup(e.name))) {
       this.err('E004', 'named arguments only work when calling a plain function', e.span);
       e.argNames = undefined;
