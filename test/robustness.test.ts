@@ -658,12 +658,13 @@ test('chr builds any code point as UTF-8 on every engine', () => {
   }
 });
 
-test('absurdly deep nesting is a diagnostic, not a crash', () => {
-  const code = 'print(' + '('.repeat(6000) + '1' + ')'.repeat(6000) + ');';
-  const r = cli('check', '-e', code);
-  assert.equal(r.status, 1);
-  assert.ok((r.stdout + r.stderr).includes('nests'));
-  assert.ok(!(r.stderr).includes('RangeError'));
+test('very long and very deep expressions still compile', () => {
+  const sum = 'print(' + Array(5000).fill('1').join(' + ') + ');';
+  for (const engine of ['vm', 'interp']) {
+    assert.equal(cli('run', '-e', sum, '--engine', engine).stdout.trim(), '5000', engine);
+  }
+  const deep = 'print(' + '('.repeat(6000) + '1' + ')'.repeat(6000) + ');';
+  assert.equal(cli('run', '-e', deep).stdout.trim(), '1');
 });
 
 test('guards on tuple patterns that bind names agree on every engine', () => {
