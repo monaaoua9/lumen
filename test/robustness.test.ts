@@ -644,3 +644,10 @@ test('unused pub functions of an imported file are not warned about', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('try inside a lambda with a Result return type agrees on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/try_lambda.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '42\nbad x\n', engine);
+  }
+});
