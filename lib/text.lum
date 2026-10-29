@@ -69,7 +69,9 @@ pub fn lines(s: string): string[] {
 
 pub fn capitalize(s: string): string {
   if len(s) == 0 { return s; }
-  return upper(substr(s, 0, 1)) + substr(s, 1, len(s) - 1);
+  // the first character may be several bytes
+  let first = s[0];
+  return upper(first) + substr(s, len(first), len(s) - len(first));
 }
 
 pub fn center(s: string, width: int, fill: string): string {
