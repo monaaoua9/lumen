@@ -76,3 +76,12 @@ fn test_utf8() {
   test.eq_bool(regex.is_match("ب", "أ"), false);
   test.eq_bool(regex.is_match("ab", "aأ"), false);
 }
+
+fn test_pieces() {
+  let p = regex.pieces("[,;]\\s*","a, b;c,   d");
+  test.eq_int(len(p), 4);
+  test.eq_str(p[2], "c");
+  test.eq_str(p[3], "d");
+  test.eq_int(len(regex.pieces(",", "none")), 1);
+  test.eq_int(len(regex.pieces("x*", "abc")), 1);
+}
