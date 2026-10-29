@@ -315,3 +315,20 @@ test('vm: comparisons feeding branches are fused', () => {
   assert.ok(asm.includes('JFLT') && asm.includes('JFEQ'), asm);
   assert.ok(!asm.includes('JMPF'), asm);
 });
+
+test('std examples survive a collection on every allocation', { skip: cc ? false : 'no C compiler on PATH' }, () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-gcs-'));
+  const std = new URL('../examples/std/', import.meta.url);
+  try {
+    for (const f of readdirSync(std).filter(x => x.endsWith('.lum'))) {
+      const exe = join(dir, f + '.exe');
+      const b = spawnSync(process.execPath, ['src/cli.ts', 'build', new URL(f, std).pathname.replace(/^\/(\w:)/, '$1'), '-o', exe], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      assert.equal(b.status, 0, `${f}: ${b.stderr}`);
+      const plain = spawnSync(exe, [], { encoding: 'utf8', input: '' });
+      const stress = spawnSync(exe, [], { encoding: 'utf8', input: '', env: { ...process.env, LM_GC_STRESS: '1' } });
+      assert.equal(stress.stdout, plain.stdout, f);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
