@@ -1,4 +1,6 @@
 // higher-order helpers over arrays. none of them change their input
+import "std/map.lum"
+
 pub fn map<T, U>(xs: T[], f: fn(T): U): U[] {
   let out: U[] = [];
   for x in xs { push(out, f(x)); }
@@ -261,4 +263,29 @@ pub fn sum_by<T>(xs: T[], key: fn(T): int): int {
   var total = 0;
   for x in xs { total += key(x); }
   return total;
+}
+
+// every run of `size` neighbours, so [1, 2, 3] with 2 gives [1, 2] and [2, 3]
+pub fn windows<T>(xs: T[], size: int): T[][] {
+  let out: T[][] = [];
+  var at = 0;
+  while at + size <= len(xs) {
+    push(out, xs[at..at + size]);
+    at += 1;
+  }
+  return out;
+}
+
+// the elements whose key is the same, in first-seen order of the keys
+pub fn group_by<T>(xs: T[], key: fn(T): string): map.Map<T[]> {
+  let out: map.Map<T[]> = map.new();
+  for x in xs {
+    let k = key(x);
+    if !map.has(out, k) {
+      let fresh: T[] = [];
+      map.set(out, k, fresh);
+    }
+    push(map.get(out, k, []), x);
+  }
+  return out;
 }
