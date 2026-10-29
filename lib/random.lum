@@ -1,0 +1,33 @@
+// Park-Miller generator, small enough that state * 48271 stays inside the int range.
+// same seed, same numbers on every engine
+pub struct Rng { state: int }
+
+pub fn new(seed: int): Rng {
+  let s = seed % 2147483647;
+  return Rng { state: if s <= 0 { s + 2147483646 } else { s } };
+}
+
+pub fn step(r: Rng): int {
+  r.state = r.state * 48271 % 2147483647;
+  return r.state;
+}
+
+// 0 .. n-1
+pub fn below(r: Rng, n: int): int {
+  return step(r) % n;
+}
+
+pub fn between(r: Rng, lo: int, hi: int): int {
+  return lo + below(r, hi - lo + 1);
+}
+
+pub fn shuffle<T>(r: Rng, xs: T[]) {
+  var i = len(xs) - 1;
+  while i > 0 {
+    let j = below(r, i + 1);
+    let tmp = xs[i];
+    xs[i] = xs[j];
+    xs[j] = tmp;
+    i -= 1;
+  }
+}

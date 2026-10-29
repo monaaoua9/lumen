@@ -153,6 +153,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/list.lum`: `map`, `filter`, `fold`, `any`, `all`, `count`, `find_index`, `take`, `drop`, `zip_with`, `sort_by` (stable, takes a `before(a, b)` function), `flatten`, `flat_map`, `unique`, `max_of`, `min_of` over any element type (they take function values, so `list.map(xs, fn(x) => x * 2)`), plus `range(lo, hi)` and `sum`.
 
+`std/random.lum`: a seeded Park-Miller generator, `new(seed)`, `step`, `below(r, n)`, `between(r, lo, hi)` and `shuffle(r, xs)`. The same seed gives the same numbers on every engine.
+
 `std/bits.lum`: `band`, `bor`, `bxor`, `shl`, `shr`, `popcount` for non-negative ints (plain arithmetic, the language has no bitwise operators).
 
 `std/test.lum`: `eq_int`, `eq_str`, `eq_float(got, want, eps)` and `is_true` for `lumen test`; a failing one reports `expected X, got Y`.

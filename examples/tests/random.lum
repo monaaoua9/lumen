@@ -1,0 +1,25 @@
+import "std/test.lum"
+import "std/random.lum"
+import "std/list.lum"
+
+fn test_deterministic() {
+  let a = random.new(7);
+  let b = random.new(7);
+  for _i in 0..20 { test.eq_int(random.step(a), random.step(b)); }
+}
+
+fn test_range() {
+  let r = random.new(1);
+  for _i in 0..500 {
+    let v = random.between(r, 3, 6);
+    test.is_true(v >= 3 && v <= 6, "between stays in range");
+  }
+}
+
+fn test_shuffle_keeps_items() {
+  let r = random.new(99);
+  let xs = list.range(0, 30);
+  random.shuffle(r, xs);
+  test.eq_int(list.sum(xs), 435);
+  test.eq_int(len(list.unique(xs)), 30);
+}

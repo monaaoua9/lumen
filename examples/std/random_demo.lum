@@ -1,0 +1,12 @@
+import "std/random.lum"
+
+let r = random.new(42);
+print(random.step(r));
+print(random.below(r, 100));
+print(random.between(r, 5, 10));
+let deck = [1, 2, 3, 4, 5, 6];
+random.shuffle(r, deck);
+print(deck);
+var sum = 0;
+for _i in 0..1000 { sum += random.below(r, 6); }
+print(sum);
