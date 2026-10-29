@@ -82,6 +82,13 @@ test('globals, locals and recursion', () => {
   assert.equal(allEngines(src), '3628800\n10\n');
 });
 
+test('scanning a long string stays linear', () => {
+  const src = 'let s = repeat("ab", 40000); var n = 0; var i = 0; while i < len(s) { if s[i] == "a" { n += 1; } i += 1; } for ch in s { if ch == "b" { n += 1; } } print(n);';
+  const t = Date.now();
+  assert.equal(runSrc(src, 'vm'), '80000\n');
+  assert.ok(Date.now() - t < 15000, `took ${Date.now() - t}ms`);
+});
+
 test('runtime errors agree across engines', () => {
   assert.equal(allEngines('fn z(): int { return 0; } print(1 / z());'), 'ERR:division by zero');
   assert.equal(allEngines('fn z(): int { return 0; } print(1 % z());'), 'ERR:modulo by zero');
