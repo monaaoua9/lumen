@@ -60,3 +60,11 @@ fn test_slicing_helpers() {
   test.eq_int(len(cs[2]), 1);
   test.eq_int(cs[1][1], 10);
 }
+
+fn test_by_helpers() {
+  let ws = ["pear", "fig", "banana"];
+  test.eq_str(list.max_by(ws, fn(w) => len(w)), "banana");
+  test.eq_str(list.min_by(ws, fn(w) => len(w)), "fig");
+  test.eq_str(list.last(ws), "banana");
+  test.eq_int(list.sum_by(ws, fn(w) => len(w)), 13);
+}
