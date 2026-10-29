@@ -26,5 +26,5 @@ Newest first. The README has the full description of every feature.
 
 ## Standard library
 
-- New: `std/test`, `std/bits`, `std/random`, `std/set`.
+- New: `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
 - Extended: `std/list` (sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (lines, chars, center, fixed, ...), `std/map` (keys, values, update), `std/option` (map_option, find_by, first, ...), `std/math` (isqrt, factorial, ...).

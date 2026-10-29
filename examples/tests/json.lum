@@ -1,0 +1,34 @@
+import "std/test.lum"
+import "std/json.lum"
+
+fn round_trip(text: string): string {
+  let r = json.parse(text);
+  return if r.ok { json.stringify(r.json) } else { "invalid" };
+}
+
+fn test_scalars() {
+  test.eq_str(round_trip("null"), "null");
+  test.eq_str(round_trip("  true "), "true");
+  test.eq_str(round_trip("\"hi\""), "\"hi\"");
+  test.eq_str(round_trip("-2.5"), "-2.5");
+}
+
+fn test_containers() {
+  test.eq_str(round_trip("[]"), "[]");
+  test.eq_str(round_trip("[1, [2, 3], \"x\"]"), "[1.0,[2.0,3.0],\"x\"]");
+  test.eq_str(round_trip("\{\"a\": 1, \"b\": [true]\}"), "\{\"a\":1.0,\"b\":[true]\}");
+  test.eq_str(round_trip("\{\}"), "\{\}");
+}
+
+fn test_escapes() {
+  test.eq_str(round_trip("\"a\\nb\""), "\"a\\nb\"");
+  test.eq_str(json.quote("say \"x\""), "\"say \\\"x\\\"\"");
+}
+
+fn test_rejects_bad_input() {
+  test.eq_str(round_trip("[1,"), "invalid");
+  test.eq_str(round_trip("\{\"a\" 1\}"), "invalid");
+  test.eq_str(round_trip("nul"), "invalid");
+  test.eq_str(round_trip("1 2"), "invalid");
+  test.eq_str(round_trip(""), "invalid");
+}

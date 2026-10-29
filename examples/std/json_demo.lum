@@ -1,0 +1,26 @@
+import "std/json.lum"
+
+let r = json.parse("\{\"name\": \"lumen\", \"tags\": [1, 2.5, true, null], \"nested\": \{\"a\": \"x\ny\"\}\}");
+print(r.ok);
+print(json.stringify(r.json));
+print(json.parse("[1, 2").ok);
+print(json.parse("").ok);
+print(json.quote("he said \"hi\""));
+
+fn depth(j: json.Json): int {
+  return match j {
+    Arr(items) => 1 + max_depth(items),
+    Obj(_, vals) => 1 + max_depth(vals),
+    _ => 0,
+  };
+}
+
+fn max_depth(items: json.Json[]): int {
+  var best = 0;
+  for x in items { best = max(best, depth(x)); }
+  return best;
+}
+
+print(depth(r.json));
+let again = json.parse(json.stringify(r.json));
+print(again.ok && json.stringify(again.json) == json.stringify(r.json));
