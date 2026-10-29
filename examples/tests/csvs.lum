@@ -1,0 +1,25 @@
+import "std/test.lum"
+import "std/csv.lum"
+
+fn test_plain_rows() {
+  let rows = csv.parse("a,b,c\n1,2,3\n");
+  test.eq_int(len(rows), 2);
+  test.eq_str(rows[1][2], "3");
+}
+
+fn test_quotes() {
+  let rows = csv.parse("name,note\n\"Lee, A\",\"said \"\"hi\"\"\"\n");
+  test.eq_str(rows[1][0], "Lee, A");
+  test.eq_str(rows[1][1], "said \"hi\"");
+}
+
+fn test_no_trailing_newline() {
+  let rows = csv.parse("x,y\r\n1,2");
+  test.eq_int(len(rows), 2);
+  test.eq_str(rows[1][1], "2");
+}
+
+fn test_round_trip() {
+  let text = "a,\"b,c\",d\n\"q\"\"q\",,z\n";
+  test.eq_str(csv.format(csv.parse(text)), text);
+}
