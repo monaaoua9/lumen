@@ -24,6 +24,17 @@ print("room", room, "total", total);
 room 20 total 60
 ```
 
+Ints also have bit operators, `&`, `|`, `^`, `<<`, `>>` and `~`, with the precedence Rust uses (`&` binds tighter than `==`, shifts bind looser than `+`). A shift count outside 0..62 stops the program, and a shift that overflows traps like any other int overflow.
+
+```lum
+var perm = 1 | 4;
+print(perm, (perm & 2) != 0, 1 << 10, -16 >> 2, ~5);
+```
+
+```output
+5 false 1024 -4 -6
+```
+
 ## 2. Strings and interpolation
 
 Strings are UTF-8, `{expr}` inside a string is interpolated, and `s[i]` or `for ch in s` walk whole characters, so Arabic text works.
