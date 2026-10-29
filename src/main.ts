@@ -23,7 +23,7 @@ commands
   run      analyze, then execute        [--engine interp|vm|c]  (default: vm)   [-- program args]
            lumen run -e 'print(1 + 2);'   runs code given on the command line
   disasm   print the bytecode
-  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm] [--only substr]
+  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm|c] [--only substr]
   emit-c   translate to C              [-o out.c]
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
