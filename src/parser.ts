@@ -684,6 +684,10 @@ class Parser {
       }
       const s = this.statementRecovering();
       if (s) body.push(s, ...this.queue.splice(0));
+      if (this.tryRest) {
+        this.diags.push({ severity: 'error', code: 'P001', message: 'try cannot be used inside a block expression', span: s?.span ?? this.cur.span });
+        this.tryRest = null;
+      }
     }
     this.depth--;
     const close = this.expect('}');
