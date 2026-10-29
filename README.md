@@ -161,6 +161,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
 
+`std/path.lum`: text-only helpers for `/` separated paths, `basename`, `dirname`, `ext` and `combine(a, b)` (named so because `join` is a builtin).
+
 `std/set.lum`: a set of strings (`new`, `from`, `add`, `has`, `drop`, `size`, `items`, `union`, `intersect`, `minus`), insertion ordered, linear lookups.
 
 `std/random.lum`: a seeded Park-Miller generator, `new(seed)`, `step`, `below(r, n)`, `between(r, lo, hi)` and `shuffle(r, xs)`. The same seed gives the same numbers on every engine.
