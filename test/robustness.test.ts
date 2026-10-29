@@ -470,3 +470,13 @@ test('repl commands', () => {
   assert.equal(r.feed(':reset'), 'cleared\n');
   assert.ok(r.feed('x').startsWith('error[E001]'));
 });
+
+test('try early return gives the same output on every engine', () => {
+  const want = { try_result: 'sum 9\nbad number: x\nbad number: y\n', try_option: '8\nnone\n' };
+  for (const [name, out] of Object.entries(want)) {
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', `examples/std/${name}.lum`, '--engine', engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), out, `${name} on ${engine}`);
+    }
+  }
+});
