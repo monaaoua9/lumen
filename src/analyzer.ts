@@ -1161,6 +1161,8 @@ class Analyzer {
   }
 
   undefinedVar(name: string, span: Span) {
+    // names the parser made up for patterns (`_$x1`) only go missing after another error was reported
+    if (name.startsWith('_$') && this.diags.some(d => d.severity === 'error')) return;
     const names: string[] = [];
     for (let s: Scope | null = this.scope; s; s = s.parent) names.push(...s.vars.keys());
     const sug = closest(name, names);
