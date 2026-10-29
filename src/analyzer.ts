@@ -1,5 +1,5 @@
 import type { Diagnostic, Segment, Severity, Span } from './diagnostics.ts';
-import type { ArmCover, EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
+import type { ArmCover, RowCell, EnumDecl, Expr, FieldInit, FnDecl, FnSym, Pat, Program, Stmt, StructDecl, TraitDecl, VarSym } from './ast.ts';
 import { BUILTINS, arrayOf, elemOf, fnSig, fnType, hasFn, isArray, isBuiltin, isFn, isNumeric, isEnum, isRef, isStruct, structName } from './types.ts';
 import type { Elem, FnType, Type } from './types.ts';
 
@@ -959,7 +959,7 @@ class Analyzer {
       this.declareBinds(s.arms[i].pats);
       this.armGuard(s.arms[i].guard);
       return this.block(s.arms[i].body);
-    }), false, s.arms.map(a => a.cover));
+    }), false, s.arms.map(a => a.cover), s.arms.map(a => a.row));
     s.tmp = r.tmp;
     const all = (k: 'diverges' | 'returns') => r.out.length > 0 && r.exhaustive && r.out.every(f => f[k]);
     return { diverges: all('diverges'), returns: all('returns') };
@@ -970,7 +970,7 @@ class Analyzer {
       this.declareBinds(e.arms[i].pats);
       this.armGuard(e.arms[i].guard);
       return this.expr(e.arms[i].value, want);
-    }), e.partial, e.arms.map(a => a.cover));
+    }), e.partial, e.arms.map(a => a.cover), e.arms.map(a => a.row));
     e.tmp = r.tmp;
     let ty: Type = 'error';
     r.out.forEach((t, i) => {
@@ -989,7 +989,7 @@ class Analyzer {
   }
 
   // an arm with a guard can fall through, so it covers nothing for exhaustiveness or reachability
-  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T, partial = false, covers: (ArmCover | undefined)[] = []): { tmp: number; out: T[]; exhaustive: boolean } {
+  matchCore<T>(scrut: Expr, patLists: Pat[][], guarded: boolean[], runArm: (i: number) => T, partial = false, covers: (ArmCover | undefined)[] = [], rows: (RowCell[] | undefined)[] = []): { tmp: number; out: T[]; exhaustive: boolean } {
     const st = this.expr(scrut);
     const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
@@ -1065,12 +1065,31 @@ class Analyzer {
     }
     const exhaustive = wild
       || (st === 'bool' && seen.has('ltrue') && seen.has('lfalse'))
-      || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)));
+      || (!!decl && decl.variants.every((_, i) => seen.has(`v${i}`)))
+      || (isStruct(st) && /^Tuple\d/.test(structName(st)) && this.rowsCover(st, rows));
     if (matchable && !exhaustive && !partial) {
       const missing = decl ? decl.variants.filter((_, i) => !seen.has(`v${i}`)).map(v => `${decl.name}.${v.name}`) : [];
       this.err('E020', 'non-exhaustive match', scrut.span, missing.length ? `missing: ${missing.join(', ')}` : "add a '_' arm");
     }
     return { tmp, out, exhaustive };
+  }
+
+  // do the unguarded tuple arms between them cover every combination of the parts?
+  rowsCover(st: Type, rows: (RowCell[] | undefined)[]): boolean {
+    const decl = isStruct(st) ? this.structs.get(structName(st)) : undefined;
+    if (!decl) return false;
+    const covers = (rs: RowCell[][], tys: Type[]): boolean => {
+      if (tys.length === 0) return rs.length > 0;
+      const [t, ...rest] = tys;
+      const next = (keep: (c: RowCell) => boolean) => rs.filter(r => keep(r[0])).map(r => r.slice(1));
+      if (isEnum(t)) {
+        const e = this.enums.get(t.slice(1));
+        return !!e && e.variants.every(v => covers(next(c => c === null || c === v.name), rest));
+      }
+      if (t === 'bool') return [true, false].every(b => covers(next(c => c === null || c === b), rest));
+      return covers(next(c => c === null), rest);
+    };
+    return covers(rows.filter((r): r is RowCell[] => !!r && r.length === decl.fields.length), decl.fields.map(f => f.ty));
   }
 
   fieldOf(ot: Type, name: string, nameSpan: Span, objSpan: Span): { ty: Type; idx: number } | null {

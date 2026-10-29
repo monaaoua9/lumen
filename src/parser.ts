@@ -1,5 +1,5 @@
 import type { Diagnostic, Segment, Span } from './diagnostics.ts';
-import type { ArmCover, BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
+import type { ArmCover, RowCell, BinOp, EnumDecl, Expr, FieldInit, FnDecl, ImplFor, MatchArm, Param, Pat, Program, Qualified, Stmt, StructDecl, StructField, TraitDecl } from './ast.ts';
 import { lex } from './lexer.ts';
 import type { Token } from './lexer.ts';
 import { arrayOf, enumType, fnType, structType, typeFromName } from './types.ts';
@@ -856,11 +856,26 @@ class Parser {
   }
 
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
-  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[]; cover?: ArmCover } {
+  rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr; binds?: Stmt[]; cover?: ArmCover; row?: RowCell[] } {
+    const row = guard ? undefined : this.tupleRow(pats);
     const n = this.nestedArm(pats, guard);
     const r = this.rangeArm0(scrut, n.pats, n.guard);
     const binds = [...(r.binds ?? []), ...n.binds];
-    return { ...r, binds: binds.length ? binds : undefined, cover: n.cover };
+    return { ...r, binds: binds.length ? binds : undefined, cover: n.cover, row };
+  }
+
+  // a tuple pattern made of names, `_`, bool literals and plain variants says exactly which cases it covers
+  tupleRow(pats: Pat[]): RowCell[] | undefined {
+    const parts = pats.length === 1 ? this.tuples.get(pats[0]) : undefined;
+    if (!parts) return undefined;
+    const row: RowCell[] = [];
+    for (const q of parts) {
+      if ('bind' in q || q.k === 'wild') row.push(null);
+      else if (q.k === 'lit' && q.ty === 'bool') row.push(q.value as boolean);
+      else if (q.k === 'variant' && !this.varLits.get(q) && !this.varNested.get(q) && !this.varTuples.get(q)) row.push(q.name);
+      else return undefined;
+    }
+    return row;
   }
 
   // `Some(Some(v))`: the arm matches the outer variant, a guard tests the inner one and `v` is read out of the hidden binding in front of the body

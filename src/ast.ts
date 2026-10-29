@@ -46,7 +46,7 @@ export type Expr =
   | (Base & { k: 'array'; elems: Expr[] })
   | (Base & { k: 'index'; arr: Expr; idx: Expr })
   | (Base & { k: 'blockx'; body: Stmt[]; value: Expr })
-  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span; cover?: ArmCover }[]; tmp: number; partial?: boolean })
+  | (Base & { k: 'matchx'; scrut: Expr; arms: { pats: Pat[]; guard?: Expr; value: Expr; span: Span; cover?: ArmCover; row?: RowCell[] }[]; tmp: number; partial?: boolean })
   | (Base & { k: 'enumval'; enumName: string; variant: string; idx: number; boxed: boolean })
   | (Base & { k: 'enumctor'; enumName: string; variant: string; idx: number; args: Expr[] })
   | (Base & { k: 'mcall'; obj: Expr; name: string; nameSpan: Span; args: Expr[]; argNames?: (string | undefined)[] })
@@ -100,12 +100,16 @@ export interface ArmCover {
   inner: string;
 }
 
+// one tuple pattern as a row for the exhaustiveness check: null matches anything, a string is a variant, a boolean is a bool literal
+export type RowCell = null | string | boolean;
+
 export interface MatchArm {
   pats: Pat[];
   guard?: Expr;
   body: Stmt[];
   span: Span;
   cover?: ArmCover;
+  row?: RowCell[];
 }
 
 export interface Param {
