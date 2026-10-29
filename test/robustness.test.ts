@@ -496,3 +496,11 @@ test('recursive descent parser built on try agrees on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('employees report agrees on every engine', () => {
+  const want = 'eng 2 220 ann\nops 2 175 di\nhr 1 70 ed\n2 3\n1 ann 120\n2 bob 100\n3 di 95\n20 5 15 10\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/employees.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
