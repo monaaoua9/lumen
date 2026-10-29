@@ -1,0 +1,21 @@
+trait Scorer { fn score(self, word: string): int; }
+struct Len { }
+struct Vowels { weight: int }
+impl Scorer for Len { fn score(self, word: string): int { return len(word); } }
+impl Scorer for Vowels {
+  fn score(self, word: string): int {
+    var n = 0;
+    for ch in word { if contains(["a", "e", "i", "o", "u"], ch) { n += self.weight; } }
+    return n;
+  }
+}
+fn best<S: Scorer>(s: S, words: string[]): string {
+  var top = words[0];
+  for w in words { if s.score(w) > s.score(top) { top = w; } }
+  return top;
+}
+fn main() {
+  let ws = ["sky", "banana", "queue", "strengths"];
+  print(best(Len { }, ws), best(Vowels { weight: 2 }, ws));
+}
+main();
