@@ -622,6 +622,9 @@ class Parser {
   // `1..5` and `1..=5` are written in patterns but live on as guards, see rangeArm
   ranges = new Map<Pat, { lo: number; hi: number; inclusive: boolean }>();
 
+  // `(0, _)` patterns also become guards: one comparison per literal element
+  tuples = new Map<Pat, Pat[]>();
+
   pattern(): Pat {
     const p = this.basePattern();
     if (p.k === 'lit' && p.ty === 'int' && this.at('..')) {
@@ -638,22 +641,42 @@ class Parser {
 
   // an arm with range patterns becomes a wildcard arm whose guard tests the scrutinee
   rangeArm(scrut: Expr, pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard?: Expr } {
-    if (!pats.some(p => this.ranges.has(p))) return { pats, guard };
+    if (!pats.some(p => this.ranges.has(p) || this.tuples.has(p))) return { pats, guard };
     const plain = (x: Expr): boolean => x.k === 'var' || (x.k === 'field' && plain(x.obj));
     const sp = pats[0].span;
-    if (!plain(scrut)) {
-      this.diags.push({ severity: 'error', code: 'P001', message: 'a range pattern needs a variable or field as the match value', span: sp });
+    // a written tuple is compared element by element, so its parts must be free to evaluate more than once
+    const simple = (x: Expr): boolean =>
+      x.k === 'int' || x.k === 'float' || x.k === 'str' || x.k === 'bool' || x.k === 'var'
+      || (x.k === 'field' && simple(x.obj)) || (x.k === 'unary' && simple(x.arg)) || (x.k === 'binary' && simple(x.l) && simple(x.r));
+    const lit = scrut.k === 'structlit' && /^Tuple\d+$/.test(scrut.name) ? scrut : null;
+    if (lit ? !lit.fields.every(f => simple(f.value)) : !plain(scrut)) {
+      this.diags.push({ severity: 'error', code: 'P001', message: 'a range or tuple pattern needs a variable, a field or plain arithmetic as the match value', span: sp });
       return { pats, guard };
     }
     const int = (value: number): Expr => ({ k: 'int', value, span: sp, ty: 'error' });
     const cmp = (op: BinOp, v: number): Expr => ({ k: 'binary', op, l: structuredClone(scrut), r: int(v), span: sp, ty: 'error' });
     const conds: Expr[] = [];
+    const lcmp = (l: Expr, v: Pat & { k: 'lit' }): Expr => {
+      const r: Expr = v.ty === 'string' ? { k: 'str', value: v.value as string, span: sp, ty: 'error' }
+        : v.ty === 'bool' ? { k: 'bool', value: v.value as boolean, span: sp, ty: 'error' } : int(v.value as number);
+      return { k: 'binary', op: '==', l: structuredClone(l), r, span: sp, ty: 'error' };
+    };
     for (const p of pats) {
       const r = this.ranges.get(p);
-      if (r) conds.push({ k: 'binary', op: '&&', l: cmp('>=', r.lo), r: cmp(r.inclusive ? '<=' : '<', r.hi), span: sp, ty: 'error' });
-      else if (p.k === 'lit' && p.ty === 'int') conds.push(cmp('==', p.value as number));
+      const tp = this.tuples.get(p);
+      if (tp) {
+        const parts: Expr[] = [];
+        tp.forEach((q, i) => {
+          if (q.k !== 'lit') return;
+          const at: Expr = lit ? lit.fields[i]?.value ?? int(0) : { k: 'field', obj: structuredClone(scrut), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+          parts.push(lcmp(at, q));
+        });
+        if (lit && tp.length !== lit.fields.length) this.diags.push({ severity: 'error', code: 'P001', message: `this pattern has ${tp.length} parts, the value has ${lit.fields.length}`, span: p.span });
+        conds.push(parts.length ? parts.reduce((a, b) => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' }) as Expr) : { k: 'bool', value: true, span: sp, ty: 'error' });
+      } else if (r) conds.push({ k: 'binary', op: '&&', l: cmp('>=', r.lo), r: cmp(r.inclusive ? '<=' : '<', r.hi), span: sp, ty: 'error' });
+      else if (p.k === 'lit' && p.ty === 'int' && !lit) conds.push(cmp('==', p.value as number));
       else {
-        this.diags.push({ severity: 'error', code: 'P001', message: 'range patterns can only be mixed with int literals', span: p.span });
+        this.diags.push({ severity: 'error', code: 'P001', message: 'range and tuple patterns can only be mixed with int literals', span: p.span });
         return { pats, guard };
       }
     }
@@ -680,6 +703,18 @@ class Parser {
           end = this.expect(')').span;
         }
         return { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
+      }
+      case '(': {
+        const parts: Pat[] = [];
+        do {
+          const q = this.basePattern();
+          if (q.k === 'variant') this.fail('tuple patterns hold literals and _', q.span);
+          parts.push(q);
+        } while (this.eat(',') && !this.at(')'));
+        const close = this.expect(')');
+        const w: Pat = { k: 'wild', span: this.join(t.span, close.span) };
+        this.tuples.set(w, parts);
+        return w;
       }
       case 'int': return { k: 'lit', span: t.span, value: t.value as number, ty: 'int' };
       case 'string': return { k: 'lit', span: t.span, value: t.value as string, ty: 'string' };
