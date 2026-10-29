@@ -29,6 +29,7 @@ Newest first. The README has the full description of every feature.
 - `lumen test` runs every `fn test_*()` in one or more files (`--only` filters), `lumen check` takes several files.
 - REPL commands `:type`, `:reset`, `:help`.
 - Differential tests compare random int, float, string and array programs across interp, vm, `-O` and C.
+- Runtime errors on the VM print the chain of calling functions with their line numbers.
 
 ## Standard library
 
