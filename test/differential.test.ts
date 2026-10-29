@@ -214,3 +214,42 @@ test('random array operations agree on every engine including C', () => {
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+function tupleProgram(seed: number): string {
+  const r = rng(seed * 19);
+  const out = ['let xs = [4, 8, 15, 16, 23, 42];', 'let word = "lumen tuples";'];
+  for (let i = 0; i < 12; i++) {
+    const a = r(7);
+    const b = r(5);
+    switch (r(5)) {
+      case 0:
+        out.push(`print(match (${a} % 3, ${b} % 2) { (0, 0) => "zz", (0, _) => "z_", (n, 1) => "n1:" + str(n), (n, m) => str(n + m) });`);
+        break;
+      case 1: out.push(`print(xs[${a % 6}..]);`); break;
+      case 2: out.push(`print(xs[..${b + 1}]);`); break;
+      case 3: out.push(`print(word[${a}..=${a + b}].upper().len());`); break;
+      default: out.push(`print(xs[${b}..=${b + a % 2}].len() + xs.len());`); break;
+    }
+  }
+  return out.join('\n') + '\n';
+}
+
+test('tuple patterns, open slices and method-call fallbacks agree on every engine', () => {
+  for (let seed = 1; seed <= 30; seed++) inProcess(tupleProgram(seed));
+});
+
+test('the same programs agree with the C backend', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-difft-'));
+  try {
+    for (const seed of [3, 11, 25]) {
+      const src = tupleProgram(seed);
+      const want = inProcess(src);
+      const file = join(dir, `t${seed}.lum`);
+      writeFileSync(file, src);
+      const r = spawnSync(process.execPath, ['src/cli.ts', 'run', file, '--engine', 'c'], { encoding: 'utf8' });
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, src);
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
