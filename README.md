@@ -265,5 +265,6 @@ matches Lumen's left-to-right rule (C leaves argument order unspecified).
 - A generic function body is only type checked when it is instantiated (an uncalled one still gets its undeclared names reported); a global is private to its file, traits are namespaced per file and need `pub` to be used from another file.
 - A local function that calls itself reads the enclosing function's `let` locals and parameters (copied in when it is defined; arrays and structs still share, a `var` has to be copied into a `let` first, E023).
 - The VM is a switch loop with fused compare-and-jump and increment ops (one try/catch around the whole loop); a register VM would be the next speed step. `fib(30)` plus a 3M iteration loop takes about 1.2s on the VM.
+- Strings are plain C strings in the generated code, so `s += x` copies `s` every time: 200,000 appends to a growing string take seconds in a native build (the VM is fine). Collect the pieces in an array and `join` them.
 - Analyzer is single-pass over statements; no inter-procedural analysis (e.g. purity, call graph reachability beyond W005).
 - There is no `?` operator; use `let x = try e;` instead (see "try"), or match / `and_then`. `try` works as the initializer of a `let` / `var` (also a destructuring one) or as a statement, never inside a block expression, and the function must return a `Result` or an `Option`.
