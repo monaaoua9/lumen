@@ -430,7 +430,7 @@ test('block expressions', () => {
   assert.deepEqual(errs('let a = { let x = 1; x + 1 }; print(a);'), []);
   assert.deepEqual(errs('let a: int = { 1 }; print(a);'), []);
   assert.deepEqual(errs('let a = { let x = 1; x }; print(x);'), ['E001']);
-  assert.deepEqual(errs('fn f(): int { let a = { return 1; 2 }; return a; } print(f());'), ['E029']);
+  assert.deepEqual(errs('fn f(): int { let a = { return 1; 2 }; return a; } print(f());'), []);
   assert.deepEqual(errs('while true { let a = { break; 1 }; print(a); }'), ['E008']);
   assert.deepEqual(errs('let a = { let x = 1; x }; let b: string = a; print(b);'), ['E003']);
   assert.deepEqual(diagCodes('let a = { let x = 1; };'), ['P001']);

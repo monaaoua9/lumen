@@ -570,6 +570,13 @@ test('local recursive functions that read enclosing locals agree on every engine
   }
 });
 
+test('return inside a block expression leaves the function on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/return_in_block.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), '5 -1\n4\n1\nfound 5 none\n2 100\n', engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
