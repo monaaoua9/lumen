@@ -31,7 +31,7 @@ commands
   bench    run on both engines and compare timings
   repl     interactive prompt (no file)
   fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
-  lsp      language server on stdin/stdout (diagnostics, formatting)
+  lsp      language server on stdin/stdout (diagnostics, hover, definition, formatting)
   explain  describe an error or warning code, e.g. explain E003 (no code: list them all)
 
 options

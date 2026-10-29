@@ -2,11 +2,14 @@ import { basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { bundle } from './modules.ts';
 import { frontend } from './pipeline.ts';
+import type { Frontend } from './pipeline.ts';
 import { format } from './fmt.ts';
 import type { Diagnostic } from './diagnostics.ts';
 
 // language server over stdio: diagnostics on every edit, and whole-document formatting
 const docs = new Map<string, string>();
+// last analysis per document, for hover and go-to-definition
+const last = new Map<string, { fe: Frontend; base: number; name: string }>();
 
 function send(msg: object) {
   const body = Buffer.from(JSON.stringify(msg), 'utf8');
@@ -38,10 +41,73 @@ function diagnose(uri: string) {
   };
 
   const fe = frontend(b.text, name, b.segments);
+  last.set(uri, { fe, base: mine ? mine.start : 0, name });
   // module errors (missing imports) come first, the rest of the pipeline still runs
   for (const d of b.diags) if (!mine || d.span.start >= mine.start) push(d, fe.source);
   for (const d of fe.diagnostics) push(d, fe.source);
   send({ jsonrpc: '2.0', method: 'textDocument/publishDiagnostics', params: { uri, diagnostics: out } });
+}
+
+// every node whose span covers `off`, outermost first. Symbol links (sym, decl, ...) are skipped: they point back up the tree
+const LINKS = new Set(['sym', 'origin', 'from', 'decl', 'box']);
+
+function pathAt(root: unknown, off: number): any[] {
+  const path: any[] = [];
+  const seen = new Set<object>();
+  const walk = (n: any) => {
+    if (!n || typeof n !== 'object' || seen.has(n)) return;
+    seen.add(n);
+    if (Array.isArray(n)) return n.forEach(walk);
+    const sp = n.span;
+    // a fn's own span is only its header, so containment cannot prune the walk
+    if (sp && typeof n.k === 'string' && off >= sp.start && off <= sp.end) path.push(n);
+    for (const [key, v] of Object.entries(n)) {
+      if (LINKS.has(key) || (key === 'fn' && !(v as any)?.k)) continue;
+      walk(v);
+    }
+  };
+  walk(root);
+  return path;
+}
+
+function offsetOf(text: string, pos: { line: number; character: number }): number {
+  let off = 0;
+  for (let i = 0; i < pos.line; i++) {
+    const nl = text.indexOf('\n', off);
+    if (nl < 0) return text.length;
+    off = nl + 1;
+  }
+  return Math.min(off + pos.character, text.length);
+}
+
+function hover(uri: string, pos: { line: number; character: number }) {
+  const a = last.get(uri);
+  if (!a) return null;
+  const path = pathAt(a.fe.program, a.base + offsetOf(docs.get(uri) ?? '', pos));
+  for (const n of path.reverse()) {
+    let text: string | undefined;
+    if (n.k === 'call' && n.fn) text = `fn ${n.name}(${n.fn.params.join(', ')}): ${n.fn.ret}`;
+    else if (n.k === 'var') text = `${n.sym?.mutable ? 'var' : 'let'} ${n.name}: ${n.ty}`;
+    else if (n.k === 'field') text = `.${n.name}: ${n.ty}`;
+    else if (typeof n.ty === 'string' && n.ty !== 'error' && n.ty !== 'void') text = n.ty;
+    if (text) return { contents: { kind: 'markdown', value: '```lumen\n' + text + '\n```' } };
+  }
+  return null;
+}
+
+function definition(uri: string, pos: { line: number; character: number }) {
+  const a = last.get(uri);
+  if (!a) return null;
+  const path = pathAt(a.fe.program, a.base + offsetOf(docs.get(uri) ?? '', pos));
+  for (const n of path.reverse()) {
+    const span = n.k === 'var' ? n.sym?.span : n.k === 'call' || n.k === 'fnref' ? n.fn?.decl?.nameSpan : undefined;
+    if (!span) continue;
+    const s = a.fe.source.locate(span.start);
+    if (s.file !== a.name) return null; // lives in an imported file
+    const e = a.fe.source.locate(span.end);
+    return { uri, range: { start: { line: s.line - 1, character: s.col - 1 }, end: { line: e.line - 1, character: e.col - 1 } } };
+  }
+  return null;
 }
 
 function lineCount(text: string): { line: number; character: number } {
@@ -53,7 +119,7 @@ function handle(m: any) {
   switch (m.method) {
     case 'initialize':
       return reply(m.id, {
-        capabilities: { textDocumentSync: 1, documentFormattingProvider: true },
+        capabilities: { textDocumentSync: 1, documentFormattingProvider: true, hoverProvider: true, definitionProvider: true },
         serverInfo: { name: 'lumen' },
       });
     case 'shutdown':
@@ -71,6 +137,10 @@ function handle(m: any) {
     case 'textDocument/didClose':
       docs.delete(m.params.textDocument.uri);
       return send({ jsonrpc: '2.0', method: 'textDocument/publishDiagnostics', params: { uri: m.params.textDocument.uri, diagnostics: [] } });
+    case 'textDocument/hover':
+      return reply(m.id, hover(m.params.textDocument.uri, m.params.position));
+    case 'textDocument/definition':
+      return reply(m.id, definition(m.params.textDocument.uri, m.params.position));
     case 'textDocument/formatting': {
       const text = docs.get(m.params.textDocument.uri) ?? '';
       const done = format(text);
