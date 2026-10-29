@@ -515,6 +515,7 @@ test('tuple patterns bind names', () => {
   assert.deepEqual(errs('let t = (1, 2); print(match t { (0, y) => y, (x, _) => x });'), []);
   assert.deepEqual(errs('let t = (1, 2); print(match t { (x, y) => x + y });'), []);
   assert.ok(diagCodes('let t = (1, 2); print(match t { (0, 1) | (x, _) => 1, _ => 2 });').includes('P001'));
+  assert.deepEqual(diagCodes('let t = (5, 0); print(match t { (x, 0) if x > 3 => 1, _ => 2 });'), []);
 });
 
 test('print takes several values', () => {
