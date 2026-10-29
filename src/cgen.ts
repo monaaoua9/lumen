@@ -1116,7 +1116,8 @@ export function emitC(prog: Program, locate?: (offset: number) => string): strin
   for (const d of boxed) out.push(`typedef struct E_${d.name} E_${d.name};`);
   for (const d of prog.structs) out.push(`typedef struct S_${d.name} S_${d.name};`);
   for (const d of prog.structs) {
-    out.push(`struct S_${d.name} {`, ...d.fields.map(f => `  ${ctype(f.ty)} f_${f.name};`), '};');
+    // standard C has no empty struct
+    out.push(`struct S_${d.name} {`, ...(d.fields.length ? d.fields.map(f => `  ${ctype(f.ty)} f_${f.name};`) : ['  char unit;']), '};');
   }
   for (const d of boxed) {
     const members = d.variants.map((v, i) => (v.payload.length ? `struct { ${v.payload.map((t, j) => `${ctype(t)} a${j};`).join(' ')} } v${i};` : '')).join(' ');
@@ -1137,6 +1138,10 @@ export function emitC(prog: Program, locate?: (offset: number) => string): strin
         out.push(`  r = lm_cat(r, ${strIn(f.ty, `p->f_${f.name}`)});`);
       });
       out.push('  return lm_cat(r, ")");', '}');
+      continue;
+    }
+    if (d.fields.length === 0) {
+      out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, '  (void)p;', `  return "${d.shown ?? d.name} {}";`, '}');
       continue;
     }
     out.push(`static const char *lm_str_S_${d.name}(S_${d.name} *p) {`, `  const char *r = "${d.shown ?? d.name} { ";`);
