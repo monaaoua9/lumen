@@ -81,6 +81,21 @@ cell 1 0
 cell 1 1
 ```
 
+يمكن أن تعطي الحلقة قيمة. يُكتب نوع المتغير، و`break` تحمل القيمة.
+
+```lum
+var k = 1;
+let first: int = loop {
+  if k * k > 50 { break k * k; }
+  k += 1;
+};
+print(first);
+```
+
+```output
+64
+```
+
 ## 4. الهياكل والدوال المرتبطة
 
 `impl` يربط دوالاً بالـ struct. وأي دالة يمكن استدعاؤها بصيغة الدالة المرتبطة على أول معامل.
@@ -173,6 +188,26 @@ standing still
 back 2
 greeting
 says bye
+```
+
+يمكن لـ `match` على tuple أن يفحص الـ variants في أجزائه. وإذا غطّت الأذرع كل التركيبات فلا حاجة لذراع `_`.
+
+```lum
+enum Light { Red, Green }
+
+fn go(l: Light, urgent: bool): string {
+  return match (l, urgent) {
+    (Red, true) => "stop now",
+    (Red, false) => "wait",
+    (Green, _) => "go",
+  };
+}
+
+print(go(Light.Red, false), go(Light.Green, true));
+```
+
+```output
+wait go
 ```
 
 ## 6. الـ Tuples والتفكيك
