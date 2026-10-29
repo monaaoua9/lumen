@@ -1,0 +1,59 @@
+// matrices of ints, rows first
+pub fn new(rows: int, cols: int, fill: int = 0): int[][] {
+  let m: int[][] = [];
+  for _r in 0..rows {
+    let row: int[] = [];
+    for _c in 0..cols { push(row, fill); }
+    push(m, row);
+  }
+  return m;
+}
+
+pub fn identity(n: int): int[][] {
+  let m = new(n, n);
+  for i in 0..n { m[i][i] = 1; }
+  return m;
+}
+
+pub fn transpose(a: int[][]): int[][] {
+  if len(a) == 0 { return []; }
+  let m = new(len(a[0]), len(a));
+  for i in 0..len(a) {
+    for j in 0..len(a[0]) { m[j][i] = a[i][j]; }
+  }
+  return m;
+}
+
+pub fn add(a: int[][], b: int[][]): int[][] {
+  let m = new(len(a), len(a[0]));
+  for i in 0..len(a) {
+    for j in 0..len(a[0]) { m[i][j] = a[i][j] + b[i][j]; }
+  }
+  return m;
+}
+
+// traps when the inner sizes do not match
+pub fn mul(a: int[][], b: int[][]): int[][] {
+  assert(len(a[0]) == len(b), "matrix sizes do not match");
+  let m = new(len(a), len(b[0]));
+  for i in 0..len(a) {
+    for j in 0..len(b[0]) {
+      var s = 0;
+      for k in 0..len(b) { s += a[i][k] * b[k][j]; }
+      m[i][j] = s;
+    }
+  }
+  return m;
+}
+
+pub fn pow(a: int[][], n: int): int[][] {
+  var result = identity(len(a));
+  var base = a;
+  var e = n;
+  while e > 0 {
+    if e % 2 == 1 { result = mul(result, base); }
+    base = mul(base, base);
+    e = e / 2;
+  }
+  return result;
+}
