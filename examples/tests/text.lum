@@ -37,3 +37,14 @@ fn test_pad_default_fill() {
   test.eq_str(text.pad_right("7", 3), "7  ");
   test.eq_str(text.pad_left("7", 3, "0"), "007");
 }
+
+fn test_utf8_walk() {
+  let s = "مرحبا";
+  test.eq_int(len(text.chars(s)), 5);
+  test.eq_str(text.reversed(s), "ابحرم");
+  test.eq_str(s[0], "م");
+  test.eq_int(text.count("ببب", "ب"), 3);
+  var n = 0;
+  for _c in s { n += 1; }
+  test.eq_int(n, 5);
+}

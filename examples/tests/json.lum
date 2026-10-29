@@ -32,3 +32,7 @@ fn test_rejects_bad_input() {
   test.eq_str(round_trip("1 2"), "invalid");
   test.eq_str(round_trip(""), "invalid");
 }
+
+fn test_utf8_strings() {
+  test.eq_str(round_trip("[\"مرحبا\"]"), "[\"مرحبا\"]");
+}

@@ -23,3 +23,9 @@ fn test_round_trip() {
   let text = "a,\"b,c\",d\n\"q\"\"q\",,z\n";
   test.eq_str(csv.format(csv.parse(text)), text);
 }
+
+fn test_utf8_cells() {
+  let rows = csv.parse("اسم,مدينة\nسارة,\"بغداد, العراق\"\n");
+  test.eq_str(rows[0][1], "مدينة");
+  test.eq_str(rows[1][1], "بغداد, العراق");
+}
