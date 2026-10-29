@@ -1398,6 +1398,8 @@ class Analyzer {
         return ret;
       case 'int':
       case 'float':
+        // int(Color.Blue) is the variant's position; only enums without data have one
+        if (name === 'int' && isEnum(t0) && !this.isBoxed(t0)) return ret;
         if (t0 !== 'error' && !isNumeric(t0)) bad('expects int or float');
         return ret;
       case 'len':
