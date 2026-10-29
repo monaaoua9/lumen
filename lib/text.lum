@@ -86,3 +86,16 @@ pub fn chars(s: string): string[] {
 pub fn is_blank(s: string): bool {
   return len(trim(s)) == 0;
 }
+
+// x with exactly `digits` decimals, halves round away from zero. fine up to ~15 significant digits
+pub fn fixed(x: float, digits: int): string {
+  var scale = 1;
+  for _i in 0..digits { scale *= 10; }
+  let neg = x < 0.0;
+  let v = if neg { 0.0 - x } else { x };
+  let n = int(floor(v * float(scale) + 0.5));
+  let whole = n / scale;
+  var out = str(whole);
+  if digits > 0 { out = out + "." + pad_left(str(n % scale), digits, "0"); }
+  return if neg && n > 0 { "-" + out } else { out };
+}
