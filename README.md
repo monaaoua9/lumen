@@ -131,7 +131,7 @@ Semantics worth knowing:
   Same behaviour in the interpreter, the VM and the generated C, so results match everywhere.
 - `/` on ints truncates toward zero; division and modulo by zero trap.
 - Operands evaluate left to right; `&&` / `||` short-circuit.
-- Functions see globals declared *before* them. Recursion works, call depth is capped at 1000 (the tree-walking interpreter can hit the host stack a little earlier).
+- Functions see globals declared *before* them. Recursion works, call depth is capped at 1000 (`run --engine interp` runs on a thread with a large stack so it reaches the same cap).
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
 - Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. `==` on arrays/structs is rejected. Arrays can nest (`int[][]`, rows may have different lengths).
 - Structs are references too (`let q = p;` aliases) and print as `Point { x: 1.0, y: 2.0 }`. Literal fields run in the order written. A struct cannot contain itself by value; use an array field (`kids: Node[]`).
