@@ -1,0 +1,32 @@
+import "std/list.lum"
+import "std/text.lum"
+
+struct Item { name: string, qty: int, price: float }
+
+trait Describe { fn describe(self): string; }
+
+impl Describe for Item {
+  fn describe(self): string {
+    return "{text.pad_right(self.name, 8)}{text.pad_left(str(self.qty), 4)} @ {text.fixed(self.price, 2)}";
+  }
+}
+
+fn total(items: Item[]): float {
+  return list.fold(items, 0.0, fn(acc, it) => acc + float(it.qty) * it.price);
+}
+
+fn main() {
+  let items = [
+    Item { name: "bolt", qty: 120, price: 0.25 },
+    Item { name: "nut", qty: 300, price: 0.1 },
+    Item { name: "gear", qty: 7, price: 12.5 },
+  ];
+  let sorted = list.sort_by(items, fn(a, b) => a.qty < b.qty);
+  for it in sorted { print(it.describe()); }
+  print("total {text.fixed(total(items), 2)}");
+  let cheap = list.filter(items, fn(it) => it.price < 1.0);
+  print(list.map(cheap, fn(it) => it.name).join(","));
+  let (many, few) = list.partition(items, fn(it) => it.qty > 100);
+  print("{many.len()} many, {few.len()} few");
+}
+main();
