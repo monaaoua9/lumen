@@ -18,6 +18,19 @@ fn test_quantifiers() {
   test.eq_bool(regex.full_match(".*end", "the end"), true);
 }
 
+fn test_counted() {
+  test.eq_bool(regex.full_match("a\{3\}", "aaa"), true);
+  test.eq_bool(regex.full_match("a\{3\}", "aa"), false);
+  test.eq_bool(regex.full_match("a\{3\}", "aaaa"), false);
+  test.eq_bool(regex.full_match("\\d\{2,4\}", "123"), true);
+  test.eq_bool(regex.full_match("\\d\{2,4\}", "1"), false);
+  test.eq_bool(regex.full_match("\\d\{2,4\}", "12345"), false);
+  test.eq_bool(regex.full_match("x\{2,\}", "xxxxxx"), true);
+  test.eq_bool(regex.full_match("[0-9]\{3\}-[0-9]\{4\}", "555-1234"), true);
+  // not a quantifier, just text
+  test.eq_bool(regex.full_match("a\{x\}", "a\{x\}"), true);
+}
+
 fn test_classes() {
   test.eq_bool(regex.full_match("[a-c]+", "abcabc"), true);
   test.eq_bool(!regex.full_match("[a-c]+", "abcd"), true);
