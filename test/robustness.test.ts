@@ -775,3 +775,17 @@ test('the editor grammar is valid json and knows every keyword of the lexer', ()
   const kws = /const KEYWORDS = new Set\(\[([^\]]*)\]\)/.exec(lexer)![1].match(/'([a-z]+)'/g)!.map(k => k.slice(1, -1));
   for (const k of kws) assert.ok(new RegExp(`(^|[^a-z])${k}([^a-z]|$)`).test(grammar), `keyword ${k} missing from the grammar`);
 });
+
+test('a missing item in a module lists what the module has', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-item-'));
+  try {
+    writeFileSync(join(dir, 'geo.lum'), 'pub fn dist(a: int, b: int): int { return a - b; }\npub fn area(w: int, h: int): int { return w * h; }\n');
+    writeFileSync(join(dir, 'main.lum'), 'import "geo.lum";\nprint(geo.perimeter(1, 2));\n');
+    const r = cli('check', join(dir, 'main.lum'));
+    assert.equal(r.status, 1);
+    assert.ok(r.stdout.includes('E028'), r.stdout);
+    assert.ok(r.stdout.includes('available: dist, area'), r.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
