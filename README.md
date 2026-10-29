@@ -192,7 +192,7 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/text.lum` (also `char_count`, and `pad_left` / `pad_right` pad by characters): `pad_left`, `pad_right`, `is_digits`, `is_alpha`, `reversed`, `count(s, needle)`, `words(s)`, `lines(s)`, `chars(s)`, `is_blank`, `capitalize`, `center` and `fixed(x, digits)` (a float with a set number of decimals) (ASCII, byte based). A function in a module cannot take a builtin's name (`E006`), which is why it is `reversed`.
 
-`std/text.lum` also has `truncate(s, width)` (whole characters, ends with `...`) and `title(s)`; `std/math.lum` has `lerp`, `hypot` and `fpow(base, exp)` for float bases.
+`std/text.lum` also has `truncate(s, width)` (whole characters, ends with `...`), `title(s)`, `wrap(s, width)` (greedy word wrap into lines) and `glob(pattern, s)` (`*` and `?`); `std/math.lum` has `lerp`, `hypot` and `fpow(base, exp)` for float bases.
 
 `std/map.lum`: a string-keyed `Map<V>` with `new`, `set`, `get(m, key, fallback)`, `has`, `delete`, `size`, `keys`, `values`, `entries` (a `(string, V)[]`) and `update(m, key, start, f)`. Keys stay in insertion order and a hash index makes lookups fast; `delete` rebuilds the index.
 
