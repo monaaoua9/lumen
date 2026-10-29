@@ -342,6 +342,9 @@ class Parser {
       }
       if (this.loopStart(0)) return this.loopStmt(undefined);
     }
+    if (t.kind === 'ident' && t.text === 'try' && this.peek().kind !== '=' && this.peek().kind !== '.' && this.peek().kind !== '(') {
+      return this.tryLet({ ...t, kind: 'let' }, { ...t, kind: 'ident', text: '_' }, undefined, undefined);
+    }
     if (t.kind === 'ident' && t.text === 'import' && this.toks[this.pos + 1]?.kind === 'string') {
       // already resolved by the module bundler
       this.next();
