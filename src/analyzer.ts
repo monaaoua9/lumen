@@ -269,7 +269,8 @@ class Analyzer {
     {
       // written Name<Args> types become real (monomorphized) structs before anything else looks at types
       const canon = (t: string, o: Record<string, unknown>) => this.canon(t, (o.span as Span | undefined) ?? { start: 0, end: 0 });
-      const skip = (o: Record<string, unknown>) => templateFns.has(o);
+      // a generic struct or enum is canonicalised per instance, after its type parameters are replaced
+      const skip = (o: Record<string, unknown>) => templateFns.has(o) || ((o.k === 'enum' || o.k === 'struct') && Array.isArray(o.typeParams));
       mapTypes(prog.enums, canon, skip);
       mapTypes(prog.structs, canon, skip);
       mapTypes(prog.fns, canon, skip);
