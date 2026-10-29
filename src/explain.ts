@@ -46,7 +46,6 @@ export const EXPLAIN: Record<string, Entry> = {
   E025: { title: 'trait not implemented', text: 'A bound or dyn coercion needs an impl that does not exist, or the trait itself is unknown.' },
   E026: { title: 'impl does not match its trait', text: 'An impl block lacks a method the trait declares, or the signature differs.' },
   E027: { title: 'private item', text: 'Only items declared pub can be used from another file.', fix: 'pub fn helper() { }' },
-  E029: { title: 'control flow out of a block expression', text: 'A block expression produces a value, so return cannot leave it. break and continue may only target loops written inside the block.', bad: 'let x = { return 1; 2 };' },
   E030: { title: 'cannot infer a parameter type', text: 'A function value may leave its parameter types out only where the expected type is known, for example as an argument of a function that takes <fn(int):int>.', bad: 'let f = fn(x) => x + 1;' },
   E031: { title: 'recursive local function in a generic function', text: 'A local function that calls itself becomes one shared top-level function, so it cannot take parameters whose type is a type parameter of the enclosing generic function.', bad: 'fn n<T>(xs: T[]): int { fn go(i: int): int { if i >= len(xs) { return 0; } return 1 + go(i + 1); } return go(0); }', fix: 'pass xs as a parameter of go' },
   E028: { title: 'bad qualified name', text: 'module.item names a module without that item, or the item lives in another file.' },
