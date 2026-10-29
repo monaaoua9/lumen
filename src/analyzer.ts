@@ -1759,7 +1759,7 @@ class Analyzer {
       if (!d) break;
       e.args.push(structuredClone(d));
     }
-    const late = (a: Expr) => a.k === 'lambda' && (a.fn.ret === '?' || a.fn.params.some(p => p.ty === '?'));
+    const late = (a: Expr) => (a.k === 'lambda' && (a.fn.ret === '?' || a.fn.params.some(p => p.ty === '?'))) || (a.k === 'array' && a.elems.length === 0);
     const tys = e.args.map(a => late(a) ? ('error' as Type) : this.expr(a));
     if (e.args.length !== gen.params.length) {
       this.err('E004', `'${e.name}' takes ${gen.params.length} argument${gen.params.length === 1 ? '' : 's'}, but ${e.args.length} ${e.args.length === 1 ? 'was' : 'were'} given`, e.span);
@@ -1772,7 +1772,7 @@ class Analyzer {
       if (!late(a)) return;
       const w = replaceVars(gen.params[i].ty, binds);
       // parameter types still open stay unknown, the lambda reports them
-      const open = names.some(n => w.includes(`(@${n}`) || w.includes(`,@${n}`));
+      const open = names.some(n => new RegExp(`[(,]@${n}(?![A-Za-z0-9_$])`).test(w));
       tys[i] = this.expr(a, open ? undefined : (w as Type));
       unify(gen.params[i].ty, tys[i], new Set(names), binds, this.structInst);
     });
