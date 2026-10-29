@@ -491,11 +491,15 @@ class Analyzer {
     }
     for (const s of this.structs.values()) {
       const seen = new Set<string>();
+      // Map<Item> is written by the user, the library's own field types are not an access
+      const inst = this.structInst.has(s.name);
+      if (inst) this.noAccess++;
       for (const f of s.fields) {
         if (seen.has(f.name)) this.err('E006', `field '${f.name}' is declared twice in struct '${s.name}'`, f.span);
         seen.add(f.name);
         this.checkType(f.ty, f.span);
       }
+      if (inst) this.noAccess--;
     }
     // a struct that contains itself by value could never be constructed
     for (const s of this.structs.values()) {
