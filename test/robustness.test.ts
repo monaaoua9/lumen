@@ -650,6 +650,14 @@ test('a lexer written with std/regex and tuple patterns agrees on every engine',
   }
 });
 
+test('chr builds any code point as UTF-8 on every engine', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', '-e', 'print(chr(65), chr(1575), chr(8364), chr(128512), len(chr(128512)));', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'A ا € \u{1F600} 4\n', engine);
+    assert.notEqual(cli('run', '-e', 'print(chr(55296));', '--engine', engine).status, 0, engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);

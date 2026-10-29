@@ -36,3 +36,11 @@ fn test_rejects_bad_input() {
 fn test_utf8_strings() {
   test.eq_str(round_trip("[\"مرحبا\"]"), "[\"مرحبا\"]");
 }
+
+fn test_unicode_escapes() {
+  test.eq_str(round_trip("[\"\\u0627\\u0644\"]"), "[\"ال\"]");
+  test.eq_str(round_trip("[\"\\ud83d\\ude00\"]"), "[\"😀\"]");
+  test.eq_str(round_trip("[\"a\\u00e9b\"]"), "[\"aéb\"]");
+  test.eq_str(round_trip("[\"\\ud83d x\"]"), "[\"\u{fffd} x\"]");
+  test.eq_str(round_trip("[\"\\u12g4\"]"), "invalid");
+}
