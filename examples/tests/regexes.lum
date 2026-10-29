@@ -85,3 +85,35 @@ fn test_pieces() {
   test.eq_int(len(regex.pieces(",", "none")), 1);
   test.eq_int(len(regex.pieces("x*", "abc")), 1);
 }
+
+fn test_groups_repeat_and_alternate() {
+  test.eq_bool(regex.full_match("(ab)+", "ababab"), true);
+  test.eq_bool(regex.full_match("(ab)+", "ababa"), false);
+  test.eq_bool(regex.full_match("(cat|dog)s?", "dogs"), true);
+  test.eq_bool(regex.full_match("(cat|dog)s?", "bird"), false);
+  test.eq_bool(regex.full_match("x(a|b)*y", "xabbay"), true);
+  test.eq_bool(regex.full_match("(?:ab)\{2\}c", "ababc"), true);
+  test.eq_bool(regex.full_match("(a|ab)(c|bcd)", "abcd"), true);
+  test.eq_bool(regex.full_match("(a*)*b", "aaab"), true);
+}
+
+fn test_captures() {
+  let c = regex.captures("(\\d+)-(\\d+)", "tel 555-1234 ok");
+  test.eq_int(len(c), 3);
+  test.eq_str(c[0], "555-1234");
+  test.eq_str(c[1], "555");
+  test.eq_str(c[2], "1234");
+  let d = regex.captures("(a)|(b)", "b");
+  test.eq_str(d[1], "");
+  test.eq_str(d[2], "b");
+  test.eq_int(len(regex.captures("zzz", "abc")), 0);
+  // the last round of a repeated group wins
+  test.eq_str(regex.captures("(?:(\\w)\\s?)+", "a b c")[1], "c");
+}
+
+fn test_anchors_inside() {
+  test.eq_bool(regex.is_match("(^a|b)c", "ac"), true);
+  test.eq_bool(regex.is_match("(^a|b)c", "xac"), false);
+  test.eq_bool(regex.is_match("x(y|$)", "ax"), true);
+  test.eq_str(regex.sub("(ا|ب)+", "اببا-ب", "*"), "*-*");
+}
