@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join, sep } from 'node:path';
 import { frontend } from '../src/pipeline.ts';
 import { format } from '../src/fmt.ts';
+import { Repl } from '../src/repl.ts';
 
 const PIECES = [
   'fn', 'struct', 'enum', 'match', 'let', 'var', 'if', 'else', 'while', 'return', 'break', 'continue',
@@ -435,4 +436,15 @@ test('clock() runs on every engine', () => {
     assert.equal(r.status, 0, engine + r.stderr);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '599994\ntrue\n', engine);
   }
+});
+
+test('repl commands', () => {
+  const r = new Repl();
+  assert.equal(r.feed('let x = 3;'), '');
+  assert.equal(r.feed(':type x * 2'), 'int\n');
+  assert.equal(r.feed(':type [1.5]'), 'float[]\n');
+  assert.ok(r.feed(':type nope').startsWith('error[E001]'));
+  assert.equal(r.feed('x'), '3\n');
+  assert.equal(r.feed(':reset'), 'cleared\n');
+  assert.ok(r.feed('x').startsWith('error[E001]'));
 });

@@ -9,9 +9,31 @@ export class Repl {
   shown = '';
   done = false;
 
+  command(text: string): string {
+    const [name, ...rest] = text.split(/\s+/);
+    const arg = rest.join(' ');
+    if (name === ':reset') {
+      this.program = '';
+      this.shown = '';
+      return 'cleared\n';
+    }
+    if (name === ':type' && arg) {
+      try {
+        const fe = checked(`${this.program}let _repl_t = ${arg};\n`);
+        const last = fe.program.body[fe.program.body.length - 1];
+        return (last.k === 'let' ? last.init.ty.replace(/[@#]/g, '') : '?') + '\n';
+      } catch (e) {
+        if (!(e instanceof CompileError)) throw e;
+        return e.diags.filter(d => d.severity === 'error').map(d => `error[${d.code}]: ${d.message}`).join('\n') + '\n';
+      }
+    }
+    return ':type <expr>  type of an expression\n:reset        forget everything entered so far\n:help         this list\n';
+  }
+
   feed(input: string): string {
     const text = input.trim();
     if (text === '') return '';
+    if (text.startsWith(':')) return this.command(text);
     const tries = /[;}]$/.test(text) ? [text] : [`print(${text});`, text + ';'];
 
     let lastErr = '';
