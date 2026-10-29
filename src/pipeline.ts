@@ -50,7 +50,10 @@ export function toBytecode(fe: Frontend): Module {
 }
 
 export function toC(fe: Frontend): string {
-  return emitC(fe.program);
+  return emitC(fe.program, off => {
+    const at = fe.source.locate(off);
+    return `${at.file}:${at.line}:${at.col}`;
+  });
 }
 
 export { CompileError, RuntimeError };
