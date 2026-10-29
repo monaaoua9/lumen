@@ -512,3 +512,11 @@ test('labelled loops, closures per iteration and try together agree everywhere',
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('math and text extras give the same output on every engine', () => {
+  const want = '12.5 5.0\n1024.0 0.25\nhello... short\nThe Quick Brown Fox\nمرحب...\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/math_text_extra.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
