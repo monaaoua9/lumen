@@ -480,3 +480,11 @@ test('try early return gives the same output on every engine', () => {
     }
   }
 });
+
+test('user structs as payload of the library Result, same output everywhere', () => {
+  const want = 'compile 1 0\nlint 1 0\nbuild 2 1\ntest 3 2\n7\nBUILD,COMPILE,TEST,LINT\nbad priority: x: y\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/tasks.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
