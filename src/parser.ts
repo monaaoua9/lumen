@@ -931,9 +931,6 @@ class Parser {
       if (!this.eat(',')) break;
     }
     this.expect('}');
-    if (fields.length === 0) {
-      this.diags.push({ severity: 'error', code: 'P003', message: `struct '${name.text}' needs at least one field`, span: name.span });
-    }
     const decl: StructDecl = { k: 'struct', span: this.join(kw.span, name.span), name: name.text, nameSpan: name.span, fields, typeParams, shown: name.text.includes('$') ? name.text.split('$').pop() : undefined };
     this.structs.push(decl);
     return decl;
