@@ -1,0 +1,26 @@
+import "std/test.lum"
+import "std/queue.lum"
+
+fn test_fifo() {
+  let q: queue.Queue<int> = queue.new();
+  for x in [1, 2, 3] { queue.put(q, x); }
+  test.eq_int(queue.next(q), 1);
+  queue.put(q, 4);
+  test.eq_int(queue.size(q), 3);
+  test.eq_int(queue.next(q), 2);
+  test.eq_int(queue.next(q), 3);
+  test.eq_int(queue.next(q), 4);
+  test.eq_int(queue.size(q), 0);
+}
+
+fn test_long_run() {
+  let q: queue.Queue<int> = queue.new();
+  var sum = 0;
+  for i in 0..500 {
+    queue.put(q, i);
+    queue.put(q, i);
+    sum += queue.next(q);
+  }
+  test.eq_int(queue.size(q), 500);
+  test.eq_int(sum, 62250);
+}
