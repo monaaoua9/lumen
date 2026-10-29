@@ -285,10 +285,9 @@ export function byteAt(s: string, i: number, span?: Span): number {
   return buf[i];
 }
 
-// ascii only, anything else would depend on an encoding
 export function chrOf(n: number, span?: Span): string {
-  if (n < 1 || n > 127) throw new RuntimeError('chr expects 1..127', span);
-  return String.fromCharCode(n);
+  if (n < 1 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) throw new RuntimeError('chr expects a code point (1..1114111, not a surrogate)', span);
+  return String.fromCodePoint(n);
 }
 
 export function splitOf(s: string, sep: string, span?: Span): string[] {

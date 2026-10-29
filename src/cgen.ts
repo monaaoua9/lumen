@@ -513,9 +513,23 @@ static long long lm_byte(const char *s, long long i) {
   return (unsigned char)s[i];
 }
 static const char *lm_chr(long long n) {
-  if (n < 1 || n > 127) lm_die("chr expects 1..127");
-  char *r = (char *)lm_alloc(2, 1);
-  r[0] = (char)n;
+  if (n < 1 || n > 0x10ffff || (n >= 0xd800 && n <= 0xdfff)) lm_die("chr expects a code point (1..1114111, not a surrogate)");
+  char *r = (char *)lm_alloc(5, 1);
+  if (n < 0x80) {
+    r[0] = (char)n;
+  } else if (n < 0x800) {
+    r[0] = (char)(0xc0 | (n >> 6));
+    r[1] = (char)(0x80 | (n & 63));
+  } else if (n < 0x10000) {
+    r[0] = (char)(0xe0 | (n >> 12));
+    r[1] = (char)(0x80 | ((n >> 6) & 63));
+    r[2] = (char)(0x80 | (n & 63));
+  } else {
+    r[0] = (char)(0xf0 | (n >> 18));
+    r[1] = (char)(0x80 | ((n >> 12) & 63));
+    r[2] = (char)(0x80 | ((n >> 6) & 63));
+    r[3] = (char)(0x80 | (n & 63));
+  }
   return r;
 }
 static const char *lm_substr(const char *s, long long start, long long n) {
