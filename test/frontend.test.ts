@@ -523,6 +523,11 @@ test('unicode and hex escapes', () => {
   assert.equal(runSrc('print(len("\\u{627}") + len("\\x41"));', 'vm'), '3\n');
 });
 
+test('loop statement', () => {
+  assert.deepEqual(errs('var i = 0; loop { i += 1; if i > 2 { break; } } print(i);'), []);
+  assert.deepEqual(errs('var loop = 1; loop = loop + 1; print(loop);'), []);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);

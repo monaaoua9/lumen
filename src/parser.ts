@@ -353,6 +353,13 @@ class Parser {
       }
     }
 
+    // `loop { ... }` is `while true { ... }`; loop is not reserved, `loop = 1;` is still an assignment
+    if (t.kind === 'ident' && t.text === 'loop' && this.peek().kind === '{') {
+      this.next();
+      const body = this.block();
+      return { k: 'while', span: this.join(t.span, this.prevSpan()), cond: { k: 'bool', value: true, span: t.span, ty: 'error' }, body };
+    }
+
     if (t.kind === 'ident') {
       const nx = this.peek().kind;
       if (nx === '=' || nx in COMPOUND) {

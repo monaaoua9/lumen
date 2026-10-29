@@ -1,0 +1,16 @@
+var n = 27;
+var steps = 0;
+loop {
+  if n == 1 { break; }
+  n = if n % 2 == 0 { n / 2 } else { 3 * n + 1 };
+  steps += 1;
+}
+print(steps);
+
+var tries = 0;
+loop {
+  tries += 1;
+  if tries < 3 { continue; }
+  print("done after " + str(tries));
+  break;
+}
