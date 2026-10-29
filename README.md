@@ -136,7 +136,7 @@ Semantics worth knowing:
 - Functions see globals declared *before* them. Recursion works, call depth is capped at 1000 (`run --engine interp` runs on a thread with a large stack so it reaches the same cap).
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
 - Tuple patterns in `match`: `match (n % 3, n % 5) { (0, 0) => ..., (0, _) => ..., _ => ... }`. Parts are int, string or bool literals, `_`, or a name that binds that part inside the arm (`(x, 0) => x`; not with `|` or a guard). They become guards, so the written tuple may only hold variables, fields and arithmetic (it is re-evaluated per arm) and a final `_` arm is needed.
-- `x.f(args)` on a value with no such method falls back to `f(x, args)` when `f` is a builtin or a function whose first parameter has x's type, so `xs.len()` and `s.trim().upper()` work. Real methods win.
+- `x.f(args)` on a value with no such method falls back to `f(x, args)` when `f` is a builtin, a function whose first parameter has x's type, or a generic function whose first parameter accepts it, so `xs.len()`, `s.trim().upper()` and `xs.map(fn(x) => x * 2)` (after importing `std/list.lum`) work. Real methods win.
 - Arrays are references (`let b = a;` aliases); indexing is bounds-checked, `pop` on an empty array traps. `==` on arrays/structs is rejected. Arrays can nest (`int[][]`, rows may have different lengths).
 - Structs are references too (`let q = p;` aliases) and print as `Point { x: 1.0, y: 2.0 }`. Literal fields run in the order written. A struct cannot contain itself by value; use an array field (`kids: Node[]`).
 - `Name {` after `if` / `while` is a block, wrap a struct literal in parentheses there.
