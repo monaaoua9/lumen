@@ -20,3 +20,14 @@ fn test_fixed() {
   test.eq_str(text.fixed(9.999, 2), "10.00");
   test.eq_str(text.fixed(12.0, 0), "12");
 }
+
+fn test_trim_split() {
+  test.eq_str(text.trim_start("  a b "), "a b ");
+  test.eq_str(text.trim_end("  a b \n"), "  a b");
+  test.eq_str(text.trim_end("   "), "");
+  let (k, v) = text.split_once("key=val=x", "=");
+  test.eq_str(k, "key");
+  test.eq_str(v, "val=x");
+  let (all, rest) = text.split_once("none", "=");
+  test.eq_str(all + rest, "none");
+}

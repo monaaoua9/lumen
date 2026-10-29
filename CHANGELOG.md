@@ -29,4 +29,4 @@ Newest first. The README has the full description of every feature.
 ## Standard library
 
 - New: `std/test`, `std/bits`, `std/random`, `std/set`, `std/json` (parser and printer).
-- Extended: `std/list` (zip, enumerate, partition, take_while, drop_while, chunks, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (lines, chars, center, fixed, ...), `std/map` (keys, values, entries, update), `std/option` (map_option, find_by, first, ...), `std/math` (isqrt, factorial, ...).
+- Extended: `std/list` (zip, enumerate, partition, take_while, drop_while, chunks, sort_by, take, drop, zip_with, flatten, unique, ...), `std/text` (trim_start, trim_end, split_once, lines, chars, center, fixed, ...), `std/map` (keys, values, entries, update), `std/option` (map_option, find_by, first, ...), `std/math` (isqrt, factorial, ...).

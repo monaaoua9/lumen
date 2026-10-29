@@ -99,3 +99,27 @@ pub fn fixed(x: float, digits: int): string {
   if digits > 0 { out = out + "." + pad_left(str(n % scale), digits, "0"); }
   return if neg && n > 0 { "-" + out } else { out };
 }
+
+fn blank_at(s: string, i: int): bool {
+  let c = byte(s, i);
+  return c == 32 || c == 9 || c == 10 || c == 13;
+}
+
+pub fn trim_start(s: string): string {
+  var i = 0;
+  while i < len(s) && blank_at(s, i) { i += 1; }
+  return s[i..len(s)];
+}
+
+pub fn trim_end(s: string): string {
+  var j = len(s);
+  while j > 0 && blank_at(s, j - 1) { j -= 1; }
+  return s[0..j];
+}
+
+// text before and after the first `sep`; whole string and "" when it's missing
+pub fn split_once(s: string, sep: string): (string, string) {
+  let at = find(s, sep);
+  if at < 0 { return (s, ""); }
+  return (s[0..at], s[at + len(sep)..len(s)]);
+}
