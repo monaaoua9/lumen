@@ -15,3 +15,6 @@ print(list.flatten([[1, 2], [3], []]));
 print(list.flat_map(["ab", "c"], fn(s) => [s, s + s]));
 print(list.unique(["x", "y", "x"]));
 print(list.max_of([3, 8, 2]) - list.min_of([3, 8, 2]));
+print(list.equal([1, 2], [1, 2]) && !list.equal([1, 2], [1, 3]) && !list.equal(["a"], ["a", "b"]));
+print(list.index_of(["x", "y", "z"], "z") + list.index_of([1, 2], 9));
+print(list.reversed([1, 2, 3]));

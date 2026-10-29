@@ -157,3 +157,25 @@ pub fn min_of(xs: int[]): int {
   }
   return best;
 }
+
+pub fn equal<T>(xs: T[], ys: T[]): bool {
+  if len(xs) != len(ys) { return false; }
+  for i in 0..len(xs) {
+    if xs[i] != ys[i] { return false; }
+  }
+  return true;
+}
+
+// -1 when x is not there
+pub fn index_of<T>(xs: T[], x: T): int {
+  for i in 0..len(xs) {
+    if xs[i] == x { return i; }
+  }
+  return -1;
+}
+
+pub fn reversed<T>(xs: T[]): T[] {
+  let out = slice(xs, 0, len(xs));
+  reverse(out);
+  return out;
+}
