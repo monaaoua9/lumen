@@ -136,6 +136,35 @@ Buzz
 14
 ```
 
+A variant's parts can be literals, and a statement arm needs no braces when it is one expression.
+
+```lum
+enum Cmd { Move(int), Say(string), Stop }
+
+fn run(c: Cmd) {
+  match c {
+    Move(0) => print("standing still"),
+    Move(n) if n < 0 => print("back", -n),
+    Move(n) => print("forward", n),
+    Say("hi") | Say("hello") => print("greeting"),
+    Say(w) => print("says", w),
+    Stop => print("stop"),
+  }
+}
+
+run(Cmd.Move(0));
+run(Cmd.Move(-2));
+run(Cmd.Say("hello"));
+run(Cmd.Say("bye"));
+```
+
+```output
+standing still
+back 2
+greeting
+says bye
+```
+
 ## 6. Tuples and destructuring
 
 Tuples are written `(a, b)`, read with `.0`, and taken apart in `let` and `for`.
