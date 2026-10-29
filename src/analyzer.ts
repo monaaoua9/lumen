@@ -395,7 +395,7 @@ class Analyzer {
   structInstance(name: string, args: Type[], span: Span): string | null {
     const tmpl = this.structTemplates.get(name);
     if (!tmpl) {
-      this.err('E016', this.structs.has(name) ? `struct '${name}' is not generic` : `unknown struct '${name}'`, span);
+      this.err('E016', this.structs.has(name) ? `struct '${name}' is not generic` : `unknown struct '${name}'`, span, name === 'Result' || name === 'Option' ? 'add: import "std/option.lum";' : undefined);
       return null;
     }
     if (args.length !== tmpl.typeParams!.length) {
@@ -425,7 +425,7 @@ class Analyzer {
   enumInstance(name: string, args: Type[], span: Span): string | null {
     const tmpl = this.enumTemplates.get(name);
     if (!tmpl) {
-      this.err('E016', this.enums.has(name) ? `enum '${name}' is not generic` : `unknown enum '${name}'`, span);
+      this.err('E016', this.enums.has(name) ? `enum '${name}' is not generic` : `unknown enum '${name}'`, span, name === 'Result' || name === 'Option' ? 'add: import "std/option.lum";' : undefined);
       return null;
     }
     if (args.length !== tmpl.typeParams!.length) {
