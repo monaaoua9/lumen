@@ -233,7 +233,7 @@ node src/cli.ts emit-c examples/fib.lum -o fib.c
 node src/cli.ts build examples/bench.lum -o bench  # emit C + gcc/clang/cc
 node src/cli.ts bench examples/bench.lum           # interpreter vs VM
 node src/cli.ts repl                              # interactive; a bare expression prints its value, :type expr, :reset, :help
-node src/cli.ts lsp                               # language server on stdin/stdout for any LSP editor: diagnostics as you type (imports resolved, unsaved text used) and whole-file formatting
+node src/cli.ts lsp                               # language server on stdin/stdout for any LSP editor: diagnostics as you type (imports resolved, unsaved text used), hover (types, function signatures), go to definition within the file, and whole-file formatting
 node src/cli.ts fmt --write file.lum              # re-indent by bracket depth (--check for CI)
 node src/cli.ts test file.lum                   # run every `fn test_*()`, failed assert() = failed test (--only name to filter)
 node src/cli.ts explain E003                      # what a diagnostic code means, with a bad/good example
