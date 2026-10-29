@@ -25,6 +25,7 @@ Newest first. The README has the full description of every feature.
 - `try` inside a block expression is a P001 error instead of silently capturing the statements after it.
 - Runtime errors in the C backend print the same call trace as the interpreter and the VM.
 - Generic enums (`option.Result<Task>`) can carry a struct that the program itself declares, also when the struct is not `pub`.
+- Same for generic structs: `map.Map<Item>` with a private `Item` no longer reports E027.
 - Labelled loops: `outer: for ... { for ... { break outer; } }` and `continue outer;`.
 - Destructuring lets (`let [a, b] = pair();`, `let P { x, y } = p;`) and multiple assignment (`a, b = b, a;`).
 - `for i, x in xs`, `for ch in text`, slices `a[lo..hi]` and `s[lo..hi]`, open and inclusive ends (`a[1..]`, `a[..2]`, `a[2..=3]`), `s[i]` reads one character.
