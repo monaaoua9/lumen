@@ -726,7 +726,14 @@ class Parser {
       while (this.eat('|')) pats.push(this.pattern());
       const guard = this.eat('if') ? this.expr() : undefined;
       this.expect('=>');
-      const body = this.block();
+      let body: Stmt[];
+      if (this.at('{')) body = this.block();
+      else {
+        // `Ok(b) => print(b),` without braces
+        const e = this.expr();
+        body = [{ k: 'expr', span: e.span, e }];
+        if (!this.at('}')) this.expect(',');
+      }
       this.eat(',');
       const { binds, ...head } = this.rangeArm(scrut, pats, guard);
       arms.push({ ...head, body: binds ? [...binds, ...body] : body, span: this.join(first, this.prevSpan()) });
