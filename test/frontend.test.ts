@@ -540,7 +540,7 @@ test('tuple patterns', () => {
   assert.deepEqual(errs('let n = 4; print(match (n % 2, n) { (0, 4) => 1 });'), ['E020']);
   assert.ok(diagCodes('fn f(): int { return 1; } print(match (f(), 2) { (1, 2) => 1, _ => 0 });').includes('P001'));
   assert.ok(diagCodes('let n = 1; print(match (n, n) { (1, 2, 3) => 1, _ => 0 });').includes('P001'));
-  assert.ok(diagCodes('let n = 1; print(match (n, n) { (Some(1), 2) => 1, _ => 0 });').includes('P001'));
+  assert.ok(diagCodes('let n = 1; print(match (n, n) { (Some(1), 2) => 1, _ => 0 });').includes('E003'));
 });
 
 test('tuple patterns bind names', () => {
@@ -807,9 +807,9 @@ test('bitwise operators: int only, precedence like Rust, >> still closes generic
   assert.deepEqual(diagCodes('struct B<T> { v: T } let x: B<B<int>> = B<B<int>> { v: B<int> { v: 1 } }; print(x.v.v >> 0);'), []);
 });
 
-test('a capitalised name in a tuple pattern is an error instead of a silent catch-all', () => {
-  const src = 'enum C { Red, Green } fn f(a: int, c: C): int { return match (a, c) { (0, Red) => 1, (_, _) => 2 }; }';
-  assert.deepEqual(diagCodes(src).filter(c => c === 'P001').length > 0, true);
-  const ok = 'fn f(a: int, b: int): int { return match (a, b) { (0, n) => n, (_, _) => 2 }; }';
+test('variants inside tuple patterns work, inside payload tuples a capitalised name is an error', () => {
+  const ok = 'enum C { Red, Green } fn f(a: int, c: C): int { return match (a, c) { (0, Red) => 1, (_, Green) => 3, _ => 2 }; }';
   assert.deepEqual(diagCodes(ok).filter(c => c.startsWith('E') || c.startsWith('P')), []);
+  const bad = 'enum C { Red, Green } enum W { Pair((int, C)), Nil } fn f(w: W): int { return match w { Pair((0, Red)) => 1, _ => 2 }; }';
+  assert.ok(diagCodes(bad).includes('P001'));
 });

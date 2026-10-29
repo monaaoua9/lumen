@@ -869,3 +869,11 @@ test('lsp hover shows types and definition jumps to the declaration', () => {
   assert.deepEqual(msgs.find(m => m.id === 3).result.range.start, { line: 0, character: 3 });
   assert.ok(msgs.find(m => m.id === 4).result.contents.value.includes('let w: int'));
 });
+
+test('variants inside tuple patterns agree on every engine', () => {
+  const want = 'stay red go green go yellow go red\n7 2 9 0\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/tuple_variants.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});

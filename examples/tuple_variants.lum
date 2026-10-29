@@ -1,0 +1,24 @@
+enum Light { Red, Yellow, Green }
+enum Opt { Some(int), None }
+
+fn next(l: Light, emergency: bool): string {
+  return match (l, emergency) {
+    (Red, true) => "stay red",
+    (Red, false) => "go green",
+    (Green, _) => "go yellow",
+    (Yellow, _) => "go red",
+    _ => "unreachable",
+  };
+}
+
+fn pair(a: Opt, b: Opt): int {
+  return match (a, b) {
+    (Some(x), Some(y)) => x + y,
+    (Some(x), None) => x,
+    (None, Some(y)) => y,
+    _ => 0,
+  };
+}
+
+print(next(Light.Red, true), next(Light.Red, false), next(Light.Green, true), next(Light.Yellow, false));
+print(pair(Opt.Some(2), Opt.Some(5)), pair(Opt.Some(2), Opt.None), pair(Opt.None, Opt.Some(9)), pair(Opt.None, Opt.None));
