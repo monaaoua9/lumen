@@ -1,0 +1,9 @@
+fn box(width: int, height: int = 2, label: string = "box"): string {
+  return label + ":" + str(width * height);
+}
+
+print(box(3));
+print(box(3, label: "wide"));
+print(box(height: 5, width: 4));
+print(box(2, 3, label: "full"));
+print(box(label: "x", width: 1));

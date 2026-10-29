@@ -1795,6 +1795,10 @@ class Analyzer {
   }
 
   call(e: Extract<Expr, { k: 'call' }>, want?: Type): Type {
+    if (e.argNames && (isBuiltin(e.name) || this.generics.has(e.name) || e.callee || !this.fns.has(e.name) || this.scope.lookup(e.name))) {
+      this.err('E004', 'named arguments only work when calling a plain function', e.span);
+      e.argNames = undefined;
+    }
     if (isBuiltin(e.name)) return this.builtin(e, e.name);
 
     const gen = this.generics.get(e.name);
@@ -1823,6 +1827,7 @@ class Analyzer {
     }
 
     const fn = this.fns.get(e.name);
+    if (e.argNames) this.placeNamed(e, fn);
     // left-out trailing arguments take the parameter's default, evaluated here at the call
     if (fn && e.args.length < fn.params.length) {
       for (let i = e.args.length; i < fn.decl.params.length; i++) {
@@ -1845,6 +1850,38 @@ class Analyzer {
     }
 
     return this.checkUserCall(e, fn, argTys);
+  }
+
+  // f(b: 1, a: 2) becomes f(2, 1); arguments are then evaluated in parameter order
+  placeNamed(e: Extract<Expr, { k: 'call' }>, fn: FnSym | undefined) {
+    const names = e.argNames!;
+    e.argNames = undefined;
+    if (!fn) return;
+    const params = fn.decl.params;
+    const slots: (Expr | undefined)[] = new Array(params.length).fill(undefined);
+    let at = 0;
+    let named = false;
+    e.args.forEach((a, i) => {
+      const nm = names[i];
+      if (!nm) {
+        if (named) this.err('E004', 'positional arguments must come before named ones', a.span);
+        else if (at < slots.length) slots[at++] = a;
+        return;
+      }
+      named = true;
+      const idx = params.findIndex(p => p.name === nm);
+      if (idx < 0) this.err('E004', `'${e.name}' has no parameter '${nm}'`, a.span, closestHint(nm, params.map(p => p.name)));
+      else if (slots[idx]) this.err('E004', `parameter '${nm}' is given twice`, a.span);
+      else slots[idx] = a;
+    });
+    let last = slots.length;
+    while (last > 0 && !slots[last - 1]) last--;
+    const hole = slots.slice(0, last).findIndex(s => !s);
+    if (hole >= 0 && !params[hole].def) {
+      this.err('E004', `missing argument '${params[hole].name}' in call to '${e.name}'`, e.span);
+      return;
+    }
+    e.args = slots.slice(0, last).map((s, i) => s ?? structuredClone(params[i].def!));
   }
 
   checkUserCall(e: Extract<Expr, { k: 'call' }>, fn: FnSym, argTys: Type[]): Type {

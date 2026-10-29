@@ -499,6 +499,16 @@ test('range patterns', () => {
   assert.deepEqual(diagCodes('let n = 5; print(match n + 1 { 0..3 => 1, _ => 0 });'), ['P001']);
 });
 
+test('named arguments', () => {
+  const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
+  assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
+  assert.deepEqual(errs(F + 'print(f(c: 1, a: 5));'), ['E004']);
+  assert.deepEqual(errs(F + 'print(f(a: 1, a: 2));'), ['E004']);
+  assert.deepEqual(errs(F + 'print(f(b: 1));'), ['E004']);
+  assert.deepEqual(errs(F + 'print(f(a: 1, 2));'), ['E004']);
+  assert.deepEqual(errs('print(len(xs: [1]));'), ['E004']);
+});
+
 test('closures: capturing', () => {
   const mk = 'fn mk(n: int): fn(int): int { return fn(x: int): int { return x + n; }; } ';
   assert.deepEqual(errs(mk + 'print(mk(1)(2));'), []);
