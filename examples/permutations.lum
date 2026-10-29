@@ -1,0 +1,30 @@
+fn permute(xs: int[]): int[][] {
+  if len(xs) <= 1 { return [xs]; }
+  let out: int[][] = [];
+  for i, x in xs {
+    let rest: int[] = [];
+    for j, y in xs { if j != i { push(rest, y); } }
+    for p in permute(rest) {
+      let row = [x];
+      for q in p { push(row, q); }
+      push(out, row);
+    }
+  }
+  return out;
+}
+
+fn hanoi(n: int, from: string, to: string, via: string, moves: string[]) {
+  if n == 0 { return; }
+  hanoi(n - 1, from, via, to, moves);
+  push(moves, "{from}->{to}");
+  hanoi(n - 1, via, to, from, moves);
+}
+
+fn main() {
+  let ps = permute([1, 2, 3]);
+  print(len(ps), ps[0], ps[5]);
+  let moves: string[] = [];
+  hanoi(4, "a", "c", "b", moves);
+  print(len(moves), moves[0], moves[14]);
+}
+main();
