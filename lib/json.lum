@@ -35,10 +35,11 @@ fn str_body(c: Cursor): string {
       c.at += 1;
       let e = c.text[c.at];
       out += if e == "n" { "\n" } else if e == "t" { "\t" } else if e == "r" { "\r" } else { e };
+      c.at += len(e);
     } else {
       out += ch;
+      c.at += len(ch);
     }
-    c.at += 1;
   }
   if c.at >= len(c.text) { c.bad = true; }
   c.at += 1;

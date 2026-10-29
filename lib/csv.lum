@@ -31,7 +31,7 @@ pub fn parse(text: string): string[][] {
     } else if c != "\r" {
       cell += c;
     }
-    i += 1;
+    i += len(c);
   }
   // a last line without a newline still counts
   if len(cell) > 0 || len(row) > 0 {
