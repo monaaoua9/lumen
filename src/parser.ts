@@ -1106,10 +1106,15 @@ class Parser {
     for (;;) {
       if (this.at('[')) {
         this.next();
-        const idx = this.allowStruct(() => this.expr());
+        // a[..hi] starts at 0
+        const idx = this.at('..') ? { k: 'int', value: 0, span: this.cur.span, ty: 'error' } as Expr : this.allowStruct(() => this.expr());
         if (this.eat('..')) {
-          // a[lo..hi] is slice(a, lo, hi - lo); lo is written twice, so keep it free of side effects
-          const hi = this.allowStruct(() => this.expr());
+          // a[lo..hi] is slice(a, lo, hi - lo); lo and a are written twice, so keep them free of side effects
+          const inclusive = this.eat('=') !== null;
+          let hi: Expr = this.at(']')
+            ? { k: 'call', name: 'len', nameSpan: idx.span, args: [structuredClone(e)], span: idx.span, ty: 'error' }
+            : this.allowStruct(() => this.expr());
+          if (inclusive) hi = { k: 'binary', op: '+', l: hi, r: { k: 'int', value: 1, span: hi.span, ty: 'error' }, span: hi.span, ty: 'error' };
           const end = this.expect(']');
           const count: Expr = { k: 'binary', op: '-', l: hi, r: structuredClone(idx), span: hi.span, ty: 'error' };
           e = { k: 'call', name: 'slice', nameSpan: idx.span, args: [e, idx, count], span: this.join(e.span, end.span), ty: 'error' };
