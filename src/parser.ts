@@ -1174,14 +1174,22 @@ class Parser {
       this.expect('}');
     }
     this.expect('=');
-    const init = this.expr();
-    this.expect(';');
+    const viaTry = this.cur.kind === 'ident' && this.cur.text === 'try' && ![';', '=', '.', ',', ')'].includes(this.peek().kind);
+    const init = viaTry ? undefined : this.expr();
+    if (!viaTry) this.expect(';');
     const sp = this.join(kw.span, this.prevSpan());
     const ref: Expr = { k: 'var', name: tmp, span: sp, ty: 'error' };
+    if (viaTry) {
+      // the picks go after the unwrapped value, inside the Ok arm
+      const m = this.tryLet({ ...kw, kind: 'let' }, { ...kw, kind: 'ident', text: tmp }, undefined, undefined);
+      const rest = this.tryRest;
+      if (rest) for (const p of picks) rest.push({ k: 'let', span: sp, name: p.name.text, nameSpan: p.name.span, mutable: kw.kind === 'var', init: p.at({ ...ref }) });
+      return m;
+    }
     for (const p of picks) {
       this.queue.push({ k: 'let', span: sp, name: p.name.text, nameSpan: p.name.span, mutable: kw.kind === 'var', init: p.at({ ...ref }) });
     }
-    return { k: 'let', span: sp, name: tmp, nameSpan: sp, mutable: false, init };
+    return { k: 'let', span: sp, name: tmp, nameSpan: sp, mutable: false, init: init! };
   }
 
   ifStmt(): Stmt {
