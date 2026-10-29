@@ -516,6 +516,11 @@ test('tuple patterns bind names', () => {
   assert.ok(diagCodes('let t = (1, 2); print(match t { (0, 1) | (x, _) => 1, _ => 2 });').includes('P001'));
 });
 
+test('print takes several values', () => {
+  assert.deepEqual(errs('print("a", 1, 2.5, [1]);'), []);
+  assert.equal(runSrc('print("a", 1, true);', 'vm'), 'a 1 true\n');
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
