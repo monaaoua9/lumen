@@ -7,6 +7,8 @@ import type { Elem, Type } from './types.ts';
 
 class Bail extends Error {}
 
+type TupleShape = (string | null | { lit: Pat & { k: 'lit' } } | TupleShape)[];
+
 interface LoopInfo {
   label?: string;
   id: number;
@@ -764,6 +766,51 @@ class Parser {
   // `Some(Some(v))`: the inner variant pattern binds a hidden name, see nestedArm
   varNested = new Map<Pat, { name: string; pat: Extract<Pat, { k: 'variant' }> }[]>();
 
+  // `Some((a, b))`: a tuple inside a variant, its names are read off the hidden binding with field accesses
+  varTuples = new Map<Pat, { name: string; shape: TupleShape }[]>();
+
+  tupleShape(): TupleShape {
+    this.expect('(');
+    const out: TupleShape = [];
+    do {
+      if (this.at('(')) { out.push(this.tupleShape()); continue; }
+      if (['int', 'string', 'true', 'false', '-'].includes(this.cur.kind)) {
+        out.push({ lit: this.basePattern() as Pat & { k: 'lit' } });
+        continue;
+      }
+      const b = this.vn(this.expect('ident', 'a binding name'));
+      out.push(b.text === '_' ? null : b.text);
+    } while (this.eat(',') && !this.at(')'));
+    this.expect(')');
+    return out;
+  }
+
+  tupleLets(base: Expr, shape: TupleShape, sp: Span): Stmt[] {
+    const out: Stmt[] = [];
+    shape.forEach((part, i) => {
+      if (part === null || (!Array.isArray(part) && typeof part === 'object')) return;
+      const at: Expr = { k: 'field', obj: structuredClone(base), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+      if (typeof part === 'string') out.push({ k: 'let', span: sp, name: part, nameSpan: sp, mutable: false, init: at });
+      else out.push(...this.tupleLets(at, part, sp));
+    });
+    return out;
+  }
+
+  // the literals written inside a tuple pattern, as comparisons on the parts of `base`
+  tupleConds(base: Expr, shape: TupleShape, sp: Span): Expr[] {
+    const out: Expr[] = [];
+    shape.forEach((part, i) => {
+      if (part === null || typeof part === 'string') return;
+      const at: Expr = { k: 'field', obj: structuredClone(base), name: `_${i}`, nameSpan: sp, idx: -1, span: sp, ty: 'error' };
+      if (Array.isArray(part)) { out.push(...this.tupleConds(at, part, sp)); return; }
+      const l = part.lit;
+      const r: Expr = l.ty === 'string' ? { k: 'str', value: l.value as string, span: sp, ty: 'error' }
+        : l.ty === 'bool' ? { k: 'bool', value: l.value as boolean, span: sp, ty: 'error' } : { k: 'int', value: l.value as number, span: sp, ty: 'error' };
+      out.push({ k: 'binary', op: '==', l: at, r, span: sp, ty: 'error' });
+    });
+    return out;
+  }
+
   pattern(): Pat {
     const p = this.basePattern();
     if (p.k === 'lit' && p.ty === 'int' && this.at('..')) {
@@ -810,22 +857,25 @@ class Parser {
 
   // `Some(Some(v))`: the arm matches the outer variant, a guard tests the inner one and `v` is read out of the hidden binding in front of the body
   nestedArm(pats: Pat[], guard: Expr | undefined): { pats: Pat[]; guard: Expr | undefined; binds: Stmt[] } {
-    const top = pats.map(p => this.varNested.get(p));
-    if (!top.some(x => x)) return { pats, guard, binds: [] };
+    if (!pats.some(p => this.varNested.get(p) || this.varTuples.get(p))) return { pats, guard, binds: [] };
     const sp = pats[0].span;
     if (pats.length > 1) {
-      this.diags.push({ severity: 'error', code: 'P001', message: 'a nested variant pattern cannot be used in a | alternative', span: sp });
+      this.diags.push({ severity: 'error', code: 'P001', message: 'a nested pattern cannot be used in a | alternative', span: sp });
       return { pats, guard, binds: [] };
     }
     const hidden = (name: string): Expr => ({ k: 'var', name, span: sp, ty: 'error' });
     const conds: Expr[] = [];
     const binds: Stmt[] = [];
-    for (const { name, pat } of top[0]!) {
+    for (const { name, pat } of this.varNested.get(pats[0]) ?? []) {
       conds.push(this.nestedCond(hidden(name), pat));
       binds.push(...this.nestedLets(hidden(name), pat));
     }
+    for (const { name, shape } of this.varTuples.get(pats[0]) ?? []) {
+      conds.push(...this.tupleConds(hidden(name), shape, sp));
+      binds.push(...this.tupleLets(hidden(name), shape, sp));
+    }
     const and = (a: Expr, b: Expr): Expr => ({ k: 'binary', op: '&&', l: a, r: b, span: sp, ty: 'error' });
-    const test = conds.reduce(and);
+    const test = conds.length ? conds.reduce(and) : undefined;
     // a guard written by the user may read the nested names, which only exist in the body: it reads what they stand for
     const parts = new Map(binds.map(b => [(b as { name: string }).name, (b as { init: Expr }).init]));
     const swap = (o: unknown): unknown => {
@@ -838,7 +888,8 @@ class Parser {
       }
       return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, k === 'span' ? v : swap(v)]));
     };
-    return { pats, guard: guard ? and(test, swap(guard) as Expr) : test, binds };
+    const swapped = guard ? swap(guard) as Expr : undefined;
+    return { pats, guard: test && swapped ? and(test, swapped) : (test ?? swapped), binds };
   }
 
   // true when `e` holds the variant `q` with all the literals and inner variants it spells out
@@ -851,10 +902,13 @@ class Parser {
       if (!b) return null;
       const lit = lits.find(l => l.name === b.name);
       const nest = nests.find(n => n.name === b.name);
-      if (!lit && !nest) return null;
+      const tup = (this.varTuples.get(q) ?? []).find(t => t.name === b.name);
+      const tconds = tup ? this.tupleConds({ k: 'var', name: '', span: sp, ty: 'error' }, tup.shape, sp) : [];
+      if (!lit && !nest && tconds.length === 0) return null;
       const h = `_$c${this.forId++}`;
       const hv: Expr = { k: 'var', name: h, span: sp, ty: 'error' };
-      if (nest) conds.push(this.nestedCond(hv, nest.pat));
+      if (tup) conds.push(...this.tupleConds(hv, tup.shape, sp));
+      else if (nest) conds.push(this.nestedCond(hv, nest.pat));
       else {
         const l = lit!.lit;
         const r: Expr = l.ty === 'string' ? { k: 'str', value: l.value as string, span: sp, ty: 'error' }
@@ -888,7 +942,9 @@ class Parser {
         }],
       };
       const nest = nests.find(n => n.name === b.name);
+      const tup = (this.varTuples.get(q) ?? []).find(t => t.name === b.name);
       if (nest) out.push(...this.nestedLets(picked, nest.pat));
+      else if (tup) out.push(...this.tupleLets(picked, tup.shape, sp));
       else out.push({ k: 'let', span: b.span, name: b.name, nameSpan: b.span, mutable: false, init: picked });
     });
     return out;
@@ -995,6 +1051,7 @@ class Parser {
         let binds: Extract<Pat, { k: 'variant' }>['binds'] = null;
         const lits: { name: string; lit: Pat & { k: 'lit' } }[] = [];
         const nests: { name: string; pat: Extract<Pat, { k: 'variant' }> }[] = [];
+        const tups: { name: string; shape: TupleShape }[] = [];
         let end = t.span;
         if (this.eat('(')) {
           binds = [];
@@ -1005,6 +1062,13 @@ class Parser {
                 const name = `_$l${binds.length}`;
                 binds.push({ name, span: lit.span });
                 lits.push({ name, lit });
+                continue;
+              }
+              if (this.at('(')) {
+                const name = `_$t${binds.length}`;
+                const at = this.cur.span;
+                tups.push({ name, shape: this.tupleShape() });
+                binds.push({ name, span: at });
                 continue;
               }
               // `Op(Add)` and `Some(Some(v))`: a capital letter or a `(` after the name makes it a variant pattern
@@ -1024,6 +1088,7 @@ class Parser {
         const vp: Pat = { k: 'variant', span: this.join(t.span, end), name: t.text, idx: -1, binds, tys: [], boxed: false };
         if (lits.length) this.varLits.set(vp, lits);
         if (nests.length) this.varNested.set(vp, nests);
+        if (tups.length) this.varTuples.set(vp, tups);
         return vp;
       }
       case '(': {
