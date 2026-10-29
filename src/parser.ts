@@ -369,9 +369,20 @@ class Parser {
           let init = this.lambdaExpr(kw);
           this.recs.pop();
           if (rec.used && init.k === 'lambda') {
-            init.fn.name = rec.mangled;
-            this.hoisted.push(init.fn);
-            init = { k: 'var', name: rec.mangled, span: init.span, ty: 'error' };
+            const real = init.fn;
+            real.name = rec.mangled;
+            this.hoisted.push(real);
+            // the let holds a closure that forwards to the real function; the analyzer adds the enclosing
+            // locals the body uses as leading parameters of the real one (captured by value)
+            const sp = init.span;
+            const call: Expr = { k: 'call', name: rec.mangled, nameSpan: sp, args: real.params.map(p => ({ k: 'var', name: p.name, span: p.span, ty: 'error' })), span: sp, ty: 'error' };
+            const wrap: FnDecl = {
+              k: 'fn', span: sp, name: `lambda$${this.lambdas++}`, nameSpan: sp, nlocals: 0, ret: real.ret,
+              params: real.params.map(p => ({ name: p.name, span: p.span, ty: p.ty })),
+              body: [real.ret === 'void' ? { k: 'expr', span: sp, e: call } : { k: 'return', span: sp, value: call }],
+            };
+            this.fns.push(wrap);
+            init = { k: 'lambda', fn: wrap, caps: [], span: sp, ty: 'error' };
           }
           return { k: 'let', span: this.join(kw.span, init.span), name: name.text, nameSpan: name.span, mutable: false, init };
         }
