@@ -590,6 +590,14 @@ test('using Result without the import says which file to add', () => {
   assert.ok((r.stdout + r.stderr).includes('std/option.lum'));
 });
 
+test('literals inside variant patterns agree on every engine', () => {
+  const want = 'zero\nneg\npos\nadditive\nop *\ntwin\npair\n7\nfive\nstarts at zero, second is 7\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/literal_patterns.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);

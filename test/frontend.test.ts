@@ -228,7 +228,7 @@ test('enums with data: checking', () => {
   assert.deepEqual(diagCodes(D + 'print(S.U(1));'), ['E004']);
   assert.deepEqual(diagCodes(D + 'print(S.Q(1));'), ['E021']);
   assert.deepEqual(diagCodes(D + 'match S.U { A(x, y) => { } _ => { } }'), ['E022']);
-  assert.deepEqual(diagCodes(D + 'match S.U { A(1) => { } _ => { } }').length > 0, true);
+  assert.deepEqual(diagCodes(D + 'match S.U { A(1) => { } _ => { } }'), []);
   assert.deepEqual(diagCodes(D + 'match S.U { A(_) | U => { } B(_, _) => { } }'), []);
   assert.deepEqual(diagCodes(D + 'match S.U { A(x) | U => { print(x); } _ => { } }').includes('E022'), true);
   assert.deepEqual(diagCodes(D + 'match S.U { A(n) => { print(n + 1.5); } _ => { } }'), ['E003']);
@@ -424,6 +424,13 @@ test('match guards', () => {
   assert.deepEqual(errs(E + 'let e = E.B; print(match e { A(n) if n => 1, _ => 3 });'), ['E011']);
   assert.deepEqual(errs('let n = 1; match n { _ if n > 0 => { print(1); } }'), ['E020']);
   assert.deepEqual(diagCodes('let n = 1; match n { 1 if n > 0 => { print(1); } 1 => { print(2); } _ => { } }'), []);
+});
+
+test('literal parts in variant patterns', () => {
+  const E = 'enum T { A(int), B(int, int) } ';
+  assert.deepEqual(errs(E + 'let t = T.A(1); match t { A(1) => print(1), A(_) => print(2), B(_, _) => print(3) }'), []);
+  assert.deepEqual(errs(E + 'let t = T.A(1); match t { A(1) => print(1), B(_, _) => print(3) }'), ['E020']);
+  assert.deepEqual(diagCodes(E + 'let t = T.A(1); match t { A(1) | B(1, _) => print(1), _ => print(0) }'), ['P001']);
 });
 
 test('block expressions', () => {
