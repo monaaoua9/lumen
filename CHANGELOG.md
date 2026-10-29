@@ -6,6 +6,7 @@ Newest first. The README has the full description of every feature.
 
 - `http_request(method, url, headers, body)`.
 - Packages: `#ref` on git dependencies, `lumen.lock`, `lumen update`, dependencies of dependencies.
+- Native builds: string variables that are only appended to grow in place, `s += x` in a loop is no longer quadratic.
 
 ## 1.1.0
 

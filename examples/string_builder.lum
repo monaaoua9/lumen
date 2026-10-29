@@ -1,0 +1,55 @@
+// the C backend grows these in place; every use below must still see the right text
+
+fn build(n: int): string {
+  var out = "";
+  for i in 0..n {
+    out += str(i);
+    if i % 3 == 2 { out += ","; }
+  }
+  return out;
+}
+
+var log = "";
+fn note(x: string) {
+  log += x + ";";
+}
+
+// a copy taken before more appends must not grow
+var s = "ab";
+let before = s;
+s += "cd";
+print(before, s);
+
+// reset in the middle
+var t = "xyz";
+t += "1";
+t = "fresh";
+t += "!";
+print(t, len(t));
+
+// reads between appends
+var u = "";
+for i in 0..300 {
+  u += "k";
+  if i == 255 { print(len(u)); }
+}
+print(len(u), u[0], u == repeat("k", 300));
+
+note("a");
+note("b");
+print(log);
+print(build(8));
+
+// the same variable name in two functions
+fn other(): string {
+  var out = "o";
+  out += "k";
+  return out;
+}
+print(other(), build(2));
+
+// appended to itself through a copy
+var w = "ha";
+let w2 = w + w;
+w += w2;
+print(w);

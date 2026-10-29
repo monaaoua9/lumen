@@ -1,4 +1,5 @@
 import type { Expr, FnDecl, Pat, Program, Stmt, VarSym } from './ast.ts';
+import { findBuilders } from './builders.ts';
 import { elemOf, enumName, fnSig, isArray, isEnum, isFn, isStruct, structName } from './types.ts';
 import type { ArrayType, Type } from './types.ts';
 
@@ -210,6 +211,30 @@ static const char *lm_cat(const char *a, const char *b) {
   memcpy(r, a, la);
   memcpy(r + la, b, lb + 1);
   return r;
+}
+
+/* a string variable that is only appended to: the buffer has spare room, so s += x is not a copy of s */
+typedef struct { char *d; size_t n, cap; } lm_sb;
+static lm_sb lm_sb_new(const char *s) {
+  size_t n = strlen(s), cap = n * 2 + 16;
+  char *d = (char *)lm_alloc(cap, 1);
+  memcpy(d, s, n + 1);
+  lm_sb b = { d, n, cap };
+  return b;
+}
+static void lm_sb_add(lm_sb *b, const char *x) {
+  size_t xl = strlen(x);
+  if (b->n + xl + 1 > b->cap) {
+    size_t cap = (b->n + xl) * 2 + 16;
+    char *d = (char *)lm_alloc(cap, 1);
+    memcpy(d, b->d, b->n);
+    b->d = d;
+    b->cap = cap;
+  }
+  memcpy(b->d + b->n, x, xl + 1);
+  b->n += xl;
+  /* the length cache must not keep the old length of this buffer */
+  if (b->n >= 256) { lm_ls = b->d; lm_ln = b->n; } else if (lm_ls == b->d) lm_ls = 0;
 }
 
 static const char *lm_str_int(long long v) {
@@ -785,6 +810,7 @@ function cString(s: string): string {
 }
 
 class Gen {
+  sb = new Set<VarSym>();
   // file:line:col of a source offset, so traps can say where they happened
   locate?: (offset: number) => string;
   lines: string[] = [];
@@ -839,7 +865,7 @@ class Gen {
       }
       case 'str': return cString(e.value);
       case 'bool': return e.value ? 'true' : 'false';
-      case 'var': return this.name(e.sym!);
+      case 'var': return this.sb.has(e.sym!) ? `${this.name(e.sym!)}.d` : this.name(e.sym!);
       case 'fnref': {
         const n = cname(e.fn!.name);
         this.thunks.set(n, e.fn!.decl);
@@ -1101,12 +1127,23 @@ class Gen {
       case 'let': {
         const v = this.expr(s.init);
         const sym = s.sym!;
+        if (this.sb.has(sym)) {
+          this.line(sym.where === 'global' ? `${this.name(sym)} = lm_sb_new(${v});` : `lm_sb ${this.name(sym)} = lm_sb_new(${v});`);
+          return;
+        }
         if (sym.where === 'global') this.line(`${this.name(sym)} = ${v};`);
         else this.line(`${ctype(sym.ty)} ${this.name(sym)} = ${v};`);
         return;
       }
 
       case 'assign': {
+        const sym = s.sym!;
+        if (this.sb.has(sym)) {
+          const w = s.value;
+          if (w.k === 'binary' && w.op === '+' && w.l.k === 'var' && w.l.sym === sym) this.line(`lm_sb_add(&${this.name(sym)}, ${this.expr(w.r)});`);
+          else this.line(`${this.name(sym)} = lm_sb_new(${this.expr(w)});`);
+          return;
+        }
         const v = this.expr(s.value);
         this.line(`${this.name(s.sym!)} = ${v};`);
         return;
@@ -1255,6 +1292,7 @@ class Gen {
 
 export function emitC(prog: Program, locate?: (offset: number) => string): string {
   const g = new Gen();
+  g.sb = findBuilders(prog);
   g.locate = locate;
   const fns = prog.fns.filter(f => f.sym);
   const out: string[] = [PRELUDE];
@@ -1334,7 +1372,7 @@ export function emitC(prog: Program, locate?: (offset: number) => string): strin
   for (const s of prog.body) {
     if (s.k === 'let' && s.sym && s.sym.where === 'global') globals.add(s.sym);
   }
-  for (const v of globals) out.push(`static ${ctype(v.ty)} ${g.name(v)};`);
+  for (const v of globals) out.push(`static ${g.sb.has(v) ? 'lm_sb' : ctype(v.ty)} ${g.name(v)};`);
   if (globals.size) out.push('');
   const thunksAt = protoEnd();
 
