@@ -327,6 +327,7 @@ class Analyzer {
 
     for (const g of this.generics.values()) {
       if (!this.calledGenerics.has(g.name) && !g.name.startsWith('_')) {
+        this.unknownNames(g);
         this.warn('W011', `generic function '${g.name}' is never called, so its body was not checked`, g.nameSpan);
       }
     }
@@ -1085,6 +1086,29 @@ class Analyzer {
     else if (want === 'int' && got === 'float') hint = 'convert with int(x), which truncates';
     else if (want === 'string') hint = 'convert with str(x)';
     this.err('E003', `type mismatch${ctx ? ' ' + ctx : ''}: expected ${want}, found ${got}`, span, hint);
+  }
+
+  // an uncalled generic is never type checked, but a name that is declared nowhere is wrong whatever T is
+  unknownNames(g: FnDecl) {
+    const declared = new Set<string>(g.params.map(p => p.name));
+    const uses: { name: string; span: Span }[] = [];
+    const walk = (o: unknown) => {
+      if (Array.isArray(o)) return o.forEach(walk);
+      if (!o || typeof o !== 'object') return;
+      const n = o as Record<string, unknown>;
+      if (n.k === 'let' || n.k === 'fn') declared.add(n.name as string);
+      if (n.k === 'var') uses.push({ name: n.name as string, span: n.span as Span });
+      if (Array.isArray(n.params)) for (const p of n.params) declared.add((p as { name: string }).name);
+      if (Array.isArray(n.binds)) for (const b of n.binds) if (b && typeof b === 'object') declared.add((b as { name: string }).name);
+      for (const [key, v] of Object.entries(n)) if (key !== 'span' && key !== 'ty') walk(v);
+    };
+    walk(g.body);
+    const known = (n: string) =>
+      declared.has(n) || !!this.globals.lookup(n) || this.fns.has(n) || this.generics.has(n) || this.structs.has(n) || this.enums.has(n) ||
+      this.enumTemplates.has(n) || this.structTemplates.has(n) || this.traits.has(n) || isBuiltin(n) || /\$/.test(n);
+    for (const u of uses) {
+      if (!known(u.name)) this.err('E001', `cannot find variable '${u.name}'`, u.span);
+    }
   }
 
   undefinedVar(name: string, span: Span) {
