@@ -271,8 +271,59 @@ class Parser {
     return out;
   }
 
-  statement(): Stmt {
+  // a jump to an outer loop sets a flag and leaves the inner loops one by one; each loop it crossed
+  // gets a check right after it, the target loop declares the flags
+  loopStmt(label: string | undefined): Stmt {
+    const me: LoopInfo = { label, id: this.forId++, brk: false, cnt: false, crossing: new Set() };
+    this.loops.push(me);
+    const s = this.statement(true);
+    this.loops.pop();
+    const parent = this.loops[this.loops.length - 1];
+    const sp = s.span;
+    const flag = (n: string): Expr => ({ k: 'var', name: n, span: sp, ty: 'error' });
+    for (const target of me.crossing) {
+      const b = `_$lb${target.id}`;
+      const c = `_$lc${target.id}`;
+      if (target === parent) {
+        if (target.brk) this.queue.push({ k: 'if', span: sp, cond: flag(b), then: [{ k: 'break', span: sp }], els: null });
+        if (target.cnt) {
+          this.queue.push({
+            k: 'if', span: sp, cond: flag(c), els: null,
+            then: [{ k: 'assign', span: sp, name: c, nameSpan: sp, value: { k: 'bool', value: false, span: sp, ty: 'error' } }, { k: 'continue', span: sp }],
+          });
+        }
+      } else {
+        const any = [target.brk ? flag(b) : null, target.cnt ? flag(c) : null].filter((x): x is Expr => x !== null);
+        const cond = any.length > 1 ? ({ k: 'binary', op: '||', l: any[0], r: any[1], span: sp, ty: 'error' } as Expr) : any[0];
+        this.queue.push({ k: 'if', span: sp, cond, then: [{ k: 'break', span: sp }], els: null });
+      }
+    }
+    if (!me.brk && !me.cnt) return s;
+    const off: Expr = { k: 'bool', value: false, span: sp, ty: 'error' };
+    const decls: Stmt[] = [];
+    if (me.brk) decls.push({ k: 'let', span: sp, name: `_$lb${me.id}`, nameSpan: sp, mutable: true, init: off });
+    if (me.cnt) decls.push({ k: 'let', span: sp, name: `_$lc${me.id}`, nameSpan: sp, mutable: true, init: structuredClone(off) });
+    return { k: 'block', span: sp, body: [...decls, s] };
+  }
+
+  // `outer: for ...` loops that a labelled break/continue targets, see loopStmt
+  loops: LoopInfo[] = [];
+
+  loopStart(k: number): boolean {
+    const t = this.toks[this.pos + k];
+    return !!t && (t.kind === 'for' || t.kind === 'while' || (t.kind === 'ident' && t.text === 'loop' && this.toks[this.pos + k + 1]?.kind === '{'));
+  }
+
+  statement(raw = false): Stmt {
     const t = this.cur;
+    if (!raw) {
+      if (t.kind === 'ident' && this.peek().kind === ':' && this.loopStart(2)) {
+        this.next();
+        this.next();
+        return this.loopStmt(t.text);
+      }
+      if (this.loopStart(0)) return this.loopStmt(undefined);
+    }
     if (t.kind === 'ident' && t.text === 'import' && this.toks[this.pos + 1]?.kind === 'string') {
       // already resolved by the module bundler
       this.next();
@@ -350,6 +401,23 @@ class Parser {
       case 'break':
       case 'continue': {
         this.next();
+        if (this.cur.kind === 'ident') {
+          const lab = this.next();
+          this.expect(';');
+          const at = this.loops.map(l => l.label).lastIndexOf(lab.text);
+          if (at < 0) {
+            this.diags.push({ severity: 'error', code: 'P001', message: `no enclosing loop is labelled '${lab.text}'`, span: lab.span });
+            return { k: t.kind, span: t.span };
+          }
+          const target = this.loops[at];
+          if (at === this.loops.length - 1) return { k: t.kind, span: t.span };
+          for (const inner of this.loops.slice(at + 1)) inner.crossing.add(target);
+          const name = t.kind === 'break' ? `_$lb${target.id}` : `_$lc${target.id}`;
+          if (t.kind === 'break') target.brk = true;
+          else target.cnt = true;
+          const set: Stmt = { k: 'assign', span: t.span, name, nameSpan: t.span, value: { k: 'bool', value: true, span: t.span, ty: 'error' } };
+          return { k: 'block', span: this.join(t.span, lab.span), body: [set, { k: 'break', span: t.span }] };
+        }
         this.expect(';');
         return { k: t.kind, span: t.span };
       }
@@ -883,6 +951,16 @@ class Parser {
 
   // the body becomes an ordinary function under a made-up name, the analyzer adds the captured locals as extra params
   lambdaExpr(t: Token): Expr {
+    const outer = this.loops;
+    this.loops = [];
+    try {
+      return this.lambdaInner(t);
+    } finally {
+      this.loops = outer;
+    }
+  }
+
+  lambdaInner(t: Token): Expr {
         this.expect('(');
         const params: Param[] = [];
         if (!this.at(')')) {
@@ -911,6 +989,16 @@ class Parser {
   }
 
   fnDecl(owner?: string, ownerTy?: Type, implParams?: string[], implBounds?: Record<string, string[]>): FnDecl {
+    const outer = this.loops;
+    this.loops = [];
+    try {
+      return this.fnInner(owner, ownerTy, implParams, implBounds);
+    } finally {
+      this.loops = outer;
+    }
+  }
+
+  fnInner(owner?: string, ownerTy?: Type, implParams?: string[], implBounds?: Record<string, string[]>): FnDecl {
     const kw = this.next();
     if (this.depth > 0) {
       this.diags.push({ severity: 'error', code: 'P002', message: 'functions can only be declared at the top level', span: kw.span });
