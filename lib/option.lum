@@ -43,3 +43,14 @@ pub fn map_result<T, U>(r: Result<T>, f: fn(T): U): Result<U> {
     Err(m) => Result.Err(m),
   };
 }
+
+pub fn find_by<T>(xs: T[], test: fn(T): bool): Option<T> {
+  for x in xs {
+    if test(x) { return Option.Some(x); }
+  }
+  return Option.None;
+}
+
+pub fn first<T>(xs: T[]): Option<T> {
+  return if len(xs) == 0 { Option.None } else { Option.Some(xs[0]) };
+}

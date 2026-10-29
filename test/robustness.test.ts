@@ -321,7 +321,7 @@ test('std/option.lum and std/math.lum run the same on every engine', () => {
   });
   assert.equal(outs[1], outs[0]);
   assert.equal(outs[2], outs[0]);
-  assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true', '16', 'false', 'got 3', '-7', '0', '3628800', '910', '19']);
+  assert.deepEqual(outs[0].trim().split('\n'), ['5', '-1', 'false', '8', 'false', '12', '12', '1024', '10', 'true', '16', 'false', 'got 3', '-7', '0', '3628800', '910', '19', '5', 'true']);
 });
 
 test('std/list.lum higher-order helpers agree on every engine', () => {

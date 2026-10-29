@@ -35,3 +35,5 @@ print(math.sign(-9) + math.sign(0) + math.sign(4));
 print(math.factorial(10));
 print(math.isqrt(99) * 100 + math.isqrt(100) + math.isqrt(0));
 print(math.digit_sum(-4096));
+print(option.unwrap_or(option.find_by([2, 5, 8], fn(x) => x > 4), 0));
+print(option.is_some(option.first(["only"])));
