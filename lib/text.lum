@@ -125,3 +125,21 @@ pub fn split_once(s: string, sep: string): (string, string) {
   if at < 0 { return (s, ""); }
   return (s[0..at], s[at + len(sep)..len(s)]);
 }
+
+// cuts to at most `width` bytes of whole characters and marks the cut with "..."
+pub fn truncate(s: string, width: int): string {
+  if len(s) <= width { return s; }
+  var out = "";
+  for ch in s {
+    if len(out) + len(ch) + 3 > width { break; }
+    out += ch;
+  }
+  return out + "...";
+}
+
+pub fn title(s: string): string {
+  let parts = split(s, " ");
+  let out: string[] = [];
+  for p in parts { push(out, capitalize(p)); }
+  return join(out, " ");
+}
