@@ -1,0 +1,20 @@
+fn classify(p: (int, int)): string {
+  return match p {
+    (0, 0) => "origin",
+    (x, 0) => "on x axis at {x}",
+    (0, y) => "on y axis at {y}",
+    (a, b) => "at {a},{b}",
+  };
+}
+fn main() {
+  print(classify((0, 0)));
+  print(classify((3, 0)));
+  print(classify((0, 4)));
+  print(classify((5, 6)));
+  let n = 7;
+  match (n % 2, n) {
+    (0, _) => { print("even"); }
+    (_, big) => { print("odd {big}"); }
+  }
+}
+main();
