@@ -899,3 +899,11 @@ test('std/regex groups and captures give the same output on every engine', () =>
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('std/json accessors follow a path with fallbacks on every engine', () => {
+  const want = 'lumen\ntyped 2\n42\ntrue\nmissing\n3\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/json_path.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});

@@ -1,0 +1,12 @@
+import "std/json.lum"
+
+let doc = json.parse("\{\"name\": \"lumen\", \"tags\": [\"dsl\", \"typed\"], \"stats\": \{\"stars\": 42, \"open\": true\}\}");
+if doc.ok {
+  let j = doc.json;
+  print(json.as_str(json.field(j, "name"), "?"));
+  print(json.as_str(json.at(json.field(j, "tags"), 1), "?"), json.size(json.field(j, "tags")));
+  print(json.as_int(json.field(json.field(j, "stats"), "stars"), 0));
+  print(json.as_bool(json.field(json.field(j, "stats"), "open"), false));
+  print(json.as_str(json.field(json.field(j, "nope"), "deeper"), "missing"));
+  print(json.size(j));
+}
