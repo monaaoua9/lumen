@@ -67,3 +67,17 @@ pub fn entries<V>(m: Map<V>): (string, V)[] {
   for i, k in m.keys { push(out, (k, m.vals[i])); }
   return out;
 }
+
+pub fn from_entries<V>(es: (string, V)[]): Map<V> {
+  let m: Map<V> = new();
+  for (k, v) in es { set(m, k, v); }
+  return m;
+}
+
+// b wins on shared keys
+pub fn merge<V>(a: Map<V>, b: Map<V>): Map<V> {
+  let m: Map<V> = new();
+  for (k, v) in entries(a) { set(m, k, v); }
+  for (k, v) in entries(b) { set(m, k, v); }
+  return m;
+}

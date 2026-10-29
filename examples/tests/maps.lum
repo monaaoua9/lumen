@@ -29,3 +29,12 @@ fn test_option() {
   let none: option.Option<int> = option.Option.None;
   test.eq_int(option.unwrap_or(option.map_option(none, fn(v) => v * 3), -1), -1);
 }
+
+fn test_from_entries_merge() {
+  let a = map.from_entries([("x", 1), ("y", 2)]);
+  let b = map.from_entries([("y", 20), ("z", 30)]);
+  let m = map.merge(a, b);
+  test.eq_int(map.size(m), 3);
+  test.eq_int(map.get(m, "y", 0), 20);
+  test.eq_int(map.get(a, "y", 0), 2);
+}
