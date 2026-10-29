@@ -531,6 +531,14 @@ test('int() of an enum', () => {
   assert.deepEqual(errs('enum S { A(int), B } print(int(S.B));'), ['E003']);
 });
 
+test('labelled break and continue', () => {
+  const run = (body: string) => runSrc(body, 'vm');
+  assert.equal(run('var n = 0; a: for i in 0..3 { for j in 0..3 { if j == 1 { continue a; } n += 1; } } print(n);'), '3\n');
+  assert.equal(run('var n = 0; a: for i in 0..3 { for j in 0..3 { n += 1; if n == 4 { break a; } } } print(n);'), '4\n');
+  assert.ok(diagCodes('for i in 0..2 { break nope; }').includes('P001'));
+  assert.deepEqual(errs('a: while true { loop { break a; } }'), []);
+});
+
 test('named arguments', () => {
   const F = 'fn f(a: int, b: int = 2): int { return a - b; } ';
   assert.deepEqual(errs(F + 'print(f(b: 1, a: 5)); print(f(1, b: 3)); print(f(a: 4));'), []);
