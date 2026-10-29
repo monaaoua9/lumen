@@ -1,0 +1,14 @@
+import "std/option.lum"
+fn p(s: string): option.Result<int> {
+  let n = parse_int(s, -1);
+  return if n < 0 { option.Result.Err("bad " + s) } else { option.Result.Ok(n) };
+}
+fn main() {
+  let f = fn(s: string): option.Result<int> {
+    let n = try p(s);
+    return option.Result.Ok(n * 2);
+  };
+  match f("21") { Ok(n) => { print(n); } Err(m) => { print(m); } }
+  match f("x") { Ok(n) => { print(n); } Err(m) => { print(m); } }
+}
+main();
