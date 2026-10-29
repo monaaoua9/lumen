@@ -168,6 +168,8 @@ print(map.get(ages, "ada", 0));      // 36; the third argument is the fallback
 
 `std/encoding.lum`: `to_hex(n)`, `from_hex(s)` (-1 when it is not hex), `hex_encode(s)` (two digits per byte) and `base64_encode(s)`.
 
+`std/matrix.lum`: int matrices as `int[][]`, `new(rows, cols, fill)`, `identity`, `transpose`, `add`, `mul` (traps when the sizes do not match) and `pow(m, n)` by squaring.
+
 `std/json.lum`: a `Json` enum (`Null`, `Bool`, `Num`, `Str`, `Arr`, `Obj`), `parse(text)` returning `{ ok, json }`, `stringify(j)` and `quote(s)`. Numbers are floats and objects keep their key order.
 
 `std/csv.lum`: `parse(text)` gives a `string[][]` (quoted fields, `""` inside quotes, `\r\n` or `\n` line ends), `format(rows)` writes it back.
