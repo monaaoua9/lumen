@@ -544,3 +544,11 @@ test('std/date gives the same output on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
+
+test('std/encoding gives the same output on every engine', () => {
+  const want = 'ff 1000 -1a 0\n255 26 -1\n4c756d656e\nTWFu TWE= TQ==\nSGVsbG8sIEx1bWVuIQ==\n';
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/std/encoding_demo.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
+  }
+});
