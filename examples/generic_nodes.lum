@@ -1,0 +1,12 @@
+struct Node<T> { v: T, kids: Node<T>[] }
+fn count<T>(n: Node<T>): int {
+  var c = 1;
+  for k in n.kids { c += count(k); }
+  return c;
+}
+fn main() {
+  let leaf: Node<string> = Node { v: "x", kids: [] };
+  let root = Node { v: "r", kids: [leaf, Node { v: "y", kids: [leaf] }] };
+  print(count(root), root.kids[1].v);
+}
+main();

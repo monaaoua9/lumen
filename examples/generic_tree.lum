@@ -1,0 +1,29 @@
+struct Pair<A, B> { first: A, second: B }
+enum Tree<T> { Leaf, Node(Tree<T>, T, Tree<T>) }
+
+fn add_node(t: Tree<int>, v: int): Tree<int> {
+  return match t {
+    Leaf => Tree.Node(Tree.Leaf, v, Tree.Leaf),
+    Node(l, x, r) => if v < x { Tree.Node(add_node(l, v), x, r) } else { Tree.Node(l, x, add_node(r, v)) },
+  };
+}
+
+fn walk(t: Tree<int>, out: int[]) {
+  match t {
+    Leaf => { }
+    Node(l, x, r) => { walk(l, out); push(out, x); walk(r, out); }
+  }
+}
+
+fn swap<A, B>(p: Pair<A, B>): Pair<B, A> { return Pair { first: p.second, second: p.first }; }
+
+fn main() {
+  var t: Tree<int> = Tree.Leaf;
+  for v in [5, 2, 8, 1, 9, 3] { t = add_node(t, v); }
+  let out: int[] = [];
+  walk(t, out);
+  print(out);
+  let p = swap(Pair { first: 1, second: "one" });
+  print(p.first, p.second);
+}
+main();
