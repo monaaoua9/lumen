@@ -577,6 +577,13 @@ test('return inside a block expression leaves the function on every engine', () 
   }
 });
 
+test('statement match arms may be plain expressions', () => {
+  for (const engine of ['interp', 'vm', 'c']) {
+    const r = cli('run', 'examples/match_arm_exprs.lum', '--engine', engine);
+    assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'dot\nline 3\nsquare 2\nrect 10\n', engine);
+  }
+});
+
 test('guards on tuple patterns that bind names agree on every engine', () => {
   for (const engine of ['interp', 'vm', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);

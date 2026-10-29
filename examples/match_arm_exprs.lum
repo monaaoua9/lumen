@@ -1,0 +1,15 @@
+enum Shape { Dot, Line(int), Rect(int, int) }
+
+fn show(s: Shape) {
+  match s {
+    Dot => print("dot"),
+    Line(n) => print("line", n),
+    Rect(w, h) if w == h => print("square", w),
+    Rect(w, h) => { print("rect", w * h); }
+  }
+}
+
+show(Shape.Dot);
+show(Shape.Line(3));
+show(Shape.Rect(2, 2));
+show(Shape.Rect(2, 5));
