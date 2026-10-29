@@ -41,12 +41,12 @@ src/
   runtime.ts       semantics shared by all backends (int overflow, float printing, builtins)
   modules.ts       import resolution, bundles several files into one program
   explain.ts       long descriptions behind `lumen explain CODE`
-editors/vscode/    syntax highlighting for VS Code (copy the folder into the extensions directory)
   fmt.ts           whitespace formatter behind `lumen fmt`
   repl.ts          the `lumen repl` loop
   pipeline.ts      glue
   cli.ts           the `lumen` command (turns on the V8 compile cache, then loads main.ts)
 examples/  test/
+editors/vscode/    syntax highlighting for VS Code (copy the folder into the extensions directory)
 ```
 
 ## The language
