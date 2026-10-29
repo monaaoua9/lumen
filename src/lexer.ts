@@ -9,8 +9,8 @@ export interface Token {
 
 const KEYWORDS = new Set(['fn', 'let', 'var', 'if', 'else', 'while', 'for', 'in', 'impl', 'trait', 'pub', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false']);
 
-const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '=>', '..']);
-const ONE = new Set('+-*/%(){}[],;:=<>!.|'.split(''));
+const TWO = new Set(['==', '!=', '<=', '>=', '&&', '||', '+=', '-=', '*=', '/=', '%=', '=>', '..', '<<']);
+const ONE = new Set('+-*/%(){}[],;:=<>!.|&^~'.split(''));
 
 const isDigit = (c: string) => c >= '0' && c <= '9';
 // non-ASCII letters are fine in names (Arabic identifiers); gcc takes UTF-8 names as they are

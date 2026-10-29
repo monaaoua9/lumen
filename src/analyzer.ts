@@ -1459,6 +1459,9 @@ class Analyzer {
       case '%':
         if (a === 'int' && b === 'int') return 'int';
         return opErr(`'%' works on int only, found ${a} and ${b}`);
+      case '&': case '|': case '^': case '<<': case '>>':
+        if (a === 'int' && b === 'int') return 'int';
+        return opErr(`'${e.op}' works on int only, found ${a} and ${b}`);
       case '<': case '<=': case '>': case '>=':
         if ((isNumeric(a) || a === 'string') && a === b) return 'bool';
         return opErr(`cannot compare ${a} with ${b} using '${e.op}'`, sameHint);

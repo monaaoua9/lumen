@@ -31,7 +31,7 @@ interface Base {
   ty: Type;
 }
 
-export type BinOp = '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '&&' | '||';
+export type BinOp = '+' | '-' | '*' | '/' | '%' | '==' | '!=' | '<' | '<=' | '>' | '>=' | '&&' | '||' | '&' | '|' | '^' | '<<' | '>>';
 
 export type Expr =
   | (Base & { k: 'int'; value: number })

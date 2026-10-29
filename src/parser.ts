@@ -39,8 +39,10 @@ const PREC: Record<string, number> = {
   '&&': 2,
   '==': 3, '!=': 3,
   '<': 4, '<=': 4, '>': 4, '>=': 4,
-  '+': 5, '-': 5,
-  '*': 6, '/': 6, '%': 6,
+  '|': 5, '^': 6, '&': 7,
+  '<<': 8, '>>': 8,
+  '+': 9, '-': 9,
+  '*': 10, '/': 10, '%': 10,
 };
 
 const COMPOUND: Record<string, BinOp> = { '+=': '+', '-=': '-', '*=': '*', '/=': '/', '%=': '%' };
@@ -1536,10 +1538,14 @@ class Parser {
   expr(minPrec = 1): Expr {
     let l = this.unary();
     for (;;) {
-      const op = this.cur.kind;
+      let op: string = this.cur.kind;
+      // `>>` is lexed as two `>` so that List<List<int>> still closes
+      const shr = op === '>' && this.toks[this.pos + 1]?.kind === '>' && this.toks[this.pos + 1].span.start === this.cur.span.end;
+      if (shr) op = '>>';
       const p = PREC[op];
       if (p === undefined || p < minPrec) return l;
       this.next();
+      if (shr) this.next();
       const r = this.expr(p + 1);
       l = { k: 'binary', op: op as BinOp, l, r, span: this.join(l.span, r.span), ty: 'error' };
     }
@@ -1547,6 +1553,14 @@ class Parser {
 
   unary(): Expr {
     const t = this.cur;
+    if (t.kind === '~') {
+      // ~x is -x - 1 in two's complement
+      this.next();
+      const arg = this.unary();
+      const span = this.join(t.span, arg.span);
+      const neg: Expr = { k: 'unary', op: '-', arg, span, ty: 'error' };
+      return { k: 'binary', op: '-', l: neg, r: { k: 'int', value: 1, span, ty: 'error' }, span, ty: 'error' };
+    }
     if (t.kind === '-' || t.kind === '!') {
       this.next();
       const arg = this.unary();
