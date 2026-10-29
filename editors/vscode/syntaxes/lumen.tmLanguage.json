@@ -50,7 +50,7 @@
     "functions": {
       "patterns": [
         { "match": "\\b(fn)\\s+([A-Za-z_][A-Za-z0-9_]*)", "captures": { "2": { "name": "entity.name.function.lumen" } } },
-        { "name": "support.function.builtin.lumen", "match": "\\b(print|len|push|pop|str|int|float|sqrt|abs|min|max|substr|find|split|join|trim|assert|read_line|at_eof|exit|sort|reverse|contains|slice|floor|ceil|insert|remove|upper|lower|replace|starts_with|ends_with|repeat|parse_int|parse_float|byte|chr|clock|read_file|write_file|append_file|remove_file|file_exists|list_dir|env|args)(?=\\()" }
+        { "name": "support.function.builtin.lumen", "match": "\\b(print|len|push|pop|str|int|float|sqrt|abs|min|max|substr|find|split|join|trim|assert|read_line|at_eof|exit|sort|reverse|contains|slice|floor|ceil|insert|remove|upper|lower|replace|starts_with|ends_with|repeat|parse_int|parse_float|byte|chr|clock|read_file|write_file|append_file|remove_file|http_get|file_exists|list_dir|env|args)(?=\\()" }
       ]
     }
   }

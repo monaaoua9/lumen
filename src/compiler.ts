@@ -437,6 +437,7 @@ class FnCompiler {
           case 'list_dir': this.emit(Op.LISTDIR); break;
           case 'env': this.emit(Op.ENV); break;
           case 'remove_file': this.emit(Op.RMFILE); break;
+          case 'http_get': this.emit(Op.HTTPGET); break;
           case 'join': this.emit(Op.JOIN); break;
           case 'trim': this.emit(Op.TRIM); break;
           case 'abs': this.emit(Op.ABS); break;

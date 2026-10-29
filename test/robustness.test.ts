@@ -941,3 +941,25 @@ test('explicit type arguments on generic calls agree on every engine', () => {
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '[5] ["lumen"] x\ntrue true\n', engine);
   }
 });
+
+test('http_get fetches a url on every engine and rejects odd ones', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-http-'));
+  try {
+    writeFileSync(join(dir, 'page.txt'), 'hello from disk\n');
+    const url = pathToFileURL(join(dir, 'page.txt')).href;
+    writeFileSync(join(dir, 'g.lum'), `print(http_get("${url}").trim());`);
+    writeFileSync(join(dir, 'bad.lum'), 'print(http_get("ftp://x/y"));');
+    writeFileSync(join(dir, 'inj.lum'), 'print(http_get("http://x/y\\" && echo pwned"));');
+    for (const engine of ['interp', 'vm', 'c']) {
+      const r = cli('run', join(dir, 'g.lum'), '--engine', engine);
+      assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'hello from disk\n', engine + r.stderr);
+      for (const f of ['bad.lum', 'inj.lum']) {
+        const b = cli('run', join(dir, f), '--engine', engine);
+        assert.equal(b.status, 1, engine);
+        assert.ok(b.stderr.includes('bad url'), engine + b.stderr);
+      }
+    }
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

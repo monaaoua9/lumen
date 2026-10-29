@@ -5,6 +5,7 @@ Newest first. The README has the full description of every feature.
 ## Unreleased
 
 - File and environment builtins: `append_file`, `file_exists`, `list_dir`, `remove_file`, `env`.
+- `http_get(url)`, through curl.
 
 ## 1.0.0
 

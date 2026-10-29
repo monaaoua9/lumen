@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process';
 import { appendFileSync, existsSync, unlinkSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { ExitSignal, RuntimeError } from './diagnostics.ts';
 import type { Span } from './diagnostics.ts';
@@ -139,6 +140,7 @@ export function callBuiltin(name: BuiltinName, args: Value[], tys: Type[], io: I
     case 'file_exists': return fileExists(a as string);
     case 'list_dir': return listDir(a as string, span);
     case 'remove_file': removeFileOf(a as string, span); return null;
+    case 'http_get': return httpGet(a as string, span);
     case 'env': return envOf(a as string);
     case 'args': return [...programArgs];
     case 'clock': return Date.now();
@@ -308,6 +310,19 @@ export function removeFileOf(path: string, span?: Span) {
     unlinkSync(path);
   } catch {
     throw new RuntimeError(`cannot remove '${path}'`, span);
+  }
+}
+
+// shells out to curl so https works without a tls stack of our own. the C side runs the same
+// check because it has to go through a shell there
+const URL_OK = /^(https?|file):\/\/[A-Za-z0-9\-._~:\/?#@!&=+,;%*()\[\]']+$/;
+
+export function httpGet(url: string, span?: Span): string {
+  if (!URL_OK.test(url)) throw new RuntimeError(`bad url '${url}'`, span);
+  try {
+    return execFileSync('curl', ['-sSLf', '--max-time', '30', '--', url], { encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'ignore'] });
+  } catch {
+    throw new RuntimeError(`request failed: ${url}`, span);
   }
 }
 
