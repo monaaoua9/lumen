@@ -562,8 +562,8 @@ class Analyzer {
     for (const p of f.params) this.checkType(p.ty, p.span);
     this.checkType(f.ret, f.nameSpan);
     if (isBuiltin(f.name)) {
+      // keep going and register it, otherwise every call to it is checked against the builtin and piles up errors
       this.err('E006', `'${f.name}' is a built-in function and cannot be redefined`, f.nameSpan);
-      return;
     }
     const prev = this.fns.get(f.name);
     if (prev) {
@@ -2000,7 +2000,7 @@ class Analyzer {
       this.err('E004', 'named arguments only work when calling a plain function', e.span);
       e.argNames = undefined;
     }
-    if (isBuiltin(e.name)) return this.builtin(e, e.name);
+    if (isBuiltin(e.name) && !this.fns.has(e.name)) return this.builtin(e, e.name);
 
     const gen = this.generics.get(e.name);
     if (gen && !this.scope.lookup(e.name)) return this.genericCall(e, gen, want);
