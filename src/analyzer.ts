@@ -976,7 +976,8 @@ class Analyzer {
     const st = this.expr(scrut);
     const tmp = this.ctx.nlocals++;
     const decl = isEnum(st) ? this.enums.get(st.slice(1)) : undefined;
-    const matchable = st === 'bool' || st === 'int' || st === 'string' || !!decl;
+    // a tuple is only ever matched through guards (tuple patterns), so every pattern is a wildcard
+    const matchable = st === 'bool' || st === 'int' || st === 'string' || !!decl || (isStruct(st) && /^Tuple\d/.test(structName(st)) && patLists.every(ps => ps.every(p => p.k === 'wild')));
     if (st !== 'error' && !matchable) this.err('E003', `cannot match on a value of type ${st}`, scrut.span, 'match works on enums, bool, int and string');
 
     const seen = new Set<string>();
