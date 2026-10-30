@@ -1,6 +1,6 @@
 {
   "name": "lumen",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "Lumen: a small statically-typed language with a static analyzer, tree-walking interpreter, bytecode VM and C backend",
   "type": "module",
   "private": true,
