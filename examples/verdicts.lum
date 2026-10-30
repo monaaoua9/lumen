@@ -1,0 +1,17 @@
+struct Shape { name: string, sides: int }
+
+enum Verdict { Small, Big(int) }
+
+fn judge(s: Shape): Verdict {
+  return match s.sides {
+    0..4 => Verdict.Small,
+    _ => Verdict.Big(s.sides),
+  };
+}
+
+for s in [Shape { name: "triangle", sides: 3 }, Shape { name: "hexagon", sides: 6 }] {
+  match judge(s) {
+    Small => print("{s.name} is small"),
+    Big(n) => print("{s.name} has {n} sides"),
+  }
+}
