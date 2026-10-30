@@ -2,7 +2,7 @@
 
 Newest first. The README has the full description of every feature.
 
-## Unreleased
+## 1.4.0
 
 - `run` and `test` use the js engine by default instead of the VM (`--engine vm` still works).
 - Language server: completion and document symbols.
