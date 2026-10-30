@@ -348,3 +348,7 @@ test('C backend: len() and indexing a long string do not rescan it', { skip: cc 
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('negative zero survives constants and the optimizer on every engine', () => {
+  assert.equal(allEngines('print(0.1 / (floor(0.5) / (2.5 - 1000000.0)));\nprint(0.1 / 0.0);'), '-Infinity\nInfinity\n');
+});

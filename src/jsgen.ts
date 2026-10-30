@@ -163,7 +163,7 @@ class Gen {
   expr(e: Expr): string {
     switch (e.k) {
       case 'int': case 'float':
-        return e.value < 0 || Object.is(e.value, -0) ? `(${e.value})` : String(e.value);
+        return Object.is(e.value, -0) ? '(-0)' : e.value < 0 ? `(${e.value})` : String(e.value);
       case 'str': return JSON.stringify(e.value);
       case 'bool': return String(e.value);
       case 'var': return this.variable(e);

@@ -71,7 +71,8 @@ class FnCompiler {
   }
 
   poolIdx(v: Value): number {
-    const key = typeof v + ':' + String(v);
+    // String(-0) is "0", but the two differ once they are divided into
+    const key = typeof v + ':' + (Object.is(v, -0) ? '-0' : String(v));
     let idx = this.pool.get(key);
     if (idx === undefined) {
       idx = this.consts.length;
