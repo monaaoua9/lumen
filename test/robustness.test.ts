@@ -1203,3 +1203,11 @@ test('debug stops at breakpoints, steps into calls and shows variables on js and
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('examples/projects/report uses the geometry package on every engine', () => {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
+    const r = cli('run', 'examples/projects/report/main.lum', '--engine', engine);
+    assert.equal(r.status, 0, engine + r.stderr);
+    assert.ok(r.stdout.includes('total area 49'), engine);
+  }
+});

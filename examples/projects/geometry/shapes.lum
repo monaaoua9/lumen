@@ -1,0 +1,13 @@
+pub struct Rect { w: int, h: int }
+
+pub fn area(r: Rect): int {
+  return r.w * r.h;
+}
+
+pub fn perimeter(r: Rect): int {
+  return 2 * (r.w + r.h);
+}
+
+pub fn square(side: int): Rect {
+  return Rect { w: side, h: side };
+}

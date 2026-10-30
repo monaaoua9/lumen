@@ -1,0 +1,9 @@
+import "geometry/shapes.lum"
+
+let rooms = [shapes.Rect { w: 4, h: 5 }, shapes.square(3), shapes.Rect { w: 10, h: 2 }];
+var total = 0;
+for r in rooms {
+  print("{r.w}x{r.h}: area {shapes.area(r)}, perimeter {shapes.perimeter(r)}");
+  total += shapes.area(r);
+}
+print("total area {total}");
