@@ -5,11 +5,14 @@ import { frontend } from './pipeline.ts';
 import type { Frontend } from './pipeline.ts';
 import { format } from './fmt.ts';
 import type { Diagnostic } from './diagnostics.ts';
+import { BUILTINS } from './types.ts';
 
 // language server over stdio: diagnostics on every edit, and whole-document formatting
 const docs = new Map<string, string>();
 // last analysis per document, for hover and go-to-definition
 const last = new Map<string, { fe: Frontend; base: number; name: string }>();
+// the last analysis without errors: while someone is typing, the current text rarely parses
+const good = new Map<string, { fe: Frontend; base: number; name: string }>();
 
 function send(msg: object) {
   const body = Buffer.from(JSON.stringify(msg), 'utf8');
@@ -42,6 +45,7 @@ function diagnose(uri: string) {
 
   const fe = frontend(b.text, name, b.segments);
   last.set(uri, { fe, base: mine ? mine.start : 0, name });
+  if (fe.ok) good.set(uri, { fe, base: mine ? mine.start : 0, name });
   // module errors (missing imports) come first, the rest of the pipeline still runs
   for (const d of b.diags) if (!mine || d.span.start >= mine.start) push(d, fe.source);
   for (const d of fe.diagnostics) push(d, fe.source);
@@ -110,6 +114,65 @@ function definition(uri: string, pos: { line: number; character: number }) {
   return null;
 }
 
+const KEYWORDS = ['fn', 'let', 'var', 'if', 'else', 'while', 'for', 'in', 'impl', 'trait', 'pub', 'struct', 'enum', 'match', 'return', 'break', 'continue', 'true', 'false', 'import', 'loop', 'try'];
+
+const range = (a: { locate(o: number): { line: number; col: number } }, sp: { start: number; end: number }) => {
+  const s = a.locate(sp.start);
+  const e = a.locate(sp.end);
+  return { start: { line: s.line - 1, character: s.col - 1 }, end: { line: e.line - 1, character: e.col - 1 } };
+};
+
+// top-level fns, structs and enums that live in this file
+function symbols(uri: string) {
+  const a = last.get(uri);
+  if (!a) return [];
+  const p = a.fe.program;
+  const mine = (sp: { start: number }) => a.fe.source.locate(sp.start).file === a.name;
+  const out: object[] = [];
+  const add = (name: string, kind: number, decl: { span: { start: number; end: number }; nameSpan: { start: number; end: number } }) => {
+    if (!mine(decl.nameSpan)) return;
+    out.push({ name: name.replace(/^.*\$/, ''), kind, range: range(a.fe.source, decl.span), selectionRange: range(a.fe.source, decl.nameSpan) });
+  };
+  for (const f of p.fns) if (!f.name.startsWith('lambda$') && !f.name.includes('$_')) add(f.name, 12, f);
+  for (const s of p.structs) add(s.name, 23, s);
+  for (const e of p.enums) add(e.name, 10, e);
+  return out;
+}
+
+// text before the cursor decides: after `name.` the fields of that variable's struct, otherwise names in scope
+function completion(uri: string, pos: { line: number; character: number }) {
+  const a = good.get(uri) ?? last.get(uri);
+  const text = docs.get(uri) ?? '';
+  const off = offsetOf(text, pos);
+  const dot = /([A-Za-z_][A-Za-z0-9_]*)\.[A-Za-z0-9_]*$/.exec(text.slice(Math.max(0, off - 80), off));
+  if (dot && a) {
+    let ty = '';
+    const seen = new Set<object>();
+    const find = (n: any) => {
+      if (ty || !n || typeof n !== 'object' || seen.has(n)) return;
+      seen.add(n);
+      if (Array.isArray(n)) return n.forEach(find);
+      if (n.k === 'var' && n.name === dot[1] && n.ty) ty = n.ty;
+      for (const [key, v] of Object.entries(n)) if (!LINKS.has(key)) find(v);
+    };
+    find(a.fe.program.body);
+    for (const f of a.fe.program.fns) find(f.body);
+    const st = ty.startsWith('@') ? a.fe.program.structs.find(s => s.name === ty.slice(1)) : undefined;
+    return (st?.fields ?? []).map(f => ({ label: f.name, kind: 5, detail: f.ty }));
+  }
+  const items: object[] = KEYWORDS.map(label => ({ label, kind: 14 }));
+  for (const name of Object.keys(BUILTINS)) items.push({ label: name, kind: 3, detail: 'builtin' });
+  if (a) {
+    const seen = new Set<string>();
+    for (const s of symbols(uri) as { name: string; kind: number }[]) {
+      if (seen.has(s.name)) continue;
+      seen.add(s.name);
+      items.push({ label: s.name, kind: s.kind === 12 ? 3 : s.kind === 23 ? 22 : 13 });
+    }
+  }
+  return items;
+}
+
 function lineCount(text: string): { line: number; character: number } {
   const lines = text.split('\n');
   return { line: lines.length - 1, character: lines[lines.length - 1].length };
@@ -119,7 +182,7 @@ function handle(m: any) {
   switch (m.method) {
     case 'initialize':
       return reply(m.id, {
-        capabilities: { textDocumentSync: 1, documentFormattingProvider: true, hoverProvider: true, definitionProvider: true },
+        capabilities: { textDocumentSync: 1, documentFormattingProvider: true, hoverProvider: true, definitionProvider: true, documentSymbolProvider: true, completionProvider: { triggerCharacters: ['.'] } },
         serverInfo: { name: 'lumen' },
       });
     case 'shutdown':
@@ -136,11 +199,16 @@ function handle(m: any) {
     }
     case 'textDocument/didClose':
       docs.delete(m.params.textDocument.uri);
+      good.delete(m.params.textDocument.uri);
       return send({ jsonrpc: '2.0', method: 'textDocument/publishDiagnostics', params: { uri: m.params.textDocument.uri, diagnostics: [] } });
     case 'textDocument/hover':
       return reply(m.id, hover(m.params.textDocument.uri, m.params.position));
     case 'textDocument/definition':
       return reply(m.id, definition(m.params.textDocument.uri, m.params.position));
+    case 'textDocument/completion':
+      return reply(m.id, completion(m.params.textDocument.uri, m.params.position));
+    case 'textDocument/documentSymbol':
+      return reply(m.id, symbols(m.params.textDocument.uri));
     case 'textDocument/formatting': {
       const text = docs.get(m.params.textDocument.uri) ?? '';
       const done = format(text);

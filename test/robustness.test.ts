@@ -1104,3 +1104,29 @@ test('a dependency resolves its own dependencies through its own manifest', () =
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('lsp lists symbols and completes names and struct fields', () => {
+  const frame = (o: object) => {
+    const b = JSON.stringify(o);
+    return `Content-Length: ${Buffer.byteLength(b)}\r\n\r\n${b}`;
+  };
+  const uri = pathToFileURL(join(tmpdir(), 'lumen-lsp-z.lum')).href;
+  const text = 'struct Pt { x: int, y: int }\nenum Dir { Up, Down }\nfn go(p: Pt): int {\n  return p.x;\n}\nlet p = Pt { x: 1, y: 2 };\nprint(go(p));\nprint(p.\n';
+  const at = (line: number, character: number) => ({ textDocument: { uri }, position: { line, character } });
+  const input = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: {} },
+    { jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, text: text.replace('print(p.\n', 'print(p.x);\n') } } },
+    { jsonrpc: '2.0', method: 'textDocument/didChange', params: { textDocument: { uri }, contentChanges: [{ text }] } },
+    { jsonrpc: '2.0', id: 2, method: 'textDocument/documentSymbol', params: { textDocument: { uri } } },
+    { jsonrpc: '2.0', id: 3, method: 'textDocument/completion', params: at(7, 8) },
+    { jsonrpc: '2.0', id: 4, method: 'textDocument/completion', params: at(6, 0) },
+    { jsonrpc: '2.0', method: 'exit' },
+  ].map(frame).join('');
+  const r = spawnSync(process.execPath, ['src/cli.ts', 'lsp'], { input, encoding: 'utf8' });
+  const msgs = [...r.stdout.matchAll(/Content-Length: \d+\r\n\r\n(\{.*\})/g)].map(m => JSON.parse(m[1]));
+  const names = (id: number) => (msgs.find(m => m.id === id).result as { name?: string; label?: string }[]).map(x => x.name ?? x.label);
+  assert.deepEqual(names(2), ['go', 'Pt', 'Dir']);
+  assert.deepEqual(names(3), ['x', 'y']);
+  const all = names(4);
+  assert.ok(all.includes('print') && all.includes('while') && all.includes('go') && all.includes('Pt'), all.join());
+});

@@ -5,6 +5,7 @@ Newest first. The README has the full description of every feature.
 ## Unreleased
 
 - `run` and `test` use the js engine by default instead of the VM (`--engine vm` still works).
+- Language server: completion and document symbols.
 
 ## 1.3.0
 
