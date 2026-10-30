@@ -2,7 +2,7 @@
 
 Newest first. The README has the full description of every feature.
 
-## Unreleased
+## 1.2.0
 
 - `http_request(method, url, headers, body)`.
 - Packages: `#ref` on git dependencies, `lumen.lock`, `lumen update`, dependencies of dependencies.
