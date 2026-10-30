@@ -1130,3 +1130,54 @@ test('lsp lists symbols and completes names and struct fields', () => {
   const all = names(4);
   assert.ok(all.includes('print') && all.includes('while') && all.includes('go') && all.includes('Pt'), all.join());
 });
+
+test('version requirements pick the newest matching tag from a package index', async () => {
+  const { satisfies, pickVersion } = await import('../src/package.ts');
+  assert.ok(satisfies('1.4.0', '^1.2') && !satisfies('2.0.0', '^1.2') && !satisfies('1.1.9', '^1.2'));
+  assert.ok(satisfies('1.2.9', '~1.2') && !satisfies('1.3.0', '~1.2'));
+  assert.ok(satisfies('0.2.5', '^0.2') && !satisfies('0.3.0', '^0.2'));
+  assert.ok(satisfies('1.2.3', '1.2.3') && !satisfies('1.2.4', '1.2.3'));
+  assert.equal(pickVersion(['1.0.0', '1.10.0', '1.2.0', '2.0.0'], '^1.0'), '1.10.0');
+  assert.equal(pickVersion(['1.0.0'], '^2.0'), null);
+
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-reg-'));
+  const git = (cwd: string, ...a: string[]) => {
+    const r = spawnSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', '-c', 'commit.gpgsign=false', ...a], { cwd, encoding: 'utf8' });
+    assert.equal(r.status, 0, a.join(' ') + r.stderr);
+  };
+  const env = { ...process.env, LUMEN_REGISTRY: join(dir, 'index.json') };
+  const lumen = (cwd: string, ...a: string[]) => spawnSync(process.execPath, [join(process.cwd(), 'src/cli.ts'), ...a], { cwd, encoding: 'utf8', env });
+  try {
+    const lib = join(dir, 'greet.git');
+    mkdirSync(lib);
+    git(lib, 'init', '-q');
+    for (const v of ['1.0.0', '1.1.0', '2.0.0']) {
+      writeFileSync(join(lib, 'g.lum'), `pub fn hi(): string {\n  return "hello ${v}";\n}\n`);
+      git(lib, 'add', '-A');
+      git(lib, 'commit', '-q', '-m', v);
+      git(lib, 'tag', `v${v}`);
+    }
+    writeFileSync(join(dir, 'index.json'), JSON.stringify({ packages: { greet: { git: lib, versions: ['1.0.0', '1.1.0', '2.0.0'] } } }));
+    const app = join(dir, 'app');
+    mkdirSync(app);
+    writeFileSync(join(app, 'main.lum'), 'import "greet/g.lum"\nprint(g.hi());\n');
+    writeFileSync(join(app, 'lumen.toml'), '[dependencies]\ngreet = "^1.0"\n');
+    const inst = lumen(app, 'install');
+    assert.equal(inst.status, 0, inst.stdout + inst.stderr);
+    assert.equal(lumen(app, 'run', 'main.lum').stdout.trim(), 'hello 1.1.0');
+    assert.ok(readFileSync(join(app, 'lumen.lock'), 'utf8').includes('#v1.1.0'));
+
+    // a new release does not move an installed project, and a reinstall from the lock keeps 1.1.0
+    writeFileSync(join(dir, 'index.json'), JSON.stringify({ packages: { greet: { git: lib, versions: ['1.0.0', '1.1.0', '1.2.0', '2.0.0'] } } }));
+    rmSync(join(app, '.lumen'), { recursive: true, force: true });
+    assert.equal(lumen(app, 'install').status, 0);
+    assert.equal(lumen(app, 'run', 'main.lum').stdout.trim(), 'hello 1.1.0');
+
+    writeFileSync(join(app, 'lumen.toml'), '[dependencies]\ngreet = "^3.0"\n');
+    const bad = lumen(app, 'install');
+    assert.equal(bad.status, 1);
+    assert.ok(bad.stdout.includes('no version of'), bad.stdout);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

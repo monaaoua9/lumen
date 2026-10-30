@@ -232,6 +232,8 @@ json5 = "https://github.com/someone/json5.git#v1.2.0"
 
 `lumen install` clones the git ones into `.lumen/deps/<name>` and writes the exact commits to `lumen.lock`; commit that file and everyone who installs gets the same code, even if a branch moved. Change the `#ref` in the manifest and the next install moves the clone. `lumen update [name]` throws the clone and its lock entry away and fetches the ref again.
 
+A dependency can also be a version requirement, `lumen-colors = "^1.2"` (`1.2.3` exact, `^1.2` same major and at least 1.2, `~1.2` same minor, `*` any). `install` looks the name up in the package index (`registry/index.json` in this repository, or whatever `LUMEN_REGISTRY` points to), takes the newest matching version, and records the exact commit in the lockfile. Adding a package to the index is a pull request, see `registry/README.md`.
+
 After that `import "colors/palette.lum"` works from any file under the manifest, the same way `std/` does. A dependency that has its own `lumen.toml` sees its own dependencies, and `install` fetches those too. There is no version solving: two packages that want different versions of a third each get their own copy, and since modules are named after their file, import them under different file names if both end up in one program.
 
 ## Usage
