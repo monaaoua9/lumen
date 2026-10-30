@@ -8,12 +8,17 @@ const BREAK = 1;
 const CONTINUE = 2;
 const RETURN = 3;
 
-interface Frame {
+export interface Frame {
   locals: Value[];
   ret: Value;
 }
 
+export type StepHook = (s: Stmt, f: Frame, it: Interpreter) => void;
+
 export class Interpreter {
+  // set by the debugger: called before every statement
+  hook?: StepHook;
+  decls: (FnDecl | null)[] = [];
   globals: Value[];
   io: IO;
   depth = 0;
@@ -47,6 +52,7 @@ export class Interpreter {
   }
 
   stmt(s: Stmt, f: Frame): number {
+    if (this.hook) this.hook(s, f, this);
     switch (s.k) {
       case 'fn':
       case 'struct':
@@ -234,6 +240,7 @@ export class Interpreter {
     const frame: Frame = { locals, ret: null };
     const d = this.depth;
     this.names[d] = fn.name;
+    this.decls[d] = fn;
     this.depth++;
     try {
       this.exec(fn.body, frame);
@@ -262,6 +269,8 @@ class Closure {
   }
 }
 
-export function interpret(prog: Program, io: IO) {
-  new Interpreter(prog, io).run(prog);
+export function interpret(prog: Program, io: IO, hook?: StepHook) {
+  const it = new Interpreter(prog, io);
+  it.hook = hook;
+  it.run(prog);
 }

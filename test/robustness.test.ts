@@ -1181,3 +1181,23 @@ test('version requirements pick the newest matching tag from a package index', a
     rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('debug stops at breakpoints, steps into calls and shows variables', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'lumen-dbg-'));
+  try {
+    writeFileSync(join(dir, 'd.lum'), 'fn square(n: int): int {\n  let r = n * n;\n  return r;\n}\n\nvar total = 0;\nfor i in 1..4 {\n  total += square(i);\n}\nprint("total", total);\n');
+    const r = spawnSync(process.execPath, ['src/cli.ts', 'debug', join(dir, 'd.lum')], { input: 'break 2\nc\np n\np r\nbt\nn\np r\nd\nc\n', encoding: 'utf8' });
+    const out = r.stdout.replace(/\r\n/g, '\n');
+    assert.equal(r.status, 0, r.stderr);
+    assert.ok(out.includes('breakpoint, line 2'), out);
+    assert.ok(out.includes('n = 1') && out.includes('r = <not set yet>'), out);
+    assert.ok(out.includes('#0 square') && out.includes('#1 <main>'), out);
+    assert.ok(out.includes('r = 1'), out);
+    assert.ok(out.includes('total 14') && out.includes('program finished'), out);
+    // quitting early is not an error
+    const q = spawnSync(process.execPath, ['src/cli.ts', 'debug', join(dir, 'd.lum')], { input: 'q\n', encoding: 'utf8' });
+    assert.equal(q.status, 0);
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -6,6 +6,7 @@ Newest first. The README has the full description of every feature.
 
 - `run` and `test` use the js engine by default instead of the VM (`--engine vm` still works).
 - Language server: completion and document symbols.
+- `lumen debug file.lum`: breakpoints by line, step, next, continue, print, locals, bt, list.
 - Packages: version requirements (`^1.2`, `~1.2`, `1.2.3`) resolved through a package index, `LUMEN_REGISTRY`.
 
 ## 1.3.0

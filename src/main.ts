@@ -15,6 +15,7 @@ import { format } from './fmt.ts';
 import { serve } from './lsp.ts';
 import { programArgs } from './runtime.ts';
 import { createInterface } from 'node:readline';
+import { debug } from './debugger.ts';
 import { findManifest, init as pkgInit, install as pkgInstall, update as pkgUpdate } from './package.ts';
 import { Worker, isMainThread, parentPort } from 'node:worker_threads';
 
@@ -31,6 +32,7 @@ commands
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
   bench    run on both engines and compare timings
+  debug    step through a program: break, step, next, print, locals   (interpreter)
   repl     interactive prompt (no file)
   fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
   init     create a lumen.toml here   [name]
@@ -214,6 +216,8 @@ ${out}`);
       case 'ast':
         process.stdout.write(JSON.stringify(fe.program.body, (k, v) => (k === 'sym' || k === 'fn' ? undefined : v), 2) + '\n');
         return 0;
+      case 'debug':
+        return debug(fe, basename(file), { out: s => process.stdout.write(s) });
       case 'emit-js':
         process.stdout.write(toJavaScript(fe) + '\n');
         return 0;
