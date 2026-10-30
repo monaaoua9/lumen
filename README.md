@@ -1,8 +1,66 @@
 # Lumen
 
-A small statically-typed language with the whole toolchain in one repo: lexer, parser,
-static analyzer, tree-walking interpreter, bytecode compiler + VM, and a C backend.
-TypeScript, no runtime dependencies, Node >= 22.18. Arabic summary: [README.ar.md](README.ar.md). New to the language? Start with [docs/tutorial.md](docs/tutorial.md), its examples are run by the tests.
+[![CI](https://github.com/monaaoua9/lumen/actions/workflows/ci.yml/badge.svg)](https://github.com/monaaoua9/lumen/actions/workflows/ci.yml)
+
+A small statically typed language with its whole toolchain in one repository: lexer, parser, static analyzer, four ways to run a program (a tree-walking interpreter, a bytecode VM, a JavaScript backend and a C backend), a formatter, a language server, a debugger and a package manager. Written in TypeScript with no runtime dependencies, Node 22.18 or newer.
+
+```
+struct Shape { name: string, sides: int }
+
+enum Verdict { Small, Big(int) }
+
+fn judge(s: Shape): Verdict {
+  return match s.sides {
+    0..4 => Verdict.Small,
+    _ => Verdict.Big(s.sides),
+  };
+}
+
+for s in [Shape { name: "triangle", sides: 3 }, Shape { name: "hexagon", sides: 6 }] {
+  match judge(s) {
+    Small => print("{s.name} is small"),
+    Big(n) => print("{s.name} has {n} sides"),
+  }
+}
+```
+
+```
+$ node src/cli.ts run shapes.lum
+triangle is small
+hexagon has 6 sides
+```
+
+## What you get
+
+- Static types with inference for lambdas, generics (monomorphized), structs, enums with data, tuples, closures, traits, and a `match` whose exhaustiveness is checked.
+- Errors that point at the source, with a code you can look up (`lumen explain E003`) and a hint where one helps.
+- No exceptions: `Result` and `Option`, and `let n = try parse(s);` to return early on an error.
+- A standard library written in Lumen itself: lists, maps, sets, strings, regular expressions with groups, JSON, CSV, dates, bit operations, matrices, a priority queue.
+- Files, environment variables and HTTP (`http_get`, `http_request`, through curl).
+- Packages: a `lumen.toml`, git dependencies pinned in `lumen.lock`, version requirements like `^1.2` resolved through a package index.
+- Tools: `fmt`, `test`, `repl`, `debug`, and `lsp` for any editor (diagnostics, hover, go to definition, completion, symbols).
+
+## How fast
+
+Four engines run the same typed tree and print the same output. The default is the JavaScript backend; the C backend is the fastest.
+
+```
+                 fib(30)   sieve (2M)   4M-iteration loop
+interpreter      1.22 s      5.84 s        1.11 s
+bytecode VM      0.29 s      4.06 s        0.85 s
+javascript       0.09 s      0.31 s        0.06 s     (default)
+C (gcc -O2)      0.02 s      0.10 s        0.02 s
+```
+
+Measured on a laptop CPU, see [benchmarks/RESULTS.md](benchmarks/RESULTS.md) for every program and how to rerun them.
+
+## Documentation
+
+- [docs/tutorial.md](docs/tutorial.md): the language in ten minutes. Every example in it is run by the test suite. Arabic: [docs/tutorial.ar.md](docs/tutorial.ar.md), summary in [README.ar.md](README.ar.md).
+- [docs/tooling.md](docs/tooling.md): the command line, the engines, the debugger, the language server and packages.
+- [docs/design.md](docs/design.md): how the code is organised and why.
+- [benchmarks/RESULTS.md](benchmarks/RESULTS.md) and [CHANGELOG.md](CHANGELOG.md).
+- The sections below are the reference: language, standard library, analysis, packages, usage.
 
 ## Why TypeScript
 
@@ -259,12 +317,17 @@ node src/cli.ts lsp                               # language server on stdin/std
 node src/cli.ts fmt --write file.lum              # re-indent by bracket depth (--check for CI)
 node src/cli.ts test file.lum                   # run every `fn test_*()`, failed assert() = failed test (--only name to filter)
 node src/cli.ts explain E003                      # what a diagnostic code means, with a bad/good example
-node src/cli.ts --version                        # lumen 1.0.0
+node src/cli.ts --version
+node src/cli.ts init                              # write a lumen.toml here
+node src/cli.ts install                           # fetch dependencies, as pinned in lumen.lock
+node src/cli.ts update [name]                     # fetch them again from their refs
+node src/cli.ts emit-js examples/fib.lum          # the JavaScript the js engine runs
+node benchmarks/run.ts                            # time every benchmark on every engine
 npm test                         # unit tests + cross-backend parity
 npm run typecheck
 ```
 
-`bench.lum` on one machine: tree-walker ~520 ms, VM ~400 ms, native via C ~60 ms (mostly process start).
+The timings for the benchmark programs are in [benchmarks/RESULTS.md](benchmarks/RESULTS.md).
 
 ## License
 
@@ -281,7 +344,7 @@ GCC/Clang builtins, like the rest of the backend.
 
 ## Testing
 
-`test/backends.test.ts` runs every example through interpreter, VM, and both with `-O`, and asserts
+`test/backends.test.ts` runs every example through the interpreter, the VM and the js engine, each with and without `-O`, and asserts
 identical output (including runtime errors). If a C compiler is on PATH it also compiles each example
 and compares the native output. The C backend hoists calls into temporaries so that evaluation order
 matches Lumen's left-to-right rule (C leaves argument order unspecified).
