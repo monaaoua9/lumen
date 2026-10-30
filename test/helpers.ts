@@ -13,4 +13,4 @@ export function runSrc(src: string, engine: Engine, opt = false): string {
 }
 
 // every backend that runs in-process must agree
-export const ENGINES: [Engine, boolean][] = [['interp', false], ['vm', false], ['interp', true], ['vm', true]];
+export const ENGINES: [Engine, boolean][] = [['interp', false], ['vm', false], ['js', false], ['interp', true], ['vm', true], ['js', true]];

@@ -184,7 +184,7 @@ test('string builtins trap the same way on every engine', () => {
     for (const [src, msg] of cases) {
       const f = join(dir, 't.lum');
       writeFileSync(f, src);
-      for (const engine of ['interp', 'vm']) {
+      for (const engine of ['interp', 'vm', 'js']) {
         const r = cli('run', f, '--engine', engine);
         assert.equal(r.status, 1, `${engine}: ${src}`);
         assert.ok((r.stdout + r.stderr).includes(msg), `${engine}: ${src}\n${r.stderr}`);
@@ -197,7 +197,7 @@ test('string builtins trap the same way on every engine', () => {
 
 test('stdin builtins agree on every engine', () => {
   const input = 'abc\n\nxy\r\nlast';
-  for (const engine of ['interp', 'vm']) {
+  for (const engine of ['interp', 'vm', 'js']) {
     const r = spawnSync(process.execPath, ['src/cli.ts', 'run', 'examples/io/stdin.lum', '--engine', engine], { encoding: 'utf8', input });
     assert.equal(r.stdout, '3\n9\n', engine);
   }
@@ -210,7 +210,7 @@ test('exit(code) sets the status and keeps earlier output', () => {
   try {
     const f = join(dir, 't.lum');
     writeFileSync(f, 'print("before");\nif len("ab") == 2 { exit(3); }\nprint("after");\n');
-    for (const engine of ['interp', 'vm']) {
+    for (const engine of ['interp', 'vm', 'js']) {
       const r = cli('run', f, '--engine', engine);
       assert.equal(r.status, 3, engine);
       assert.equal(r.stdout, 'before\n', engine);
@@ -238,7 +238,7 @@ test('slice traps out of range on every engine', () => {
   try {
     const f = join(dir, 't.lum');
     writeFileSync(f, 'print(slice([1, 2], 1, 5));\n');
-    for (const engine of ['interp', 'vm']) {
+    for (const engine of ['interp', 'vm', 'js']) {
       const r = cli('run', f, '--engine', engine);
       assert.equal(r.status, 1, engine);
       assert.ok(r.stderr.includes('slice out of range'), engine);
@@ -273,7 +273,7 @@ test('insert and remove trap out of bounds on every engine', () => {
     const f = join(dir, 't.lum');
     for (const [src, msg] of [['let a = [1]; insert(a, 3, 2);', 'insert index out of bounds'], ['let a = [1]; remove(a, 1);', 'index out of bounds']]) {
       writeFileSync(f, src);
-      for (const engine of ['interp', 'vm']) {
+      for (const engine of ['interp', 'vm', 'js']) {
         const r = cli('run', f, '--engine', engine);
         assert.equal(r.status, 1, `${engine}: ${src}`);
         assert.ok(r.stderr.includes(msg), `${engine}: ${src}\n${r.stderr}`);
@@ -301,7 +301,7 @@ test('fmt: every shipped example is already formatted', () => {
 
 test('std/map.lum: same output on every engine, library warnings stay quiet', () => {
   const expected = ['rose -> 3', 'is -> 2'];
-  const outs = ['interp', 'vm', 'c'].map(engine => {
+  const outs = ['interp', 'vm', 'js', 'c'].map(engine => {
     const r = cli('run', 'examples/std/map_demo.lum', '--engine', engine);
     assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
     assert.equal(r.stderr, '', engine);
@@ -314,7 +314,7 @@ test('std/map.lum: same output on every engine, library warnings stay quiet', ()
 });
 
 test('std/option.lum and std/math.lum run the same on every engine', () => {
-  const outs = ['interp', 'vm', 'c'].map(engine => {
+  const outs = ['interp', 'vm', 'js', 'c'].map(engine => {
     const r = cli('run', 'examples/std/option_math.lum', '--engine', engine);
     assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
     assert.equal(r.stderr, '', engine);
@@ -326,7 +326,7 @@ test('std/option.lum and std/math.lum run the same on every engine', () => {
 });
 
 test('std/list.lum higher-order helpers agree on every engine', () => {
-  const outs = ['interp', 'vm', 'c'].map(engine => {
+  const outs = ['interp', 'vm', 'js', 'c'].map(engine => {
     const r = cli('run', 'examples/std/list_demo.lum', '--engine', engine);
     assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
     assert.equal(r.stderr, '', engine);
@@ -338,7 +338,7 @@ test('std/list.lum higher-order helpers agree on every engine', () => {
 });
 
 test('std/text.lum helpers agree on every engine', () => {
-  const outs = ['interp', 'vm', 'c'].map(engine => {
+  const outs = ['interp', 'vm', 'js', 'c'].map(engine => {
     const r = cli('run', 'examples/std/text_demo.lum', '--engine', engine);
     assert.equal(r.status, 0, `${engine}: ${r.stderr}`);
     assert.equal(r.stderr, '', engine);
@@ -417,7 +417,7 @@ test('the call depth cap is the same on every engine', () => {
   const dir = mkdtempSync(join(tmpdir(), 'lumen-depth-'));
   try {
     writeFileSync(join(dir, 'd.lum'), 'fn d(n: int): int { return if n == 0 { 0 } else { 1 + d(n - 1) }; }\nprint(d(9990));\nprint(d(12000));');
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', join(dir, 'd.lum'), '--engine', engine);
       assert.equal(r.status, 1, engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), '9990\n', engine);
@@ -429,7 +429,7 @@ test('the call depth cap is the same on every engine', () => {
 });
 
 test('args() sees what follows -- on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/io/args.lum', '--engine', engine, '--', 'one', 'two words');
     assert.equal(r.status, 0, engine + r.stderr);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '2\n0=one\n1=two words\n', engine);
@@ -443,7 +443,7 @@ test('read_file and write_file agree on every engine', () => {
     const target = join(dir, 'note.txt').split(sep).join('/');
     const prog = join(dir, 'f.lum');
     writeFileSync(prog, `write_file("${target}", "one\\ntwo");\nprint(len(read_file("${target}")));\nprint(read_file("${target}/nope"));\n`);
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', prog, '--engine', engine);
       assert.equal(r.status, 1, engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), '7\n', engine);
@@ -456,7 +456,7 @@ test('read_file and write_file agree on every engine', () => {
 });
 
 test('clock() runs on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/io/clock.lum', '--engine', engine);
     assert.equal(r.status, 0, engine + r.stderr);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '599994\ntrue\n', engine);
@@ -477,7 +477,7 @@ test('repl commands', () => {
 test('try early return gives the same output on every engine', () => {
   const want = { try_result: 'sum 9\nbad number: x\nbad number: y\n', try_option: '8\nnone\n', try_stmt: '3\nnot positive\n', try_config: '22\nbad value in: b =\n' };
   for (const [name, out] of Object.entries(want)) {
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', `examples/std/${name}.lum`, '--engine', engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), out, `${name} on ${engine}`);
     }
@@ -486,7 +486,7 @@ test('try early return gives the same output on every engine', () => {
 
 test('user structs as payload of the library Result, same output everywhere', () => {
   const want = 'compile 1 0\nlint 1 0\nbuild 2 1\ntest 3 2\n7\nBUILD,COMPILE,TEST,LINT\nbad priority: x: y\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/tasks.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -494,7 +494,7 @@ test('user structs as payload of the library Result, same output everywhere', ()
 
 test('recursive descent parser built on try agrees on every engine', () => {
   const want = '1 + 2 * 3 = 7\n(1+2)*3 = 9\n2 * -> unexpected end\n4 $ 4 -> bad char $\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/expr_parser.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -502,7 +502,7 @@ test('recursive descent parser built on try agrees on every engine', () => {
 
 test('employees report agrees on every engine', () => {
   const want = 'eng 2 220 ann\nops 2 175 di\nhr 1 70 ed\n2 3\n1 ann 120\n2 bob 100\n3 di 95\n20 5 15 10\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/employees.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -510,7 +510,7 @@ test('employees report agrees on every engine', () => {
 
 test('labelled loops, closures per iteration and try together agree everywhere', () => {
   const want = '0\n10\n20\nrow 1 col 1\nnone\nnone\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/labels_try.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -518,7 +518,7 @@ test('labelled loops, closures per iteration and try together agree everywhere',
 
 test('math and text extras give the same output on every engine', () => {
   const want = '12.5 5.0\n1024.0 0.25\nhello... short\nThe Quick Brown Fox\nمرحبا با...\nthe quick brown\nfox jumps over\nthe lazy dog\ntrue true true false true\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/math_text_extra.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -526,7 +526,7 @@ test('math and text extras give the same output on every engine', () => {
 
 test('list extras give the same output on every engine', () => {
   const want = '24 1\n[3, 4, 5, 1, 2] [3, 1, 2] [2, 3, 1]\na 2\nb 2\nc 1\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/list_extra.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -534,7 +534,7 @@ test('list extras give the same output on every engine', () => {
 
 test('std/format gives the same output on every engine', () => {
   const want = '1,234,567 -1,000 999 0\n33% 0%\nname   qty\napple  12\nمشمش   7\n\nx   تمر\nyy  ب\n\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/format_demo.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -542,7 +542,7 @@ test('std/format gives the same output on every engine', () => {
 
 test('std/date gives the same output on every engine', () => {
   const want = '0 11017 -1\n2024-03-01\n0 1 3\nfalse true 28\n1969-12-31\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/date_demo.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -550,7 +550,7 @@ test('std/date gives the same output on every engine', () => {
 
 test('std/encoding gives the same output on every engine', () => {
   const want = 'ff 1000 -1a 0\n255 26 -1\n4c756d656e\nTWFu TWE= TQ==\nSGVsbG8sIEx1bWVuIQ==\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/encoding_demo.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -558,28 +558,28 @@ test('std/encoding gives the same output on every engine', () => {
 
 test('const globals, impl methods and nested arrays agree on every engine', () => {
   const want = '10 b\nV { x: 4, y: 6 }\n[1, 2]\n[3, 4]\nx=4, y=$6\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/consts_methods.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('local recursive functions that read enclosing locals agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/local_recursion.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '104 120 2 -1\n', engine);
   }
 });
 
 test('return inside a block expression leaves the function on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/return_in_block.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '5 -1\n4\n1\nfound 5 none\n2 100\n', engine);
   }
 });
 
 test('statement match arms may be plain expressions', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/match_arm_exprs.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'dot\nline 3\nsquare 2\nrect 10\n', engine);
   }
@@ -593,21 +593,21 @@ test('using Result without the import says which file to add', () => {
 
 test('literals inside variant patterns agree on every engine', () => {
   const want = 'zero\nneg\npos\nadditive\nop *\ntwin\npair\n7\nfive\nstarts at zero, second is 7\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/literal_patterns.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('generic struct literals with explicit type arguments agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/generic_literal_args.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '4\n(1, "a")\ntrue false\n', engine);
   }
 });
 
 test('try inside block expressions agrees on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/try_in_block.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'ok 3\nerr odd 3\nerr odd 3\nSome(200) None\n', engine);
   }
@@ -615,21 +615,21 @@ test('try inside block expressions agrees on every engine', () => {
 
 test('nested variant patterns agree on every engine', () => {
   const want = 'wrapped zero\nwrapped big 42\nwrapped 3\nwrapped nothing\nboth 3\nleft 5\nother pair\nsum 5\ndiff 5\nempty\nvalue 4\nno value\nno value\nitem 1\nzero\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/nested_patterns.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('nested variants that add up to the whole inner enum need no catch-all', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/nested_cover.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'some 4\nnone\nempty\n8\n', engine);
   }
 });
 
 test('an expression simplifier built on nested patterns agrees on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/simplifier.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '12\n12\n0\nAdd(Num(7), Num(5))\n', engine);
   }
@@ -637,14 +637,14 @@ test('an expression simplifier built on nested patterns agrees on every engine',
 
 test('std/regex gives the same output on every engine', () => {
   const want = '2024-03-05 ERROR\n2024-03-07 ERROR\n#-#-# ERROR disk full; #-#-# WARN slow; #-#-# ERROR timeout\ntrue false\n39 43\nأ- جيد\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/regex_demo.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('tuples inside variant patterns agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/tuple_payloads.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'hit at the start\nab at 3\nfar hit zz\ndeep: 6\nmiss\npair 9\nfirst 8\n', engine);
   }
@@ -652,14 +652,14 @@ test('tuples inside variant patterns agree on every engine', () => {
 
 test('a lexer written with std/regex and tuple patterns agrees on every engine', () => {
   const want = 'id let\nid x1\nsym =\nnum 42\nsym +\nid foo_bar\nsym *\nnum 7\nsym ;\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/regex_lexer.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('chr builds any code point as UTF-8 on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', '-e', 'print(chr(65), chr(1575), chr(8364), chr(128512), len(chr(128512)));', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'A ا € \u{1F600} 4\n', engine);
     assert.notEqual(cli('run', '-e', 'print(chr(55296));', '--engine', engine).status, 0, engine);
@@ -676,7 +676,7 @@ test('very long and very deep expressions still compile', () => {
 });
 
 test('guards on tuple patterns that bind names agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/tuple_guards.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'big-zero zero-7 pair other other\n', engine);
     assert.equal(r.stderr, '', engine);
@@ -684,14 +684,14 @@ test('guards on tuple patterns that bind names agree on every engine', () => {
 });
 
 test('flood fill with a local recursive function and consts agrees on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/flood_fill.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '7 7 0\n', engine);
   }
 });
 
 test('tuple pattern alternatives binding the same name agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/tuple_alternatives.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '50 70 0 -1\n', engine);
   }
@@ -699,7 +699,7 @@ test('tuple pattern alternatives binding the same name agree on every engine', (
 
 test('std/matrix gives the same output on every engine', () => {
   const want = '[[1, 2], [3, 4]]\n[[1, 4], [2, 5], [3, 6]]\n[[2, 4], [6, 8]]\n832040\n[[7, 7, 7], [7, 7, 7]]\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/matrix_lib.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -707,7 +707,7 @@ test('std/matrix gives the same output on every engine', () => {
 
 test('a private struct inside the library Map works on every engine', () => {
   const want = 'ok 100\nok 50\nok 30\nerr unknown gear\nerr bad qty for nut\nerr not enough nut\nok 0\nitem  qty  value\nbolt  70   210,000\nnut   50   100,000\n\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/stock_commands.lum', '--engine', engine);
     assert.equal(r.stderr, '', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
@@ -716,7 +716,7 @@ test('a private struct inside the library Map works on every engine', () => {
 
 test('scheduler with csv, heap and queue agrees on every engine', () => {
   const want = 'job 2 done at 2\njob 4 done at 3\njob 3 done at 7\njob 1 done at 12\n[2,4,3,1]\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/scheduler.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -732,7 +732,7 @@ test('--version prints the package version and cli.ts keeps its shebang', () => 
 test('generic types that mention themselves agree on every engine', () => {
   const want: Record<string, string> = { generic_tree: '[1, 2, 3, 5, 8, 9]\none 1\n', generic_nodes: '4 y\n' };
   for (const [name, out] of Object.entries(want)) {
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', `examples/${name}.lum`, '--engine', engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), out, `${name} on ${engine}`);
     }
@@ -753,14 +753,14 @@ test('unused pub functions of an imported file are not warned about', () => {
 });
 
 test('try inside a lambda with a Result return type agrees on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/try_lambda.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '42\nbad x\n', engine);
   }
 });
 
 test('structs without fields work as trait carriers on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/strategy_traits.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'strengths queue\n', engine);
     const u = cli('run', '-e', 'struct U { } let u = U { }; print(u); print(u == U { });', '--engine', engine);
@@ -792,7 +792,7 @@ test('a missing item in a module lists what the module has', () => {
 });
 
 test('names may be written in Arabic and agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/arabic_names.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'المعدل: 87\nعلي: ناجح\nزينب: ناجح\n', engine);
   }
@@ -800,7 +800,7 @@ test('names may be written in Arabic and agree on every engine', () => {
 
 test('bitwise operators agree on every engine', () => {
   const want = '8 1 true false\n2 7 5 -6 -4\n14900230 13489600\n5 false true\n3\n7\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/bit_ops.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -813,7 +813,7 @@ test('bad shifts trap the same way on every engine', () => {
   try {
     writeFileSync(join(dir, 'a.lum'), 'let n = 70;\nprint(1 << n);\n');
     writeFileSync(join(dir, 'b.lum'), 'let n = 60;\nprint(1 << n);\n');
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const a = cli('run', join(dir, 'a.lum'), '--engine', engine);
       assert.ok((a.stdout + a.stderr).includes('shift count out of range'), engine);
       const b = cli('run', join(dir, 'b.lum'), '--engine', engine);
@@ -872,21 +872,21 @@ test('lsp hover shows types and definition jumps to the declaration', () => {
 
 test('variants inside tuple patterns agree on every engine', () => {
   const want = 'stay red go green go yellow go red\n7 2 9 0\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/tuple_variants.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
 });
 
 test('nested variants in several positions agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/nested_pairs.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '3 -1\n', engine);
   }
 });
 
 test('a loop can give a value with break on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/loop_value.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '10\n64\ndone\n', engine);
   }
@@ -894,7 +894,7 @@ test('a loop can give a value with break on every engine', () => {
 
 test('std/regex groups and captures give the same output on every engine', () => {
   const want = 'name -> lumen\nversion -> 0.1\ndate -> 2026-10-30\n30/10/2026\n! !\ntrue false\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/regex_groups.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -902,7 +902,7 @@ test('std/regex groups and captures give the same output on every engine', () =>
 
 test('std/json accessors follow a path with fallbacks on every engine', () => {
   const want = 'lumen\ntyped 2\n42\ntrue\nmissing\n3\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/json_path.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -910,7 +910,7 @@ test('std/json accessors follow a path with fallbacks on every engine', () => {
 
 test('an expression calculator with try, closures and block arms agrees on every engine', () => {
   const want = '1 + 2 * 3 = 7\n(1 + 2) * 3 = 9\n10 / (5 - 5): divide by zero\n2 * (3 + 4) - 5 = 9\n';
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/std/shunting_yard.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), want, engine);
   }
@@ -929,14 +929,14 @@ test('the E028 hint shows module items by their written names', () => {
 });
 
 test('explicit type arguments on a struct literal inside a generic function', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/generic_literal_in_fn.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'x 1\nhi hi\n', engine);
   }
 });
 
 test('explicit type arguments on generic calls agree on every engine', () => {
-  for (const engine of ['interp', 'vm', 'c']) {
+  for (const engine of ['interp', 'vm', 'js', 'c']) {
     const r = cli('run', 'examples/explicit_type_args.lum', '--engine', engine);
     assert.equal(r.stdout.replace(/\r\n/g, '\n'), '[5] ["lumen"] x\ntrue true\n', engine);
   }
@@ -950,7 +950,7 @@ test('http_get fetches a url on every engine and rejects odd ones', () => {
     writeFileSync(join(dir, 'g.lum'), `print(http_get("${url}").trim());`);
     writeFileSync(join(dir, 'bad.lum'), 'print(http_get("ftp://x/y"));');
     writeFileSync(join(dir, 'inj.lum'), 'print(http_get("http://x/y\\" && echo pwned"));');
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', join(dir, 'g.lum'), '--engine', engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), 'hello from disk\n', engine + r.stderr);
       for (const f of ['bad.lum', 'inj.lum']) {
@@ -972,7 +972,7 @@ test('lumen.toml path dependencies are importable by name on every engine', () =
     writeFileSync(join(dir, 'colors', 'palette.lum'), 'pub fn red(): string {\n  return "#ff0000";\n}\n');
     writeFileSync(join(dir, 'app', 'lumen.toml'), '[package]\nname = "app"\n\n[dependencies]\ncolors = "../colors" # local\n');
     writeFileSync(join(dir, 'app', 'main.lum'), 'import "colors/palette.lum"\n\nprint(palette.red());\n');
-    for (const engine of ['interp', 'vm', 'c']) {
+    for (const engine of ['interp', 'vm', 'js', 'c']) {
       const r = cli('run', join(dir, 'app', 'main.lum'), '--engine', engine);
       assert.equal(r.stdout.replace(/\r\n/g, '\n'), '#ff0000\n', engine + r.stderr);
     }
@@ -1018,7 +1018,7 @@ test('http_request sends method, headers and body on every engine', async () => 
       writeFileSync(join(dir, 'bad.lum'), `let h: string[] = [];
 print(http_request("post", "http://127.0.0.1:${port}/", h, ""));`);
       writeFileSync(join(dir, 'badh.lum'), `print(http_request("GET", "http://127.0.0.1:${port}/", ["no colon here"], ""));`);
-      for (const engine of ['interp', 'vm', 'c']) {
+      for (const engine of ['interp', 'vm', 'js', 'c']) {
         const r = await new Promise<{ out: string; err: string; code: number | null }>(ok => {
           const p = spawn(process.execPath, ['src/cli.ts', 'run', join(dir, 'r.lum'), '--engine', engine]);
           let out = '', err = '';
@@ -1096,7 +1096,7 @@ test('a dependency resolves its own dependencies through its own manifest', () =
     writeFileSync(join(dir, 'mid', 'm.lum'), 'import "base/b.lum"\n\npub fn tag(): string {\n  return "mid+" + b.tag();\n}\n');
     writeFileSync(join(dir, 'app', 'lumen.toml'), '[dependencies]\nmid = "../mid"\n');
     writeFileSync(join(dir, 'app', 'main.lum'), 'import "mid/m.lum"\nprint(m.tag());\n');
-    for (const engine of ['interp', 'vm']) {
+    for (const engine of ['interp', 'vm', 'js']) {
       const r = cli('run', join(dir, 'app', 'main.lum'), '--engine', engine);
       assert.equal(r.stdout.trim(), 'mid+base', engine + r.stderr);
     }

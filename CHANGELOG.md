@@ -2,6 +2,10 @@
 
 Newest first. The README has the full description of every feature.
 
+## Unreleased
+
+- `--engine js`: a fourth backend that turns the program into JavaScript and lets V8 compile it, around 4x faster than the VM; `lumen emit-js` prints the generated code.
+
 ## 1.2.0
 
 - `http_request(method, url, headers, body)`.

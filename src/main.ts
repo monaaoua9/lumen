@@ -6,7 +6,7 @@ import { basename, join } from 'node:path';
 import { CompileError, ExitSignal, RuntimeError, Source, render, renderAll } from './diagnostics.ts';
 import type { Segment } from './diagnostics.ts';
 import { bundle } from './modules.ts';
-import { DeepNesting, checked, execute, frontend, toBytecode, toC } from './pipeline.ts';
+import { DeepNesting, checked, execute, frontend, toBytecode, toC, toJavaScript } from './pipeline.ts';
 import type { Engine } from './pipeline.ts';
 import { disassemble } from './bytecode.ts';
 import { Repl, incomplete } from './repl.ts';
@@ -22,10 +22,11 @@ const USAGE = `lumen <command> <file.lum> [options]
 
 commands
   check    static analysis only (types, scopes, lints)
-  run      analyze, then execute        [--engine interp|vm|c]  (default: vm)   [-- program args]
+  run      analyze, then execute        [--engine interp|vm|js|c]  (default: vm)   [-- program args]
            lumen run -e 'print(1 + 2);'   runs code given on the command line
   disasm   print the bytecode
-  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm|c] [--only substr]
+  test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm|js|c] [--only substr]
+  emit-js  translate to JavaScript
   emit-c   translate to C              [-o out.c]
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
@@ -64,7 +65,7 @@ function main(): number | Promise<number> {
   const cmd = args[0];
   // lumen run -e 'print(1 + 2);' writes the code to a scratch file and runs that (any command that takes a file)
   const e = args.indexOf('-e');
-  if (e > 0 && args[e + 1] !== undefined && ['run', 'check', 'ast', 'disasm', 'emit-c', 'bench', 'test'].includes(cmd)) {
+  if (e > 0 && args[e + 1] !== undefined && ['run', 'check', 'ast', 'disasm', 'emit-js', 'emit-c', 'bench', 'test'].includes(cmd)) {
     const dir = mkdtempSync(join(tmpdir(), 'lumen-e-'));
     process.on('exit', () => rmSync(dir, { recursive: true, force: true }));
     writeFileSync(join(dir, 'expr.lum'), args[e + 1] + '\n');
@@ -212,6 +213,9 @@ ${out}`);
         return 0;
       case 'ast':
         process.stdout.write(JSON.stringify(fe.program.body, (k, v) => (k === 'sym' || k === 'fn' ? undefined : v), 2) + '\n');
+        return 0;
+      case 'emit-js':
+        process.stdout.write(toJavaScript(fe) + '\n');
         return 0;
       case 'emit-c': {
         const c = toC(fe);
@@ -369,7 +373,7 @@ function onBigStack() {
   w.on('error', e => { throw e; });
 }
 
-if (isMainThread && args[0] === 'run' && args[args.indexOf('--engine') + 1] === 'interp') {
+if (isMainThread && args[0] === 'run' && ['interp', 'js'].includes(args[args.indexOf('--engine') + 1])) {
   onBigStack();
 } else {
   new Promise<number>(done => done(main())).then(c => {

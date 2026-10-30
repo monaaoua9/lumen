@@ -17,6 +17,8 @@ source ─► Lexer ─► Parser ─► Analyzer ─┬─► Interpreter   (wa
           tokens    AST      types,    │
                              scopes,   ├─► Compiler ─► Bytecode ─► VM
                              lints     │
+                                       ├─► JS codegen ─► new Function (V8 compiles it)
+                                       │
                                        └─► C codegen ─► gcc/clang ─► native
                               (-O: constant folding runs between analyzer and backends)
 ```
@@ -37,6 +39,7 @@ src/
   bytecode.ts      opcodes, module layout, disassembler
   compiler.ts      AST -> bytecode
   vm.ts            stack machine
+  jsgen.ts         AST -> JavaScript, run in-process (`--engine js`, about 4x the VM)
   cgen.ts          AST -> C99
   runtime.ts       semantics shared by all backends (int overflow, float printing, builtins)
   modules.ts       import resolution, bundles several files into one program

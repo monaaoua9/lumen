@@ -8,6 +8,7 @@ import { interpret } from './interpreter.ts';
 import { compile } from './compiler.ts';
 import { run as runVm } from './vm.ts';
 import { emitC } from './cgen.ts';
+import { runJs, toJs } from './jsgen.ts';
 import type { Module } from './bytecode.ts';
 import type { IO } from './runtime.ts';
 import { isMainThread } from 'node:worker_threads';
@@ -54,11 +55,16 @@ export function checked(text: string, name = '<input>', opt = false, segments: S
   return fe;
 }
 
-export type Engine = 'interp' | 'vm';
+export type Engine = 'interp' | 'vm' | 'js';
 
 export function execute(fe: Frontend, engine: Engine, io: IO) {
   if (engine === 'interp') interpret(fe.program, io);
+  else if (engine === 'js') runJs(fe.program, io);
   else runVm(compile(fe.program), io);
+}
+
+export function toJavaScript(fe: Frontend): string {
+  return toJs(fe.program).source;
 }
 
 export function toBytecode(fe: Frontend): Module {
