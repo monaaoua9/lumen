@@ -1,0 +1,20 @@
+// struct allocation and method calls
+struct Vec { x: int, y: int }
+
+impl Vec {
+  fn add(self, o: Vec): Vec {
+    return Vec { x: self.x + o.x, y: self.y + o.y };
+  }
+  fn dot(self, o: Vec): int {
+    return self.x * o.x + self.y * o.y;
+  }
+}
+
+var acc = Vec { x: 0, y: 0 };
+let step = Vec { x: 1, y: 2 };
+var total = 0;
+for _i in 0..600000 {
+  acc = acc.add(step);
+  total += acc.dot(step) % 1000;
+}
+print(acc.x, acc.y, total);

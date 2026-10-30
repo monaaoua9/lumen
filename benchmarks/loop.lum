@@ -1,0 +1,6 @@
+// a tight arithmetic loop with a modulo and a running sum
+var s = 0;
+for i in 0..4000000 {
+  s += (i * 3) % 7;
+}
+print(s);

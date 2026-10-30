@@ -1,0 +1,13 @@
+// building text, splitting it and counting words
+var text = "";
+for i in 0..60000 {
+  text += "word" + str(i % 97) + " ";
+}
+let parts = split(text, " ");
+var longest = 0;
+var hits = 0;
+for p in parts {
+  if len(p) > longest { longest = len(p); }
+  if p == "word42" { hits += 1; }
+}
+print(len(parts), longest, hits);

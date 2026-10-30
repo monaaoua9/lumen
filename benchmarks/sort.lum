@@ -1,0 +1,15 @@
+// sorting a pseudo-random array and summing every 1000th element
+let xs: int[] = [];
+var seed = 12345;
+for _i in 0..300000 {
+  seed = (seed * 16807) % 2147483647;
+  push(xs, seed % 100000);
+}
+sort(xs);
+var s = 0;
+var i = 0;
+while i < len(xs) {
+  s += xs[i];
+  i += 1000;
+}
+print(xs[0], xs[len(xs) - 1], s);

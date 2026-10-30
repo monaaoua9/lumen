@@ -1,0 +1,16 @@
+// array reads and writes: sieve of Eratosthenes up to 2 million
+let n = 2000000;
+let composite: bool[] = [];
+for _i in 0..n + 1 { push(composite, false); }
+var count = 0;
+for i in 2..n + 1 {
+  if !composite[i] {
+    count += 1;
+    var j = i * i;
+    while j <= n {
+      composite[j] = true;
+      j += i;
+    }
+  }
+}
+print(count);
