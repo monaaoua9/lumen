@@ -140,7 +140,7 @@ Semantics worth knowing:
   Same behaviour in the interpreter, the VM and the generated C, so results match everywhere.
 - `/` on ints truncates toward zero; division and modulo by zero trap.
 - Operands evaluate left to right; `&&` / `||` short-circuit.
-- Functions see globals declared *before* them. Recursion works, call depth is capped at 10000 (`run --engine interp` runs on a thread with a large stack so it reaches the same cap).
+- Functions see globals declared *before* them. Recursion works, call depth is capped at 10000 (`run` with the interpreter or the js engine runs on a thread with a large stack so it reaches the same cap).
 - A loop can carry a label, `rows: for r in grid { for c in r { if c < 0 { continue rows; } if c > 9 { break rows; } } }`. The parser turns the jump into a flag that each loop in between checks right after it ends, so the backends see ordinary loops.
 - `len` counts UTF-8 bytes (strings) or elements (arrays).
 - Tuple patterns in `match`: `match (n % 3, n % 5) { (0, 0) => ..., (0, _) => ..., _ => ... }`. Parts are int, string or bool literals, `_`, or a name that binds that part inside the arm (`(x, 0) => x`, a guard may read them: `(x, 0) if x > 3 => ...`; with `|` every alternative must bind the same names: `(x, 0) | (0, x) => ...`). They become guards, so the written tuple may only hold variables, fields and arithmetic (it is re-evaluated per arm) and a final `_` arm is needed.
@@ -238,7 +238,8 @@ After that `import "colors/palette.lum"` works from any file under the manifest,
 
 ```
 npm install                      # only needed for tsc / @types/node
-node src/cli.ts run examples/fib.lum
+node src/cli.ts run examples/fib.lum                # the js engine, the default
+node src/cli.ts run examples/fib.lum --engine vm    # bytecode VM
 node src/cli.ts run examples/fib.lum --engine interp
 node src/cli.ts run -e 'print("sum", 1 + 2);'    # code straight from the command line
 node src/cli.ts run examples/fib.lum --engine c    # build with gcc/clang/cc into a temp dir and run it

@@ -22,7 +22,7 @@ const USAGE = `lumen <command> <file.lum> [options]
 
 commands
   check    static analysis only (types, scopes, lints)
-  run      analyze, then execute        [--engine interp|vm|js|c]  (default: vm)   [-- program args]
+  run      analyze, then execute        [--engine interp|vm|js|c]  (default: js)   [-- program args]
            lumen run -e 'print(1 + 2);'   runs code given on the command line
   disasm   print the bytecode
   test     run every fn test_*() in the file, assert() marks failures   [--engine interp|vm|js|c] [--only substr]
@@ -161,7 +161,7 @@ function runFile(file: string, cmd: string): number | Promise<number> {
   try {
     switch (cmd) {
       case 'run': {
-        const eng = (opt('--engine') ?? 'vm') as Engine | 'c';
+        const eng = (opt('--engine') ?? 'js') as Engine | 'c';
         if (eng === 'c') return runNative(toC(fe));
         execute(fe, eng, { out: s => process.stdout.write(s) });
         return 0;
@@ -175,7 +175,7 @@ function runFile(file: string, cmd: string): number | Promise<number> {
 `);
           return 1;
         }
-        const eng = (opt('--engine') ?? 'vm') as Engine;
+        const eng = (opt('--engine') ?? 'js') as Engine;
         let failed = 0;
         for (const t of names) {
           let out = '';
@@ -365,7 +365,7 @@ function bench(fe: ReturnType<typeof frontend>): number {
   return 0;
 }
 
-// the tree-walking interpreter recurses on the host stack, so `run --engine interp` gets a thread with a big one
+// the interpreter and the js engine recurse on the host stack, so `run` with either gets a thread with a big one
 // (that is what lets it reach the same call depth cap as the other engines)
 function onBigStack() {
   const w = new Worker(new URL(import.meta.url), { argv: full, resourceLimits: { stackSizeMb: 256 } });
@@ -373,7 +373,7 @@ function onBigStack() {
   w.on('error', e => { throw e; });
 }
 
-if (isMainThread && args[0] === 'run' && ['interp', 'js'].includes(args[args.indexOf('--engine') + 1])) {
+if (isMainThread && (args[0] === 'run' || args[0] === 'test') && ['interp', 'js'].includes(opt('--engine') ?? 'js')) {
   onBigStack();
 } else {
   new Promise<number>(done => done(main())).then(c => {
