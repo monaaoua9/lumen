@@ -8,6 +8,7 @@ Newest first. The README has the full description of every feature.
 - Language server: completion and document symbols.
 - `lumen debug file.lum`: breakpoints by line, step, next, continue, print, locals, bt, list. Runs on the js engine, or the interpreter with `--engine interp`.
 - Packages: version requirements (`^1.2`, `~1.2`, `1.2.3`) resolved through a package index, `LUMEN_REGISTRY`.
+- Docs: `docs/design.md`, `docs/tooling.md`, a new README introduction, `benchmarks/` with `node benchmarks/run.ts`, and an example project in `examples/projects/`.
 
 ## 1.3.0
 
