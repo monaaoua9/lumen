@@ -7,8 +7,20 @@ import type { Type } from './types.ts';
 
 const MAXINT = 9007199254740991;
 
+// statements a debugger can stop at
+const STOPS = new Set(['let', 'assign', 'setfield', 'setindex', 'expr', 'if', 'while', 'return', 'match']);
+
 // small helpers the generated code calls; V8 inlines them in hot loops
-function makeRuntime(io: IO, spans: Span[]) {
+export type JsProbe = {
+  depth: number;
+  name(d: number): string;
+  decl(d: number): FnDecl | null;
+  local(slot: number): Value;
+  global(slot: number): Value;
+};
+export type JsHook = (span: Span, kind: string, probe: JsProbe) => void;
+
+function makeRuntime(io: IO, spans: Span[], onStep?: (s: number, kind: string, loc: (k: number) => Value) => void) {
   const ovf = (s: number): never => {
     throw new RuntimeError('integer overflow', spans[s]);
   };
@@ -35,6 +47,7 @@ function makeRuntime(io: IO, spans: Span[]) {
     blen: byteLen,
     out: (s: string) => io.out(s),
     b: (name: string, args: Value[], tys: Type[], s: number) => callBuiltin(name as never, args, tys, io, spans[s]),
+    h: (s: number, kind: string, loc: (k: number) => Value) => onStep?.(s, kind, loc),
     so: (s: number): never => {
       throw new RuntimeError('stack overflow', spans[s]);
     },
@@ -42,9 +55,10 @@ function makeRuntime(io: IO, spans: Span[]) {
 }
 
 type Runtime = ReturnType<typeof makeRuntime>;
-const HELPERS = ['add', 'sub', 'mul', 'div', 'mod', 'bit', 'ix', 'ck', 'cmp', 'fmt', 'blen', 'out', 'b', 'so'] as const;
+const HELPERS = ['add', 'sub', 'mul', 'div', 'mod', 'bit', 'ix', 'ck', 'cmp', 'fmt', 'blen', 'out', 'b', 'so', 'h'] as const;
 
 class Gen {
+  debug = false;
   spans: Span[] = [];
   fnIds = new Map<FnDecl, number>();
   queue: FnDecl[] = [];
@@ -88,6 +102,12 @@ class Gen {
   }
 
   stmt(s: Stmt): string {
+    const code = this.stmt0(s);
+    if (!this.debug || STOPS.has(s.k) === false) return code;
+    return `$h(${this.span(s.span)}, ${JSON.stringify(s.k)}, $loc); ${code}`;
+  }
+
+  stmt0(s: Stmt): string {
     switch (s.k) {
       case 'fn': case 'struct': case 'enum':
         return '';
@@ -273,11 +293,18 @@ class Gen {
     const locals: string[] = [];
     for (let i = params.length; i < f.nlocals; i++) locals.push(`l${i}`);
     for (let i = 0; i < this.temps; i++) locals.push(`$t${i}`);
-    const decl = locals.length ? `let ${locals.join(', ')};\n` : '';
+    const decl = (locals.length ? `let ${locals.join(', ')};\n` : '') + this.locGetter(f.nlocals);
     const enter = `$cs[$d] = $s; $nm[$d] = ${this.fnIds.get(f)}; if ($d >= ${MAX_DEPTH}) $so($s); $d++;\n`;
     let inner = `${decl}${body}\n$d--;`;
     if (this.early) inner = `${decl}try {\n${body}\n} catch ($e) {\nif ($e === $EARLY) { $d--; return $rv; }\nthrow $e;\n}\n$d--;`;
     return `function ${name}(${[...params, '$s'].join(', ')}) {\n${enter}${inner}\n}`;
+  }
+
+  // debug builds: one closure per frame that reads a local by slot
+  locGetter(n: number): string {
+    if (!this.debug) return '';
+    const cases = Array.from({ length: n }, (_, i) => `case ${i}: return l${i};`).join(' ');
+    return `const $loc = (k) => { switch (k) { ${cases} } return null; };\n`;
   }
 
   program(prog: Program): string {
@@ -288,7 +315,7 @@ class Gen {
     const mainLocals: string[] = [];
     for (let i = 0; i < prog.nlocals; i++) mainLocals.push(`l${i}`);
     for (let i = 0; i < this.temps; i++) mainLocals.push(`$t${i}`);
-    const main = `function $main() {\n${mainLocals.length ? `let ${mainLocals.join(', ')};\n` : ''}${mainBody}\n}`;
+    const main = `function $main() {\n${mainLocals.length ? `let ${mainLocals.join(', ')};\n` : ''}${this.locGetter(prog.nlocals)}${mainBody}\n}`;
 
     const fns: string[] = [];
     while (this.queue.length) {
@@ -305,27 +332,41 @@ class Gen {
       globals.length ? `let ${globals.join(', ')};` : '',
       ...fns,
       main,
-      `return { main: $main, depth: () => $d, cs: $cs, nm: $nm };`,
+      this.debug ? `const $glob = (k) => { switch (k) { ${globals.map((g, i) => `case ${i}: return ${g};`).join(' ')} } return null; };` : '',
+      `return { main: $main, depth: () => $d, cs: $cs, nm: $nm${this.debug ? ', glob: $glob' : ''} };`,
     ].join('\n');
   }
 }
 
-export function toJs(prog: Program): { source: string; spans: Span[]; names: string[] } {
+export function toJs(prog: Program, debug = false): { source: string; spans: Span[]; names: string[]; decls: FnDecl[] } {
   const g = new Gen();
+  g.debug = debug;
   const source = g.program(prog);
   const names: string[] = [];
-  for (const [f, id] of g.fnIds) names[id] = f.name;
-  return { source, spans: g.spans, names };
+  const decls: FnDecl[] = [];
+  for (const [f, id] of g.fnIds) {
+    names[id] = f.name;
+    decls[id] = f;
+  }
+  return { source, spans: g.spans, names, decls };
 }
 
-export function runJs(prog: Program, io: IO) {
+export function runJs(prog: Program, io: IO, hook?: JsHook) {
   registerTypes(
     prog.structs.map(s => ({ name: s.name, shown: s.shown, fields: s.fields.map(f => ({ name: f.name, ty: f.ty })) })),
     prog.enums.map(e => ({ name: e.name, variants: e.variants.map(v => ({ name: v.name, payload: v.payload })) })),
   );
-  const { source, spans, names } = toJs(prog);
-  const rt: Runtime = makeRuntime(io, spans);
-  const api = new Function('rt', source)(rt) as { main(): void; depth(): number; cs: number[]; nm: number[] };
+  const { source, spans, names, decls } = toJs(prog, hook !== undefined);
+  let api!: { main(): void; depth(): number; cs: number[]; nm: number[]; glob?: (k: number) => Value };
+  const onStep = hook && ((s: number, kind: string, loc: (k: number) => Value) => hook(spans[s], kind, {
+    depth: api.depth(),
+    name: d => names[api.nm[d - 1]],
+    decl: d => (d > 0 ? decls[api.nm[d - 1]] : null),
+    local: loc,
+    global: k => api.glob!(k),
+  }));
+  const rt: Runtime = makeRuntime(io, spans, onStep);
+  api = new Function('rt', source)(rt);
   try {
     api.main();
   } catch (err) {

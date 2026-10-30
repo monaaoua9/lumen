@@ -32,7 +32,7 @@ commands
   build    emit C and compile it with gcc/clang/cc   [-o out]
   ast      dump the typed AST as JSON
   bench    run on both engines and compare timings
-  debug    step through a program: break, step, next, print, locals   (interpreter)
+  debug    step through a program: break, step, next, print, locals   [--engine interp|js]  (default: js)
   repl     interactive prompt (no file)
   fmt      re-indent files   [--write] overwrite, [--check] exit 1 if a file would change
   init     create a lumen.toml here   [name]
@@ -217,7 +217,7 @@ ${out}`);
         process.stdout.write(JSON.stringify(fe.program.body, (k, v) => (k === 'sym' || k === 'fn' ? undefined : v), 2) + '\n');
         return 0;
       case 'debug':
-        return debug(fe, basename(file), { out: s => process.stdout.write(s) });
+        return debug(fe, basename(file), { out: s => process.stdout.write(s) }, opt('--engine') === 'interp' ? 'interp' : 'js');
       case 'emit-js':
         process.stdout.write(toJavaScript(fe) + '\n');
         return 0;
